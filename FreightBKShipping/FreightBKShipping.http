@@ -1,0 +1,6 @@
+@FreightBKShipping_HostAddress = http://localhost:5239
+
+GET {{FreightBKShipping_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
