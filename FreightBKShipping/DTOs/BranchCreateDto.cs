@@ -11,6 +11,7 @@
         public string? BranchAddress3 { get; set; }
         public string? BranchPincode { get; set; }
         public int? BranchStateId { get; set; }
+        public string? BranchCountry { get; set; }
         public string? BranchStateCode { get; set; }
         public string? BranchContactNo { get; set; }
         public string? BranchEmail { get; set; }

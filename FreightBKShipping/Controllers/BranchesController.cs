@@ -48,6 +48,7 @@ namespace FreightBKShipping.Controllers
                 BranchAddress3 = dto.BranchAddress3,
                 BranchPincode = dto.BranchPincode,
                 BranchStateId = dto.BranchStateId,
+                BranchCountry = dto.BranchCountry,
                 BranchStateCode = dto.BranchStateCode,
                 BranchContactNo = dto.BranchContactNo,
                 BranchEmail = dto.BranchEmail,
@@ -82,6 +83,7 @@ namespace FreightBKShipping.Controllers
             branch.BranchAddress3 = dto.BranchAddress3;
             branch.BranchPincode = dto.BranchPincode;
             branch.BranchStateId = dto.BranchStateId;
+            branch.BranchCountry = dto.BranchCountry;
             branch.BranchStateCode = dto.BranchStateCode;
             branch.BranchContactNo = dto.BranchContactNo;
             branch.BranchEmail = dto.BranchEmail;

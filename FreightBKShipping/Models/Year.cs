@@ -17,11 +17,11 @@ namespace FreightBKShipping.Models
 
         [Column("year_addby_user_id")]
 
-        public string YearAddByUserId { get; set; }
+        public string? YearAddByUserId { get; set; }
 
         [Column("year_updatedby_user_id")]
     
-        public string YearUpdatedByUserId { get; set; }
+        public string? YearUpdatedByUserId { get; set; }
 
         [Column("year_name")]
         

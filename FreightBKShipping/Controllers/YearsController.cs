@@ -69,6 +69,7 @@ namespace FreightBKShipping.Controllers
             year.YearCompanyId = GetCompanyId();
                 year.YearUpdated = DateTime.UtcNow;
             year.YearUpdatedByUserId = GetUserId();
+            year.YearAddByUserId = GetUserId();
             // If this is being set as default, unset all others for the same company
             if (year.YearIsDefault)
             {

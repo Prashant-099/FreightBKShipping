@@ -29,8 +29,8 @@ namespace FreightBKShipping.Data
         public DbSet<Voucher> Vouchers { get; set; }
         public DbSet<Bill> Bills { get; set; }
         public DbSet<BillDetail> BillDetails { get; set; }
-       // public DbSet<BillRefDetail> BillRefDetails { get; set; }
-
+        // public DbSet<BillRefDetail> BillRefDetails { get; set; }
+        public DbSet<Notify> Notifies { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

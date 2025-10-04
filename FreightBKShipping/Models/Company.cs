@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FreightBKShipping.Models
 {
-    [Table("companies")]
+    [Table("companies")]    
     public class Company
     {
         [Key]
