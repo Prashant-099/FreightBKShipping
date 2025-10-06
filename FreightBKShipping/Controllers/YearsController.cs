@@ -89,13 +89,13 @@ namespace FreightBKShipping.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!_context.Years.Any(e => e.YearId == id))
+                     if (!_context.Years.Any(e => e.YearId == id))
                         return NotFound();
                     throw;
                 }
 
                 return NoContent();
-            }
+            }   
 
             [HttpDelete("{id}")]
             public async Task<IActionResult> DeleteYear(int id)

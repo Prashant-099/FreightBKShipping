@@ -105,7 +105,7 @@ public class AccountsController : BaseController
         account.AccountUpdatedByUserId = GetUserId();
         account.AccountUpdated = DateTime.UtcNow;
         account.AccountCompanyId = GetCompanyId();
-
+        account.AccountGroup = dto.AccountGroup;
 
         _context.Accounts.Update(account);
         await _context.SaveChangesAsync();
