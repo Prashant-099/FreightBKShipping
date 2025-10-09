@@ -33,10 +33,10 @@ namespace FreightBKShipping.Models
         public string NotifyAddress1 { get; set; }
 
         [Column("notify_address2")]
-        public string NotifyAddress2 { get; set; }
+        public string? NotifyAddress2 { get; set; } = string.Empty;
 
         [Column("notify_address3")]
-        public string NotifyAddress3 { get; set; }
+        public string? NotifyAddress3 { get; set; } = string.Empty;
 
         [Column("notify_city")]
         public string NotifyCity { get; set; }
@@ -45,19 +45,19 @@ namespace FreightBKShipping.Models
         public string NotifyTel { get; set; }
 
         [Column("notify_email")]
-        public string NotifyEmail { get; set; }
+        public string? NotifyEmail { get; set; }
 
         [Column("notify_contactno")]
-        public string NotifyContactNo { get; set; }
+        public string? NotifyContactNo { get; set; } = string.Empty;
 
         [Column("notify_contactperson")]
-        public string NotifyContactPerson { get; set; }
+        public string? NotifyContactPerson { get; set; }
 
         [Column("notify_gstno")]
-        public string NotifyGstNo { get; set; }
+        public string? NotifyGstNo { get; set; }
 
         [Column("notify_pan")]
-        public string NotifyPan { get; set; }
+        public string? NotifyPan { get; set; }
 
         [Column("notify_status")]
         public bool NotifyStatus { get; set; }
@@ -66,7 +66,7 @@ namespace FreightBKShipping.Models
         public string NotifyState { get; set; }
 
         [Column("notify_pincode")]
-        public string NotifyPincode { get; set; }
+        public string? NotifyPincode { get; set; }
 
         [Column("notify_statecode")]
         public string NotifyStateCode { get; set; }

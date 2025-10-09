@@ -39,6 +39,11 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<HsnSac>> PostHsnSac(HsnSac hsnSac)
         {
+            var gstSlab = await _context.GstSlabs
+        .FirstOrDefaultAsync(x => x.GstSlabId == hsnSac.HsnGstSlabId);
+
+            if (gstSlab != null)
+                hsnSac.HsnGstPer = (float)gstSlab.GstSlabIgstPer;
             hsnSac.HsnCreated = DateTime.UtcNow;
             hsnSac.HsnUpdated = DateTime.UtcNow;
             hsnSac.HsnAddedByUserId = GetUserId();
@@ -56,9 +61,14 @@ namespace FreightBKShipping.Controllers
         {
             if (id != hsnSac.HsnId)
                 return BadRequest();
-
+            // ✅ Recalculate GST percentage if slab changed
+            var gstSlab = await _context.GstSlabs
+                .FirstOrDefaultAsync(x => x.GstSlabId == hsnSac.HsnGstSlabId);
+            if (gstSlab != null)
+                hsnSac.HsnGstPer = (float)gstSlab.GstSlabIgstPer;
             hsnSac.HsnUpdated = DateTime.UtcNow;
             hsnSac.HsnUpdatedByUserId = GetUserId();
+            hsnSac.HsnAddedByUserId = GetUserId();
             hsnSac.HsnCompanyId = GetCompanyId();
             _context.Entry(hsnSac).State = EntityState.Modified;
 

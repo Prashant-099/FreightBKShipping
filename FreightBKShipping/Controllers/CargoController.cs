@@ -20,6 +20,9 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(CargoCreateDto dto)
         {
+            // Fetch selected HSN record
+            var hsn = await _context.HsnSacs.FirstOrDefaultAsync(h => h.HsnId == dto.CargoHsn);
+
             var cargo = new Cargo
             {
                 CargoCompanyId = GetCompanyId(),
@@ -29,8 +32,8 @@ namespace FreightBKShipping.Controllers
                 CargoType = dto.CargoType,
                 CargoRemarks = dto.CargoRemarks,
                 CargoHsn = dto.CargoHsn,
-                CargoGstPer = dto.CargoGstPer,
-                CargoCess = dto.CargoCess,
+                CargoGstPer = hsn?.HsnGstPer ?? 0,
+                CargoCess = hsn?.HsnCess ?? 0,
                 CargoStatus = dto.CargoStatus,
                 CargoCreated = DateTime.UtcNow,
                 CargoUpdated = DateTime.UtcNow
@@ -46,13 +49,15 @@ namespace FreightBKShipping.Controllers
         {
             var cargo = await _context.Cargoes.FindAsync(id);
             if (cargo == null) return NotFound();
+            // Fetch new HSN record
+            var hsn = await _context.HsnSacs.FirstOrDefaultAsync(h => h.HsnId == dto.CargoHsn);
 
             cargo.CargoName = dto.CargoName;
             cargo.CargoType = dto.CargoType;
             cargo.CargoRemarks = dto.CargoRemarks;
             cargo.CargoHsn = dto.CargoHsn;
-            cargo.CargoGstPer = dto.CargoGstPer;
-            cargo.CargoCess = dto.CargoCess;
+            cargo.CargoGstPer = hsn?.HsnGstPer ?? 0;
+            cargo.CargoCess = hsn?.HsnCess ?? 0;
             cargo.CargoStatus = dto.CargoStatus;
             cargo.CargoUpdated = DateTime.UtcNow;
             cargo.CargoCompanyId = GetCompanyId();

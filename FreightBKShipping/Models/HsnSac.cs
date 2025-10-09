@@ -45,7 +45,7 @@ namespace FreightBKShipping.Models
 
         [Column("hsn_gstslab_id")]
         
-        public int? HsnGstSlabId { get; set; }
+        public int HsnGstSlabId { get; set; }
 
         [Column("hsn_created")]
         public DateTime HsnCreated { get; set; } = DateTime.UtcNow;
