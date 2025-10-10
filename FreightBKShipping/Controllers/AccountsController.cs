@@ -32,7 +32,9 @@ public class AccountsController : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Account dto)
     {
-        dto.AccountCompanyId = GetCompanyId();
+        try
+        {
+            dto.AccountCompanyId = GetCompanyId();
         dto.AccountAddedByUserId = GetUserId();
         dto.AccountUpdatedByUserId = GetUserId();
         dto.AccountCreated = DateTime.UtcNow;
@@ -40,6 +42,12 @@ public class AccountsController : BaseController
         _context.Accounts.Add(dto);
         await _context.SaveChangesAsync();
         return Ok(dto);
+    }
+catch (Exception ex)
+{
+    return BadRequest(new { error = ex.Message, stack = ex.StackTrace
+});
+}
     }
 
     [HttpPut("{id}")]
