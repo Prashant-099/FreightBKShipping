@@ -34,6 +34,7 @@ namespace FreightBKShipping.Models
        
         public string? CargoRemarks { get; set; }
 
+        [ForeignKey("HsnSac")]
         [Column("cargo_hsn")]
         public int? CargoHsn { get; set; }
 
