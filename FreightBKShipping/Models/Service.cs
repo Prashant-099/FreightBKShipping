@@ -15,7 +15,7 @@ namespace FreightBKShipping.Models
 
         [Column("service_group_id")]
         public int? ServiceGroupId { get; set; }
-        public string ServiceGroupsName { get; set; } //no mapped in db
+      
 
         [Column("service_unit_id")]
         public int? ServiceUnitId { get; set; }
@@ -98,5 +98,8 @@ namespace FreightBKShipping.Models
         // 🔹 Add navigation property
         [ForeignKey("ServiceGroupId")]
         public virtual ServiceGroup? ServiceGroup { get; set; }
+     
+       
     }
 }
+
