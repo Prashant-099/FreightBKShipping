@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using FreightBKShipping.Models;
-using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 
 namespace FreightBKShipping.Services
@@ -35,8 +34,6 @@ namespace FreightBKShipping.Services
                   new Claim("RoleId", user.UserRoleId),
                 new Claim("BranchId", user.UserBranchId?.ToString() ?? string.Empty),
                  new Claim("CompanyId", user.UserCompanyId.ToString())
-
-
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));

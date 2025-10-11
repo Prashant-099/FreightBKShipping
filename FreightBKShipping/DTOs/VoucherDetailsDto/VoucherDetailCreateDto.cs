@@ -8,5 +8,7 @@
         public string? VoucherDetailSufix { get; set; }
         public int VoucherDetailZeroFill { get; set; }
         public bool VoucherDetailStatus { get; set; } = true;
+        public int VoucherDetailLastNo { get; set; }
+
     }
 }
