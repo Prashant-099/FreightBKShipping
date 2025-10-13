@@ -9,5 +9,8 @@
         public int VoucherDetailZeroFill { get; set; }
         public bool VoucherDetailStatus { get; set; }
         public int VoucherDetailLastNo { get; set; }
+        public int VoucherDetailYearId { get; set; }
+        public string? VoucherDetailLutno { get; set; }
+
     }
 }
