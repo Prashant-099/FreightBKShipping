@@ -31,12 +31,13 @@ namespace FreightBKShipping.Controllers
                 ServiceName = s.ServiceName,
                 ServiceCode = s.ServiceCode,
                 ServiceGroupId = s.ServiceGroupId,
-                ServiceGroupsName = s.ServiceGroup != null ? s.ServiceGroup.ServiceGroupsName : null,
+                ServiceGroupsName = s.ServiceGroup?.ServiceGroupsName,
                 ServiceStatus = s.ServiceStatus,
                 ServiceSRate = s.ServiceSRate,
                 ServicePRate = s.ServicePRate,
                 ServiceRemarks = s.ServiceRemarks
             });
+
 
             return Ok(result);
         }

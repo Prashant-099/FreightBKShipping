@@ -6,7 +6,7 @@ public class UserAddDto
     [Required(ErrorMessage = "Please select a role.")]
     public string UserRoleId { get; set; }
 
-    public string UserParentId { get; set; } 
+    public string? UserParentId { get; set; } 
 
     [Required(ErrorMessage = "First name is required.")]
     [StringLength(100)]
