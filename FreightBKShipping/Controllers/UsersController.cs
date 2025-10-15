@@ -59,12 +59,12 @@ namespace FreightBKShipping.Controllers
                 UserRoleId = u.UserRoleId,
                 UserRoleName = u.Role?.RoleName ?? "-",
                 UserAddress = u.UserAddress,
-                UserCompanyId = u.UserCompanyId
+                UserCompanyId = u.UserCompanyId,
+                UserBranchId=u.UserBranchId
             });
 
             return Ok(new
             {
-             
                 pagination = new
                 {
                     page = currentPage,
@@ -74,6 +74,7 @@ namespace FreightBKShipping.Controllers
                 },
                 data = result
             });
+    
         }
 
 
@@ -102,7 +103,7 @@ namespace FreightBKShipping.Controllers
                 UserRoleName = user.Role?.RoleName ?? "",
                 UserAddress = user.UserAddress,
                 UserBranchId = user.UserBranchId,
-                UserCompanyId = user.UserCompanyId
+                UserCompanyId = user.UserCompanyId,
 
             };
 
@@ -117,7 +118,7 @@ namespace FreightBKShipping.Controllers
             {
                UserId = Guid.NewGuid().ToString(),
                 UserRoleId = dto.UserRoleId,
-                UserParentId = dto.UserParentId,
+                UserParentId = GetUserId(),
                 UserFirstName = dto.UserFirstName,
                 UserLastName = dto.UserLastName,
                 UserEmail = dto.UserEmail,               
@@ -133,7 +134,9 @@ namespace FreightBKShipping.Controllers
                 UserName = dto.UserName,
                 UserStatus = 1, // default active
                 UserCreated = DateTime.UtcNow,
-                UserUpdated = DateTime.UtcNow
+                UserUpdated = DateTime.UtcNow,
+                UserAddbyUserId=GetUserId()
+               
             };
 
             _context.Users.Add(user);

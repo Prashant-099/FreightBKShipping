@@ -17,7 +17,7 @@ namespace FreightBKShipping.Models
         public string? UserRoleId { get; set; }
 
         [Column("user_parent_id")]
-        public string UserParentId { get; set; } 
+        public string? UserParentId { get; set; } 
 
         [Required]
         [Column("user_first_name")]
@@ -30,7 +30,7 @@ namespace FreightBKShipping.Models
         [Column("user_email")]
         public string UserEmail { get; set; }
 
-        [Required]
+
         [Column("user_password")]
         public string UserPassword { get; set; }
 

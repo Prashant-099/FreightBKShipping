@@ -15,7 +15,6 @@ namespace FreightBKShipping.Models
 
         [Column("service_group_id")]
         public int? ServiceGroupId { get; set; }
-      
 
         [Column("service_unit_id")]
         public int? ServiceUnitId { get; set; }

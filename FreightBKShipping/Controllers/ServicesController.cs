@@ -21,6 +21,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
+
             var result = await FilterByCompany(_context.Services, "ServiceCompanyId")
                                  .Join(_context.ServiceGroups,
               s => s.ServiceGroupId,
@@ -77,6 +78,8 @@ namespace FreightBKShipping.Controllers
             AccountName = x.a.AccountName   // 👈 Added here
         })
         .ToListAsync();
+
+
 
             return Ok(result);
         }
