@@ -221,6 +221,11 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<Bill>> CreateBill(BillDto billDto)
         {
+            var voucher = await _context.Vouchers
+     .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
+
+            if (voucher == null)
+                return BadRequest("Invalid voucher selected.");
             var bill = new Bill
             {
                 BillCompanyId = GetCompanyId(),
@@ -237,7 +242,7 @@ namespace FreightBKShipping.Controllers
                 BillVchNo = billDto.BillVchNo,
                 BillDate = billDto.BillDate,
                 BillDueDate = billDto.BillDueDate,
-                BillType = billDto.BillType,
+                BillType = voucher.VoucherGroup,
                 BillAmount = billDto.BillAmount,
                 BillDisPer1 = billDto.BillDisper1,
                 BillDiscount1 = billDto.BillDiscount1,
@@ -490,7 +495,7 @@ namespace FreightBKShipping.Controllers
             _context.Bills.Remove(bill);
 
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(true);
         }
 
     }

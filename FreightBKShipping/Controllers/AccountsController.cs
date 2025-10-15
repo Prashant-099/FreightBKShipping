@@ -4,6 +4,7 @@ using FreightBKShipping.DTOs;
 using FreightBKShipping.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Principal;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -39,7 +40,8 @@ public class AccountsController : BaseController
         dto.AccountUpdatedByUserId = GetUserId();
         dto.AccountCreated = DateTime.UtcNow;
         dto.AccountUpdated = DateTime.UtcNow;
-        _context.Accounts.Add(dto);
+            dto.AccountGroupId = dto.AccountGroupId;
+            _context.Accounts.Add(dto);
         await _context.SaveChangesAsync();
         return Ok(dto);
     }
@@ -108,6 +110,7 @@ catch (Exception ex)
         account.AccountRemarks = dto.AccountRemarks;
         account.AccountTdsApplicable = dto.AccountTdsApplicable;
         account.AccountTdsPer = dto.AccountTdsPer;
+        account.AccountGroupId = dto.AccountGroupId;
 
         // Metadata (do NOT update AccountAddedByUserId)
         account.AccountUpdatedByUserId = GetUserId();
