@@ -6,6 +6,7 @@ using FreightBKShipping.DTOs.UserRole;
 using Microsoft.AspNetCore.Authorization;
 using Sieve.Services;
 using Sieve.Models;
+using System.Data;
 
 namespace FreightBKShipping.Controllers
 {
@@ -49,19 +50,9 @@ namespace FreightBKShipping.Controllers
                     RoleUpdated = r.RoleUpdated,
                     RoleCompanyId = r.RoleCompanyId
                 })
-                .ToListAsync();
+            .ToListAsync();
 
-            return Ok(new
-            {
-                pagination = new
-                {
-                    page = currentPage,
-                    pageSize = pageSize,
-                    totalRecords = totalRecords,
-                    totalPages = totalPages
-                },
-                pagedRoles
-            });
+            return Ok(pagedRoles);
         }
 
 
