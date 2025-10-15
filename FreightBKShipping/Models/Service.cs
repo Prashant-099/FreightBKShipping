@@ -97,5 +97,8 @@ namespace FreightBKShipping.Models
         // 🔹 Add navigation property
         [ForeignKey("ServiceGroupId")]
         public virtual ServiceGroup? ServiceGroup { get; set; }
+     
+       
     }
 }
+
