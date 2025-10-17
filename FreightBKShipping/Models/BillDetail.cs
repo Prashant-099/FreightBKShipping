@@ -14,7 +14,7 @@ namespace FreightBKShipping.Models
 
         [Column("bill_detail_addedby_user_id")]
         [StringLength(30)]
-        public string? BillDetailAddedByUserId { get; set; }
+        public string? BillDetailAddedByUserId { get; set; } = string.Empty;
 
         [Column("bill_detail_updatedby_user_id")]
         [StringLength(30)]

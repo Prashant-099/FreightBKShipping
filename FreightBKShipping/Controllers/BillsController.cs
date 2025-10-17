@@ -156,6 +156,20 @@ namespace FreightBKShipping.Controllers
                     BillDetailQty = d.BillDetailQty,
                     BillDetailRate = d.BillDetailRate,
                     BillDetailAmount = d.BillDetailAmount,
+
+                    BillDetailTotal = d.BillDetailTotal,
+                    BillDetailHsnCode = d.BillDetailHsnCode,
+                    BillDetailUnit = d.BillDetailUnit,
+                    BillDetailExtraChrg = d.BillDetailExtraChrg,
+                    BillDetailCurrencyId = d.BillDetailCurrencyId,
+                    BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                    BillDetailGstPer = d.BillDetailGstPer,
+                    BillDetailIgst = d.BillDetailIgst,
+                    BillDetailCgst = d.BillDetailCgst,
+                    BillDetailSgst = d.BillDetailSgst,
+                    BillDetailIgstPer = d.BillDetailIgstPer,
+                    BillDetailCgstPer = d.BillDetailCgstPer,
+                    BillDetailSgstPer = d.BillDetailSgstPer,
                     // add rest of BillDetail columns...
                 }).ToList(),
                 //BillRefDetails = b.BillRefDetails.Select(r => new BillRefDetailDto
@@ -202,7 +216,24 @@ namespace FreightBKShipping.Controllers
                         BillDetailRate = d.BillDetailRate,
                         BillDetailAmount = d.BillDetailAmount,
                         BillDetailRemarks = d.BillDetailRemarks,
-                        BillDetailTotal = d.BillDetailTotal
+                        BillDetailTotal = d.BillDetailTotal,
+
+
+                        BillDetailUnit = d.BillDetailUnit,
+                    BillDetailExtraChrg = d.BillDetailExtraChrg,
+                    BillDetailCurrencyId = d.BillDetailCurrencyId,
+                    BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                    BillDetailGstPer = d.BillDetailGstPer,
+                    BillDetailIgst = d.BillDetailIgst,
+                    BillDetailCgst = d.BillDetailCgst,
+                    BillDetailSgst = d.BillDetailSgst,
+                    BillDetailIgstPer = d.BillDetailIgstPer,
+                    BillDetailCgstPer = d.BillDetailCgstPer,
+                    BillDetailSgstPer = d.BillDetailSgstPer,
+
+
+
+
                     }).ToList()
                 //    BillRefDetails = bill.BillRefDetails.Select(r => new BillRefDetailDto
                 //    {
@@ -349,6 +380,19 @@ namespace FreightBKShipping.Controllers
                     BillDetailProductId = d.BillDetailProductId,
                     BillDetailUnitId = d.BillDetailUnitId,
                     BillDetailHsnId = d.BillDetailHsnId,
+                    BillDetailHsnCode = d.BillDetailHsnCode,
+                    BillDetailUnit = d.BillDetailUnit,
+                    BillDetailExtraChrg = d.BillDetailExtraChrg,
+                    BillDetailCurrencyId = d.BillDetailCurrencyId,
+                    BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                    BillDetailGstPer = d.BillDetailGstPer,
+                    BillDetailIgst = d.BillDetailIgst,
+                    BillDetailCgst = d.BillDetailCgst,
+                    BillDetailSgst = d.BillDetailSgst,
+                    BillDetailIgstPer = d.BillDetailIgstPer,
+                    BillDetailCgstPer = d.BillDetailCgstPer,
+                    BillDetailSgstPer = d.BillDetailSgstPer,
+
                     BillDetailQty = d.BillDetailQty,
                     BillDetailRate = d.BillDetailRate,
                     BillDetailAmount = d.BillDetailAmount,
@@ -417,6 +461,8 @@ namespace FreightBKShipping.Controllers
                 if (existingDetail != null)
                 {
                     // Update existing
+                    existingDetail.BillDetailUpdatedByUserId = GetUserId();
+                    existingDetail.BillDetailUpdated = DateTime.UtcNow;
                     existingDetail.BillDetailProductId = detailDto.BillDetailProductId;
                     existingDetail.BillDetailUnitId = detailDto.BillDetailUnitId;
                     existingDetail.BillDetailHsnId = detailDto.BillDetailHsnId;
@@ -425,12 +471,28 @@ namespace FreightBKShipping.Controllers
                     existingDetail.BillDetailAmount = detailDto.BillDetailAmount;
                     existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
                     existingDetail.BillDetailTotal = detailDto.BillDetailTotal;
+                    existingDetail.BillDetailHsnCode = detailDto.BillDetailHsnCode;
+                    existingDetail.BillDetailUnit = detailDto.BillDetailUnit;
+                    existingDetail.BillDetailExtraChrg = detailDto.BillDetailExtraChrg;
+                    existingDetail.BillDetailCurrencyId = detailDto.BillDetailCurrencyId;
+                    existingDetail.BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt;
+                    existingDetail.BillDetailGstPer = detailDto.BillDetailGstPer;
+                    existingDetail.BillDetailIgst = detailDto.BillDetailIgst;
+                    existingDetail.BillDetailCgst = detailDto.BillDetailCgst;
+                    existingDetail.BillDetailSgst = detailDto.BillDetailSgst;
+                    existingDetail.BillDetailIgstPer = detailDto.BillDetailIgstPer;
+                    existingDetail.BillDetailCgstPer = detailDto.BillDetailCgstPer;
+                    existingDetail.BillDetailSgstPer = detailDto.BillDetailSgstPer;
                 }
                 else
                 {
                     // Add new
                     bill.BillDetails.Add(new BillDetail
                     {
+                        BillDetailAddedByUserId = GetUserId(),
+                        BillDetailUpdatedByUserId = GetUserId(),
+                        BillDetailCreated = DateTime.UtcNow,
+                        BillDetailUpdated = DateTime.UtcNow,
                         BillDetailProductId = detailDto.BillDetailProductId,
                         BillDetailUnitId = detailDto.BillDetailUnitId,
                         BillDetailHsnId = detailDto.BillDetailHsnId,
@@ -438,7 +500,20 @@ namespace FreightBKShipping.Controllers
                         BillDetailRate = detailDto.BillDetailRate,
                         BillDetailAmount = detailDto.BillDetailAmount,
                         BillDetailRemarks = detailDto.BillDetailRemarks,
-                        BillDetailTotal = detailDto.BillDetailTotal
+                        BillDetailTotal = detailDto.BillDetailTotal,
+
+                        BillDetailHsnCode = detailDto.BillDetailHsnCode,
+                        BillDetailUnit = detailDto.BillDetailUnit,
+                        BillDetailExtraChrg = detailDto.BillDetailExtraChrg,
+                        BillDetailCurrencyId = detailDto.BillDetailCurrencyId,
+                        BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt,
+                        BillDetailGstPer = detailDto.BillDetailGstPer,
+                        BillDetailIgst = detailDto.BillDetailIgst,
+                        BillDetailCgst = detailDto.BillDetailCgst,
+                        BillDetailSgst = detailDto.BillDetailSgst,
+                        BillDetailIgstPer = detailDto.BillDetailIgstPer,
+                        BillDetailCgstPer = detailDto.BillDetailCgstPer,
+                        BillDetailSgstPer = detailDto.BillDetailSgstPer,
                     });
                 }
             }
