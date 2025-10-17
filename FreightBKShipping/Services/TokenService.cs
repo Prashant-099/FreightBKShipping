@@ -22,7 +22,7 @@ namespace FreightBKShipping.Services
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
-
+         
         public string CreateToken(User user)
         {
             var claims = new[]

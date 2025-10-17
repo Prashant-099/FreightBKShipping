@@ -33,6 +33,7 @@ namespace FreightBKShipping.Data
         public DbSet<Notify> Notifies { get; set; }
         public DbSet<Vessel> Vessels { get; set; }
         public DbSet<RateMaster> RateMasters { get; set; }
+        public DbSet<Job> Jobs { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
