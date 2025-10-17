@@ -5,7 +5,6 @@
         public int ServiceId { get; set; }
         public int ServiceCompanyId { get; set; }
         public int? ServiceGroupId { get; set; }
-        public string? ServiceGroupsName { get; set; } //no mapped in db
         public int? ServiceUnitId { get; set; }
 
         public string ServiceName { get; set; } = string.Empty;
@@ -31,12 +30,19 @@
 
         public int? ServiceVoucherId { get; set; }
         public int? ServiceAccountId { get; set; }
-        public int? ServiceIsGoods { get; set; }
+        public bool? ServiceIsGoods { get; set; }
 
         public string? ServiceAddedByUserId { get; set; }
         public string? ServiceUpdatedByUserId { get; set; }
 
         public DateTime? ServiceCreated { get; set; } = DateTime.UtcNow;
         public DateTime? ServiceUpdated { get; set; }
+
+        // ✅ Extra unmapped fields for frontend
+        public string? GroupName { get; set; }
+        public string? HsnName { get; set; }
+        public float? HsnGstPer { get; set; }
+        public string? AccountName { get; set; }
+
     }
 }

@@ -29,7 +29,7 @@
 
         public int? ServiceVoucherId { get; set; }
         public int? ServiceAccountId { get; set; }
-        public int? ServiceIsGoods { get; set; }
+        public bool? ServiceIsGoods { get; set; }
 
         public string? ServiceAddedByUserId { get; set; }
         public string? ServiceUpdatedByUserId { get; set; }

@@ -21,22 +21,64 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var services = await FilterByCompany(_context.Services, "ServiceCompanyId")
-                                .Include(s => s.ServiceGroup)
-                                .ToListAsync();
 
-            var result = services.Select(s => new ServiceReadDto
-            {
-                ServiceId = s.ServiceId,
-                ServiceName = s.ServiceName,
-                ServiceCode = s.ServiceCode,
-                ServiceGroupId = s.ServiceGroupId,
-                ServiceGroupsName = s.ServiceGroup?.ServiceGroupsName,
-                ServiceStatus = s.ServiceStatus,
-                ServiceSRate = s.ServiceSRate,
-                ServicePRate = s.ServicePRate,
-                ServiceRemarks = s.ServiceRemarks
-            });
+            var result = await FilterByCompany(_context.Services, "ServiceCompanyId")
+                                 .Join(_context.ServiceGroups,
+              s => s.ServiceGroupId,
+              g => g.ServiceGroupsId,
+              (s, g) => new { s, g })
+        .Join(_context.HsnSacs,
+              sg => sg.s.ServiceHsnId,
+              h => h.HsnId,
+              (sg, h) => new { sg.s, sg.g, h })
+        .Join(_context.Accounts,
+              sgh => sgh.s.ServiceAccountId,
+              a => a.AccountId,
+              (sgh, a) => new { sgh.s, sgh.g, sgh.h, a })
+        .Select(x => new ServiceReadDto
+        {
+            ServiceId = x.s.ServiceId,
+            ServiceCompanyId = x.s.ServiceCompanyId,
+            ServiceGroupId = x.s.ServiceGroupId,
+            ServiceUnitId = x.s.ServiceUnitId,
+
+            ServiceName = x.s.ServiceName,
+            ServiceCode = x.s.ServiceCode,
+            ServiceType = x.s.ServiceType,
+
+            ServiceSRate = x.s.ServiceSRate,
+            ServicePRate = x.s.ServicePRate,
+            ServiceChargeType = x.s.ServiceChargeType,
+            ServiceHsnId = x.s.ServiceHsnId,
+            ServiceExempt = x.s.ServiceExempt,
+
+            ServiceRemarks = x.s.ServiceRemarks,
+            ServicePrintName = x.s.ServicePrintName,
+            ServiceTallyName = x.s.ServiceTallyName,
+
+            ServiceStatus = x.s.ServiceStatus,
+            ServiceExtraCharge = x.s.ServiceExtraCharge,
+            ServiceCeilingType = x.s.ServiceCeilingType,
+            ServiceCeilingValue = x.s.ServiceCeilingValue,
+
+            ServiceVoucherId = x.s.ServiceVoucherId,
+            ServiceAccountId = x.s.ServiceAccountId,
+            ServiceIsGoods = x.s.ServiceIsGoods,
+
+            ServiceAddedByUserId = x.s.ServiceAddedByUserId,
+            ServiceUpdatedByUserId = x.s.ServiceUpdatedByUserId,
+
+            ServiceCreated = x.s.ServiceCreated,
+            ServiceUpdated = x.s.ServiceUpdated,
+
+            // ✅ Joined fields
+            GroupName = x.g.ServiceGroupsName,
+            HsnName = x.h.HsnName,
+            HsnGstPer = x.h.HsnGstPer,
+            AccountName = x.a.AccountName   // 👈 Added here
+        })
+        .ToListAsync();
+
 
 
             return Ok(result);
@@ -55,14 +97,39 @@ namespace FreightBKShipping.Controllers
             var dto = new ServiceReadDto
             {
                 ServiceId = s.ServiceId,
+                ServiceCompanyId = s.ServiceCompanyId,
+                ServiceGroupId = s.ServiceGroupId,
+                ServiceUnitId = s.ServiceUnitId,
+
                 ServiceName = s.ServiceName,
                 ServiceCode = s.ServiceCode,
-                ServiceGroupId = s.ServiceGroupId,
-                ServiceGroupsName = s.ServiceGroup?.ServiceGroupsName,
-                ServiceStatus = s.ServiceStatus,
+                ServiceType = s.ServiceType,
+
                 ServiceSRate = s.ServiceSRate,
                 ServicePRate = s.ServicePRate,
-                ServiceRemarks = s.ServiceRemarks
+
+                ServiceChargeType = s.ServiceChargeType,
+                ServiceHsnId = s.ServiceHsnId,
+                ServiceExempt = s.ServiceExempt,
+
+                ServiceRemarks = s.ServiceRemarks,
+                ServicePrintName = s.ServicePrintName,
+                ServiceTallyName = s.ServiceTallyName,
+
+                ServiceStatus = s.ServiceStatus,
+                ServiceExtraCharge = s.ServiceExtraCharge,
+                ServiceCeilingType = s.ServiceCeilingType,
+                ServiceCeilingValue = s.ServiceCeilingValue,
+
+                ServiceVoucherId = s.ServiceVoucherId,
+                ServiceAccountId = s.ServiceAccountId,
+                ServiceIsGoods = s.ServiceIsGoods,
+
+                ServiceAddedByUserId = s.ServiceAddedByUserId,
+                ServiceUpdatedByUserId = s.ServiceUpdatedByUserId,
+
+                ServiceCreated = s.ServiceCreated,
+                ServiceUpdated = s.ServiceUpdated
             };
 
             return Ok(dto);
@@ -90,6 +157,8 @@ namespace FreightBKShipping.Controllers
                 ServicePRate = dto.ServicePRate,
                 ServiceStatus = dto.ServiceStatus,
                 ServiceRemarks = dto.ServiceRemarks,
+                ServiceType = dto.ServiceType,
+                ServiceUnitId = dto.ServiceUnitId,
                 ServiceCreated = DateTime.UtcNow,
                 ServiceUpdated = DateTime.UtcNow
             };
@@ -117,6 +186,8 @@ namespace FreightBKShipping.Controllers
             service.ServicePRate = dto.ServicePRate;
             service.ServiceStatus = dto.ServiceStatus;
             service.ServiceRemarks = dto.ServiceRemarks;
+            service.ServiceUnitId = dto.ServiceUnitId;
+            service.ServiceType = dto.ServiceType;
             service.ServiceUpdatedByUserId = GetUserId();
             service.ServiceUpdated = DateTime.UtcNow;
 
