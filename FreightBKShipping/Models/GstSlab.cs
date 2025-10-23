@@ -19,8 +19,8 @@ namespace FreightBKShipping.Models
         public int? GstSlabYearId { get; set; }
 
         [Column("gstslab_addedby_user_id")]
-       
-        public string? GstSlabAddedByUserId { get; set; }
+
+        public string? GstSlabAddedByUserId { get; set; } = string.Empty;
 
         [Column("gstslab_updatedby_user_id")]
      
