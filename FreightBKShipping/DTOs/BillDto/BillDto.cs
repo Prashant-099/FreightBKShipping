@@ -124,10 +124,14 @@ namespace FreightBKShipping.DTOs.BillDto
         public int BillShipPartyId { get; set; }
         public double BillTcsPer { get; set; }
         public double BillTcsAmt { get; set; }
-
+        //NOT MAPPED IN DB    
+        public string? partyname { get; set; }
+        public string? posname { get; set; }
         // Nested collections
         public List<BillDetailDto> BillDetails { get; set; } = new();
         //public List<BillRefDetailDto> BillRefDetails { get; set; } = new();
+
+        
 
     }
 }

@@ -419,11 +419,18 @@ namespace FreightBKShipping.Models
         [Column("bill_tcs_amt")]
         public double BillTcsAmt { get; set; }
 
+        //NOT MAPPED IN DB    
+        public string? partyname { get; set; }
+        public string? posname { get; set; }
+        public Account Party { get; set; }
+        public State PlaceOfSupply { get; set; }
         // Navigation properties
         [InverseProperty(nameof(BillDetail.Bill))]
         public ICollection<BillDetail>? BillDetails { get; set; }
 
+
+        //  public ICollection<BillRefDetail>? BillRefDetails { get; set; }
   
-      //  public ICollection<BillRefDetail>? BillRefDetails { get; set; }
+
     }
 }

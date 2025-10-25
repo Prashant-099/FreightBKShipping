@@ -24,8 +24,10 @@ namespace FreightBKShipping.Controllers
         {
             var bills = await FilterByCompany( _context.Bills, "BillCompanyId")
                 .Include(b => b.BillDetails)
-                //.Include(b => b.BillRefDetails)
-                .ToListAsync();
+                    //.Include(b => b.BillRefDetails)
+                    .Include(b => b.Party)
+    .Include(b => b.PlaceOfSupply) 
+    .ToListAsync();
 
             var result = bills.Select(b => new BillDto
             {
@@ -148,6 +150,8 @@ namespace FreightBKShipping.Controllers
                 BillShipPartyId = b.BillShipPartyId,
                 BillTcsPer = b.BillTcsPer,
                 BillTcsAmt = b.BillTcsAmt,
+                partyname = b.Party.AccountName,
+                posname = b.PlaceOfSupply.StateName,
                 BillDetails = b.BillDetails.Select(d => new BillDetailDto
                 {
                     BillDetailId = d.BillDetailId,
@@ -252,6 +256,12 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<Bill>> CreateBill(BillDto billDto)
         {
+            var shipparty = await _context.Accounts
+      .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
+            var party = await _context.Accounts
+       .FirstOrDefaultAsync(p => p.AccountId == billDto.BillPartyId);
+            var pos = await _context.States
+                .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
             var voucher = await _context.Vouchers
      .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
 
@@ -267,6 +277,7 @@ namespace FreightBKShipping.Controllers
 
                 // Basic info
                 BillPartyId = billDto.BillPartyId,
+                partyname = party.AccountName,//not mapped in db
                 BillVoucherId = billDto.BillVoucherId,
                 BillYearId = billDto.BillYearId,
                 BillNo = billDto.BillNo,
@@ -287,11 +298,12 @@ namespace FreightBKShipping.Controllers
                 BillTotalUsd = billDto.BillTotalUsd,
                 BillTotal = billDto.BillTotal,
                 BillPlaceOfSupply = billDto.BillPlaceOfSupply,
+                posname =pos.StateName,
                 BillSupplyType = billDto.BillSupplyType,
                 BillSalesmanId = billDto.BillSalesmanId,
 
                 // Extra fields from JSON
-                BillShipParty = billDto.BillShipParty,
+                BillShipParty = shipparty.AccountName,
                 BillAddress1 = billDto.BillAddress1,
                 BillAddress2 = billDto.BillAddress2,
                 BillAddress3 = billDto.BillAddress3,
@@ -426,6 +438,13 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBill(int id, BillDto billDto)
         {
+            var shipparty = await _context.Accounts
+     .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
+            var party = await _context.Accounts
+       .FirstOrDefaultAsync(p => p.AccountId == billDto.BillPartyId);
+            var pos = await _context.States
+                .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
+
             if (id != billDto.BillId)
                 return BadRequest("Bill ID mismatch.");
 
@@ -447,6 +466,92 @@ namespace FreightBKShipping.Controllers
             bill.BillAmount = billDto.BillAmount;
             bill.BillRemarks = billDto.BillRemarks;
 
+            bill.BillShipParty = shipparty.AccountName;
+            bill.partyname = party.AccountName;
+            bill.posname = pos.StateName;
+            bill.BillShipPartyId= billDto.BillShipPartyId;
+            bill.BillAddress1 = billDto.BillAddress1;
+            bill.BillAddress2 = billDto.BillAddress2;
+            bill.BillAddress3 = billDto.BillAddress3;
+            bill.BillCity = billDto.BillCity;
+            bill.BillContactNo = billDto.BillContactNo;
+            bill.BillGstNo = billDto.BillGstNo;
+            bill.BillStateId = billDto.BillStateId;
+            bill.BillDrCr = billDto.BillDrCr;
+            bill.BillIsCancel = billDto.BillIsCancel;
+            bill.BillIsFreeze = billDto.BillIsFreeze;
+            bill.BillTaxIncluded = billDto.BillTaxIncluded;
+            bill.BillBy = billDto.BillBy;
+            bill.BillRemarks = billDto.BillRemarks;
+            bill.BillAmountInWord = billDto.BillAmountInWord;
+            bill.BillJobNo = billDto.BillJobNo;
+            bill.BillJobType = billDto.BillJobType;
+            bill.BillPodId = billDto.BillPodId;
+            bill.BillPolId = billDto.BillPolId;
+            bill.BillVesselId = billDto.BillVesselId;
+            bill.BillLineId = billDto.BillLineId;
+            bill.BillCargoId = billDto.BillCargoId;
+            bill.BillConsigneeId = billDto.BillConsigneeId;
+            bill.BillShipperId = billDto.BillShipperId;
+            bill.BillSbNo = billDto.BillSbNo;
+            bill.BillSbDate = billDto.BillSbDate;
+            bill.BillBlNo = billDto.BillBlNo;
+            bill.BillBlDate = billDto.BillBlDate;
+            bill.BillShipperInvNo = billDto.BillShipperInvNo;
+            bill.BillShipperInvDate = billDto.BillShipperInvDate;
+            bill.BillGrossWt = billDto.BillGrossWt;
+            bill.BillNetWt = billDto.BillNetWt;
+            bill.BillQty = billDto.BillQty;
+            bill.BillExchRate = billDto.BillExchRate;
+            bill.Bill20Ft = billDto.Bill20Ft;
+            bill.Bill40Ft = billDto.Bill40Ft;
+            bill.BillContainerNo = billDto.BillContainerNo;
+            bill.BillCust1 = billDto.BillCust1;
+            bill.BillCust2 = billDto.BillCust2;
+            bill.BillCust3 = billDto.BillCust3;
+            bill.BillCust4 = billDto.BillCust4;
+            bill.BillCust5 = billDto.BillCust5;
+            bill.BillCust6 = billDto.BillCust6;
+            bill.BillCust7 = billDto.BillCust7;
+                bill.BillCust8 = billDto.BillCust8;
+                bill.BillCust9 = billDto.BillCust9;
+            bill.BillCust10 = billDto.BillCust10;
+            bill.BillIrnNo = billDto.BillIrnNo;
+            bill.BillAckNo = billDto.BillAckNo;
+            bill.BillAckDate = billDto.BillAckDate;
+            bill.BillPrefix = billDto.BillPrefix;
+            bill.BillPostfix = billDto.BillPostfix;
+            bill.BillDefaultCurrencyId = billDto.BillDefaultCurrencyId;
+            bill.BillGroup = billDto.BillGroup;
+            bill.BillBankId = billDto.BillBankId;
+            bill.BillDateFrom = billDto.BillDateFrom;
+            bill.BillDateTo = billDto.BillDateTo;
+            bill.BillPincode = billDto.BillPincode;
+            bill.BillQRCode = billDto.BillQrCode;
+            bill.BillReportId = billDto.BillReportId;
+            bill.BillCbmQty = billDto.BillCbmQty;
+            bill.BillRemarksDefault = billDto.BillRemarksDefault;
+            bill.BillConsignor = billDto.BillConsignor;
+
+            bill.BillTaxableAmt2 = billDto.BillTaxableAmt2;
+            bill.BillGstType = billDto.BillGstType;
+            bill.BillJobId = billDto.BillJobId;
+            bill.BillCdnReason = billDto.BillCdnReason;
+            bill.BillLockedBy = billDto.BillLockedBy;
+            bill.BillApprovedBy = billDto.BillApprovedBy;
+            bill.BillDrcrAccId = billDto.BillDrCrAccId;
+            bill.BillAdvance = billDto.BillAdvance;
+            bill.BillNetAmount = billDto.BillNetAmount;
+            bill.BillTdsAmt = billDto.BillTdsAmt;
+            bill.BillTdsPer = billDto.BillTdsPer;
+            bill.BillAgainstBillId = billDto.BillAgainstBillId;
+            bill.BillIsRcm = billDto.BillIsRcm;
+                bill.BillBranchId = billDto.BillBranchId;
+            bill.BillHblNo = billDto.BillHblNo;
+            bill.BillShipPartyId = billDto.BillShipPartyId;
+            bill.BillTcsPer = billDto.BillTcsPer;
+            bill.BillTcsAmt = billDto.BillTcsAmt;
+            bill.BillYearId = billDto.BillYearId;
             // ---- Handle BillDetails ----
             // Remove deleted details
             var detailsToRemove = bill.BillDetails

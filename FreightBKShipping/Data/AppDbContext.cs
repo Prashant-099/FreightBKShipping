@@ -39,6 +39,22 @@ namespace FreightBKShipping.Data
         {
             modelBuilder.Entity<User>().HasIndex(u => u.UserEmail).IsUnique();
             modelBuilder.Entity<User>().HasIndex(u => u.UserMobile).IsUnique();
+            modelBuilder.Entity<Bill>().Ignore(b => b.partyname);
+            modelBuilder.Entity<Bill>().Ignore(b => b.posname);
+            modelBuilder.Entity<Bill>()
+        .HasOne(b => b.Party)
+        .WithMany() // or .WithMany(a => a.Bills) if Account has a collection
+        .HasForeignKey(b => b.BillPartyId)
+        .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Bill>()
+                .HasOne(b => b.PlaceOfSupply)
+                .WithMany() // or .WithMany(s => s.Bills)
+                .HasForeignKey(b => b.BillPlaceOfSupply)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            base.OnModelCreating(modelBuilder);
         }
+
     }
 }
