@@ -422,8 +422,10 @@ namespace FreightBKShipping.Models
         //NOT MAPPED IN DB    
         public string? partyname { get; set; }
         public string? posname { get; set; }
+        public string? Vouchname { get; set; }
         public Account Party { get; set; }
         public State PlaceOfSupply { get; set; }
+        public Voucher Voucher { get; set; }
         // Navigation properties
         [InverseProperty(nameof(BillDetail.Bill))]
         public ICollection<BillDetail>? BillDetails { get; set; }

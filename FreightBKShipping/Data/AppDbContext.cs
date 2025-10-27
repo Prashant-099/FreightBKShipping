@@ -34,6 +34,7 @@ namespace FreightBKShipping.Data
         public DbSet<Vessel> Vessels { get; set; }
         public DbSet<RateMaster> RateMasters { get; set; }
         public DbSet<Job> Jobs { get; set; }
+        public DbSet<Reportdata> Reportdata { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -41,6 +42,7 @@ namespace FreightBKShipping.Data
             modelBuilder.Entity<User>().HasIndex(u => u.UserEmail).IsUnique();
             modelBuilder.Entity<User>().HasIndex(u => u.UserMobile).IsUnique();
             modelBuilder.Entity<Bill>().Ignore(b => b.partyname);
+            modelBuilder.Entity<Bill>().Ignore(b => b.Vouchname);
             modelBuilder.Entity<Bill>().Ignore(b => b.posname);
             modelBuilder.Entity<Bill>()
         .HasOne(b => b.Party)
@@ -52,6 +54,12 @@ namespace FreightBKShipping.Data
                 .HasOne(b => b.PlaceOfSupply)
                 .WithMany() // or .WithMany(s => s.Bills)
                 .HasForeignKey(b => b.BillPlaceOfSupply)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Bill>()
+                .HasOne(b => b.Voucher)
+                .WithMany() // or .WithMany(s => s.Bills)
+                .HasForeignKey(b => b.BillVoucherId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

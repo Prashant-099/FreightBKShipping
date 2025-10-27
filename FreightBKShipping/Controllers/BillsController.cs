@@ -25,6 +25,7 @@ namespace FreightBKShipping.Controllers
             var bills = await FilterByCompany( _context.Bills, "BillCompanyId")
                 .Include(b => b.BillDetails)
                     //.Include(b => b.BillRefDetails)
+                    .Include(b => b.Voucher)
                     .Include(b => b.Party)
     .Include(b => b.PlaceOfSupply) 
     .ToListAsync();
@@ -152,6 +153,7 @@ namespace FreightBKShipping.Controllers
                 BillTcsAmt = b.BillTcsAmt,
                 partyname = b.Party.AccountName,
                 posname = b.PlaceOfSupply.StateName,
+                Vouchname = b.Voucher.VoucherName,
                 BillDetails = b.BillDetails.Select(d => new BillDetailDto
                 {
                     BillDetailId = d.BillDetailId,
