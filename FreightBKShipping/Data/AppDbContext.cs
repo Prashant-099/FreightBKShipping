@@ -34,6 +34,7 @@ namespace FreightBKShipping.Data
         public DbSet<Vessel> Vessels { get; set; }
         public DbSet<RateMaster> RateMasters { get; set; }
         public DbSet<Job> Jobs { get; set; }
+        public DbSet<GridLayout> GridLayouts { get; set; }
         public DbSet<Reportdata> Reportdata { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
