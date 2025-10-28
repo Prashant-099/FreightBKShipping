@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FreightBKShipping.DTOs.BillDto;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -430,9 +431,10 @@ namespace FreightBKShipping.Models
         [InverseProperty(nameof(BillDetail.Bill))]
         public ICollection<BillDetail>? BillDetails { get; set; }
 
+      
 
         //  public ICollection<BillRefDetail>? BillRefDetails { get; set; }
-  
+
 
     }
 }
