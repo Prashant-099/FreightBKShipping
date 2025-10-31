@@ -31,7 +31,7 @@
         public string? bill_hblno { get; set; }
         public string? bill_sbno { get; set; }
         public DateTime? bill_bldate { get; set; }
-      //  public DateTime bill_hbldate { get; set; }
+        public DateTime? bill_hbldate { get; set; }
         public DateTime? bill_sbdate { get; set; }
         public string? bill_jobno { get; set; }
         public string? bill_jobtype { get; set; }
@@ -61,6 +61,12 @@
         public string? bill_AmountInword { get; set; }
         public string? bill_detail_remarks { get; set; }
 
+        public string? place_of_receipt { get; set; }
+        public string? place_of_delivery { get; set; }
+        public string? destination { get; set; }
+
+
+
         // ==== Company Info (header/footer in bill) ====
         public string? company_printname { get; set; }
       
@@ -71,6 +77,15 @@
         public string? company_email { get; set; }
         public string? company_panno { get; set; }
         public string? company_website { get; set; }
+
+        //banks details
+        public string? bankname { get; set; }
+        public string? bank_branch { get; set; }
+        public string? bank_accountno { get; set; }
+        public string? bank_ifsc { get; set; }
+        public string? bank_address { get; set; }
+
+
     }
 
     public class BillDetailPrintDto

@@ -303,6 +303,7 @@ namespace FreightBKShipping.Controllers
                 posname =pos.StateName,
                 BillSupplyType = billDto.BillSupplyType,
                 BillSalesmanId = billDto.BillSalesmanId,
+               
 
                 // Extra fields from JSON
                 BillShipParty = shipparty.AccountName,
@@ -463,6 +464,7 @@ namespace FreightBKShipping.Controllers
             bill.BillUpdated = DateTime.UtcNow;
             bill.BillPartyId = billDto.BillPartyId;
             bill.BillVoucherId = billDto.BillVoucherId;
+            bill.BillNo = billDto.BillNo;
             bill.BillDate = billDto.BillDate;
             bill.BillType = billDto.BillType;
             bill.BillAmount = billDto.BillAmount;
@@ -685,6 +687,7 @@ namespace FreightBKShipping.Controllers
             try
             {
                 var result = await (
+                    from Jobs in _context.Jobs
                     from Bills in _context.Bills
                         .Include(b => b.BillDetails)
                         .AsNoTracking()
@@ -711,6 +714,18 @@ namespace FreightBKShipping.Controllers
                    on Bills.BillPolId equals POLLocations.LocationId
                     join PODLocations in _context.Locations.AsNoTracking()
                    on Bills.BillPodId equals PODLocations.LocationId
+                    join Bankdetails in _context.Accounts.AsNoTracking()
+                   on Bills.BillBankId equals Bankdetails.AccountId
+                    join jobhbldt in _context.Jobs.AsNoTracking()
+                    on Bills.BillHblNo equals jobhbldt.JobHblNo
+
+                    join jobplacedelivery in _context.Jobs.AsNoTracking()
+                    on Jobs.JobPlaceOfDelivery equals jobplacedelivery.JobPlaceOfDelivery
+                    join jobplacereceipt in _context.Jobs.AsNoTracking()
+                    on Jobs.JobPlaceOfReceipt equals jobplacereceipt.JobPlaceOfReceipt
+                    join jobdetination in _context.Jobs.AsNoTracking()
+                    on Jobs.JobTranshipment equals jobdetination.JobTranshipment
+                    
                     where Bills.BillId == id
 
                     select new PrintBillFullDto
@@ -732,6 +747,7 @@ namespace FreightBKShipping.Controllers
                             Cargo = cargo.CargoName,
                             bill_blno = Bills.BillBlNo,
                             bill_hblno = Bills.BillHblNo,
+                            bill_hbldate = jobhbldt.JobHblDate,
                             bill_sbno = Bills.BillSbNo,
                             bill_bldate = Bills.BillBlDate,
                             
@@ -764,6 +780,16 @@ namespace FreightBKShipping.Controllers
                             bill_total = Bills.BillNetAmount,
                             bill_AmountInword = Bills.BillAmountInWord,
                             bill_detail_remarks = Bills.BillRemarks,
+
+                            place_of_receipt = Jobs.JobPlaceOfReceipt,
+                            place_of_delivery = Jobs.JobPlaceOfDelivery,
+                            destination = Jobs.JobTranshipment,
+
+                            bankname = Bankdetails.AccountBankName,
+                            bank_accountno = Bankdetails.AccountAccNo,
+                            bank_ifsc = Bankdetails.AccountIfsCode,
+                            bank_branch = Bankdetails.AccountBankBranch,
+                            bank_address = Bankdetails.AccountAddress1,
 
                             company_printname = companies.Name,
                             company_address1 = companies.Address1,
