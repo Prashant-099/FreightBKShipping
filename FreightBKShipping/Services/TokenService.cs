@@ -25,15 +25,26 @@ namespace FreightBKShipping.Services
          
         public string CreateToken(User user)
         {
+            if (user is null) throw new ArgumentNullException(nameof(user));
+
+            // Guard against null navigation / properties to avoid NullReferenceException
+            var userName = user.UserName ?? string.Empty;
+            var userId = user.UserId ?? string.Empty;
+            var userEmail = user.UserEmail ?? string.Empty;
+            var roleName = user.Role?.RoleName ?? string.Empty;
+            var roleId = user.UserRoleId ?? string.Empty;
+            var branchId = user.UserBranchId?.ToString() ?? string.Empty;
+            var companyId = user.UserCompanyId.ToString();
+
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.UserName),
-                 new Claim("UserId", user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, user.UserEmail),
-                 new Claim(ClaimTypes.Role, user.Role.RoleName),
-                  new Claim("RoleId", user.UserRoleId),
-                new Claim("BranchId", user.UserBranchId?.ToString() ?? string.Empty),
-                 new Claim("CompanyId", user.UserCompanyId.ToString())
+                new Claim(ClaimTypes.Name, userName),
+                new Claim("UserId", userId),
+                new Claim(ClaimTypes.Email, userEmail),
+                new Claim(ClaimTypes.Role, roleName),
+                new Claim("RoleId", roleId),
+                new Claim("BranchId", branchId),
+                new Claim("CompanyId", companyId)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
