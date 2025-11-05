@@ -17,13 +17,14 @@ namespace FreightBKShipping.Controllers
         private readonly AppDbContext _context;
         private readonly TokenService _tokenService;
         private readonly EmailService _emailService;
+        private readonly IConfiguration _config;
 
-
-        public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService)
+        public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService, IConfiguration config)
         {
             _context = context;
             _tokenService = tokenService;
             _emailService = emailService;
+            _config = config;
         }
 
         // ✅ Login Endpoint
@@ -41,10 +42,13 @@ namespace FreightBKShipping.Controllers
 
                 var token = _tokenService.CreateToken(user);
                 //var tokenExpiry = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
-                var tokenExpiry = DateTimeOffset.UtcNow.AddMinutes(60).ToUnixTimeSeconds();
+                var tokenExpiryMinutes = Convert.ToDouble(_config["Jwt:ExpireMinutes"] ?? "60");
+                var tokenExpiry = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes).ToUnixTimeSeconds();
                 var refreshToken = _tokenService.GenerateRefreshToken();
                 user.RefreshToken = refreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(1);
+                // Get refresh token expiry from config
+                var refreshExpiryDays = Convert.ToDouble(_config["Jwt:RefreshTokenExpiryDays"] ?? "1");
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshExpiryDays);
                 await _context.SaveChangesAsync();
                 return Ok(new AuthResponseDto
                 {
@@ -73,23 +77,44 @@ namespace FreightBKShipping.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return BadRequest("Refresh token is required");
+
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken && u.RefreshTokenExpiryTime > DateTime.UtcNow);
+                 .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken );
 
             if (user == null)
+            {
+                // Clear the expired token
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+                await _context.SaveChangesAsync();
                 return Unauthorized("Invalid Refresh Token");
+            }
+            if (user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                return Unauthorized("Refresh token has expired");
 
             var newAccessToken = _tokenService.CreateToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
+            var tokenExpiry = DateTimeOffset.UtcNow.AddMinutes(60).ToUnixTimeSeconds();
 
             user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // 7-day validity
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(1); // 1-day validity
             await _context.SaveChangesAsync();
 
             return Ok(new AuthResponseDto
             {
                 Token = newAccessToken,
-                RefreshToken = newRefreshToken
+                RefreshToken = newRefreshToken,
+                RefreshtokenExp = user.RefreshTokenExpiryTime.Value,
+                tokenExp = tokenExpiry,
+                UserName = user.UserName,
+                UserId = user.UserId,
+                Email = user.UserEmail,
+                BranchId = user.UserBranchId,
+                Rolename = user.Role.RoleName
             });
         }
 
