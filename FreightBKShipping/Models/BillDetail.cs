@@ -7,17 +7,18 @@ namespace FreightBKShipping.Models
     [Table("bill_details")]
     public class BillDetail
     {
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("bill_detail_id")]
         public int BillDetailId { get; set; }
 
         [Column("bill_detail_addedby_user_id")]
-        [StringLength(30)]
+
         public string? BillDetailAddedByUserId { get; set; } = string.Empty;
 
         [Column("bill_detail_updatedby_user_id")]
-        [StringLength(30)]
+
         public string? BillDetailUpdatedByUserId { get; set; }
 
         [Column("bill_detail_bill_id")]
@@ -27,7 +28,7 @@ namespace FreightBKShipping.Models
         public int BillDetailProductId { get; set; }
 
         [Column("bill_detail_unit_id")]
-        public int BillDetailUnitId { get; set; }
+        public int? BillDetailUnitId { get; set; }
 
         [Column("bill_detail_hsnid")]
         public int BillDetailHsnId { get; set; }
@@ -118,31 +119,31 @@ namespace FreightBKShipping.Models
         public string? BillDetailRemarks { get; set; }
 
         [Column("bill_detail_slab_id")]
-        [StringLength(30)]
+
         public string? BillDetailSlabId { get; set; }
 
         [Column("bill_detail_sno")]
-        [StringLength(30)]
-        public string? BillDetailSno { get; set; }
+
+        public int? BillDetailSno { get; set; }
 
         [Column("bill_detail_batchno")]
-        [StringLength(100)]
+
         public string? BillDetailBatchNo { get; set; }
 
         [Column("bill_detail_km")]
-        [StringLength(75)]
+
         public string? BillDetailKm { get; set; }
 
         [Column("bill_detail_expirydt")]
-        [StringLength(45)]
+
         public string? BillDetailExpiryDt { get; set; }
 
         [Column("bill_detail_serial1")]
-        [StringLength(75)]
+
         public string? BillDetailSerial1 { get; set; }
 
         [Column("bill_detail_serial2")]
-        [StringLength(75)]
+
         public string? BillDetailSerial2 { get; set; }
 
         [Column("bill_detail_account_id")]
@@ -164,7 +165,7 @@ namespace FreightBKShipping.Models
         public int BillDetailAddCessAcId { get; set; }
 
         [Column("bill_detail_status")]
-        public bool BillDetailStatus { get; set; }
+        public bool BillDetailStatus { get; set; } = true;
 
         [Column("bill_detail_created")]
         public DateTime BillDetailCreated { get; set; } = DateTime.UtcNow;
@@ -173,15 +174,15 @@ namespace FreightBKShipping.Models
         public DateTime? BillDetailUpdated { get; set; }
 
         [Column("bill_detail_hsncode")]
-        [StringLength(15)]
+
         public string? BillDetailHsnCode { get; set; }
 
         [Column("bill_detail_unit")]
-        [StringLength(4)]
+
         public string? BillDetailUnit { get; set; }
 
         [Column("bill_detail_exchunit")]
-        [StringLength(15)]
+
         public string? BillDetailExchUnit { get; set; }
 
         [Column("bill_detail_extrachrg")]

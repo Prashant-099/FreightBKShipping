@@ -24,8 +24,9 @@ namespace FreightBKShipping.Controllers
         {
             // ✅ Use AsNoTracking() for read-only queries (50% faster)
             var bills = await FilterByCompany(_context.Bills, "BillCompanyId")
+                .Where(b => b.BillStatus == true)
                 .AsNoTracking()
-                .Include(b => b.BillDetails)
+                .Include(b => b.BillDetails.Where(d => d.BillDetailStatus == true))
                 .Include(b => b.Voucher)
                 .Include(b => b.Party)
                 .Include(b => b.PlaceOfSupply).ToListAsync();
@@ -158,17 +159,26 @@ namespace FreightBKShipping.Controllers
                        {
                            BillDetailId = d.BillDetailId,
                            BillDetailBillId = d.BillDetailBillId,
+                           BillDetailRemarks = d.BillDetailRemarks,
                            BillDetailProductId = d.BillDetailProductId,
                            BillDetailQty = d.BillDetailQty,
                            BillDetailRate = d.BillDetailRate,
                            BillDetailAmount = d.BillDetailAmount,
-
+                           BillDetailExchRate = d.BillDetailExchRate,
                            BillDetailTotal = d.BillDetailTotal,
                            BillDetailHsnCode = d.BillDetailHsnCode,
                            BillDetailUnit = d.BillDetailUnit,
+                           BillDetailHsnId = d.BillDetailHsnId,
+                           BillDetailUnitId = d.BillDetailUnitId,
+                           BillDetailExchUnit = d.BillDetailExchUnit,
+                           BillDetailSno = d.BillDetailSno,
                            BillDetailExtraChrg = d.BillDetailExtraChrg,
                            BillDetailCurrencyId = d.BillDetailCurrencyId,
                            BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                           BillDetailAccountId = d.BillDetailAccountId,
+                           BillDetailIgstAcId = d.BillDetailIgstAcId,
+                           BillDetailCgstAcId = d.BillDetailCgstAcId,
+                           BillDetailSgstAcId = d.BillDetailSgstAcId,
                            BillDetailGstPer = d.BillDetailGstPer,
                            BillDetailIgst = d.BillDetailIgst,
                            BillDetailCgst = d.BillDetailCgst,
@@ -176,6 +186,7 @@ namespace FreightBKShipping.Controllers
                            BillDetailIgstPer = d.BillDetailIgstPer,
                            BillDetailCgstPer = d.BillDetailCgstPer,
                            BillDetailSgstPer = d.BillDetailSgstPer,
+                           BillDetailSlabId = d.BillDetailSlabId,
                            // add rest of BillDetail columns...
                        }).ToList(),
                    })
@@ -276,6 +287,10 @@ namespace FreightBKShipping.Controllers
                 BillYearId = billDto.BillYearId,
                 BillNo = billDto.BillNo,
                 BillVchNo = billDto.BillVchNo,
+                BillTime = billDto.BillTime,
+                BillDrCr = billDto.BillDrCr,
+                BillStatus = billDto.BillStatus,
+                BillGroup = billDto.BillGroup,
                 BillDate = billDto.BillDate,
                 BillDueDate = billDto.BillDueDate,
                 BillType = voucher.VoucherGroup,
@@ -295,7 +310,7 @@ namespace FreightBKShipping.Controllers
                 posname =pos.StateName,
                 BillSupplyType = billDto.BillSupplyType,
                 BillSalesmanId = billDto.BillSalesmanId,
-               
+              
 
                 // Extra fields from JSON
                 BillShipParty = shipparty.AccountName,
@@ -306,7 +321,7 @@ namespace FreightBKShipping.Controllers
                 BillContactNo = billDto.BillContactNo,
                 BillGstNo = billDto.BillGstNo,
                 BillStateId = billDto.BillStateId,
-                BillDrCr = billDto.BillDrCr,
+               
                 BillIsCancel = billDto.BillIsCancel,
                 BillIsFreeze = billDto.BillIsFreeze,
                 BillTaxIncluded = billDto.BillTaxIncluded,
@@ -351,7 +366,7 @@ namespace FreightBKShipping.Controllers
                 BillPrefix = billDto.BillPrefix,
                 BillPostfix = billDto.BillPostfix,
                 BillDefaultCurrencyId = billDto.BillDefaultCurrencyId,
-                BillGroup = billDto.BillGroup,
+                
                 BillBankId = billDto.BillBankId,
                 BillDateFrom = billDto.BillDateFrom,
                 BillDateTo = billDto.BillDateTo,
@@ -389,9 +404,18 @@ namespace FreightBKShipping.Controllers
                     BillDetailHsnId = d.BillDetailHsnId,
                     BillDetailHsnCode = d.BillDetailHsnCode,
                     BillDetailUnit = d.BillDetailUnit,
+                    BillDetailExchUnit = d.BillDetailExchUnit,
+                    BillDetailExchRate = d.BillDetailExchRate,
                     BillDetailExtraChrg = d.BillDetailExtraChrg,
                     BillDetailCurrencyId = d.BillDetailCurrencyId,
                     BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                   BillDetailExchAmount = d.BillDetailTaxableAmt,
+                    BillDetailSno = d.BillDetailSno,
+                    BillDetailAccountId =d.BillDetailAccountId,
+                    BillDetailIgstAcId = d.BillDetailIgstAcId,
+                    BillDetailCgstAcId = d.BillDetailCgstAcId,
+                    BillDetailSgstAcId = d.BillDetailSgstAcId,
+                    BillDetailSlabId = d.BillDetailSlabId,
                     BillDetailGstPer = d.BillDetailGstPer,
                     BillDetailIgst = d.BillDetailIgst,
                     BillDetailCgst = d.BillDetailCgst,
@@ -399,12 +423,13 @@ namespace FreightBKShipping.Controllers
                     BillDetailIgstPer = d.BillDetailIgstPer,
                     BillDetailCgstPer = d.BillDetailCgstPer,
                     BillDetailSgstPer = d.BillDetailSgstPer,
-
+                   BillDetailBillQty = d.BillDetailQty,
                     BillDetailQty = d.BillDetailQty,
                     BillDetailRate = d.BillDetailRate,
                     BillDetailAmount = d.BillDetailAmount,
                     BillDetailRemarks = d.BillDetailRemarks,
                     BillDetailTotal = d.BillDetailTotal,
+                    BillDetailStatus = d.BillDetailStatus,
                     BillDetailAddedByUserId = GetUserId(),
                     BillDetailUpdatedByUserId = GetUserId(),
                     BillDetailCreated = DateTime.UtcNow,
@@ -457,12 +482,18 @@ namespace FreightBKShipping.Controllers
             bill.BillUpdated = DateTime.UtcNow;
             bill.BillPartyId = billDto.BillPartyId;
             bill.BillVoucherId = billDto.BillVoucherId;
+            bill.BillVchNo = billDto.BillVchNo;
+            bill.BillTime = billDto.BillTime;
+            bill.BillDrCr = billDto.BillDrCr;
+            bill.BillStatus = billDto.BillStatus;
+            bill.BillGroup = billDto.BillGroup;
+            bill.BillJobId = billDto.BillJobId;
             bill.BillNo = billDto.BillNo;
             bill.BillDate = billDto.BillDate;
             bill.BillType = billDto.BillType;
             bill.BillAmount = billDto.BillAmount;
             bill.BillRemarks = billDto.BillRemarks;
-
+            bill.BillTotalUsd = billDto.BillTotalUsd;
             bill.BillShipParty = shipparty.AccountName;
             bill.partyname = party.AccountName;
             bill.posname = pos.StateName;
@@ -529,6 +560,8 @@ namespace FreightBKShipping.Controllers
             bill.BillCbmQty = billDto.BillCbmQty;
             bill.BillRemarksDefault = billDto.BillRemarksDefault;
             bill.BillConsignor = billDto.BillConsignor;
+            bill.BillStatus = billDto.BillStatus;
+            bill.BillNonTaxable = billDto.BillNonTaxable;
 
             bill.BillTaxableAmt2 = billDto.BillTaxableAmt2;
             bill.BillGstType = billDto.BillGstType;
@@ -551,10 +584,22 @@ namespace FreightBKShipping.Controllers
             bill.BillYearId = billDto.BillYearId;
             // ---- Handle BillDetails ----
             // Remove deleted details
-            var detailsToRemove = bill.BillDetails
+            //var detailsToRemove = bill.BillDetails
+            //    .Where(d => !billDto.BillDetails.Any(x => x.BillDetailId == d.BillDetailId))
+            //    .ToList();
+            //_context.BillDetails.RemoveRange(detailsToRemove);
+
+            // ✅ Soft delete instead of removing
+            var detailsToDeactivate = bill.BillDetails
                 .Where(d => !billDto.BillDetails.Any(x => x.BillDetailId == d.BillDetailId))
                 .ToList();
-            _context.BillDetails.RemoveRange(detailsToRemove);
+
+            foreach (var detail in detailsToDeactivate)
+            {
+                detail.BillDetailStatus = false;
+                detail.BillDetailUpdatedByUserId = GetUserId();
+                detail.BillDetailUpdated = DateTime.UtcNow;
+            }
 
             // Add or update details
             foreach (var detailDto in billDto.BillDetails)
@@ -568,7 +613,10 @@ namespace FreightBKShipping.Controllers
                     existingDetail.BillDetailProductId = detailDto.BillDetailProductId;
                     existingDetail.BillDetailUnitId = detailDto.BillDetailUnitId;
                     existingDetail.BillDetailHsnId = detailDto.BillDetailHsnId;
+                    existingDetail.BillDetailSlabId = detailDto.BillDetailSlabId;
+                    existingDetail.BillDetailExchRate = detailDto.BillDetailExchRate;
                     existingDetail.BillDetailQty = detailDto.BillDetailQty;
+                    existingDetail.BillDetailBillQty = detailDto.BillDetailQty;
                     existingDetail.BillDetailRate = detailDto.BillDetailRate;
                     existingDetail.BillDetailAmount = detailDto.BillDetailAmount;
                     existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
@@ -578,6 +626,13 @@ namespace FreightBKShipping.Controllers
                     existingDetail.BillDetailExtraChrg = detailDto.BillDetailExtraChrg;
                     existingDetail.BillDetailCurrencyId = detailDto.BillDetailCurrencyId;
                     existingDetail.BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt;
+                    existingDetail.BillDetailExchAmount = detailDto.BillDetailTaxableAmt;
+                    existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
+                    existingDetail.BillDetailSno = detailDto.BillDetailSno;
+                    existingDetail.BillDetailAccountId = detailDto.BillDetailAccountId;
+                    existingDetail.BillDetailIgstAcId = detailDto.BillDetailIgstAcId;
+                    existingDetail.BillDetailCgstAcId = detailDto.BillDetailCgstAcId;
+                    existingDetail.BillDetailSgstAcId = detailDto.BillDetailSgstAcId;
                     existingDetail.BillDetailGstPer = detailDto.BillDetailGstPer;
                     existingDetail.BillDetailIgst = detailDto.BillDetailIgst;
                     existingDetail.BillDetailCgst = detailDto.BillDetailCgst;
@@ -585,6 +640,7 @@ namespace FreightBKShipping.Controllers
                     existingDetail.BillDetailIgstPer = detailDto.BillDetailIgstPer;
                     existingDetail.BillDetailCgstPer = detailDto.BillDetailCgstPer;
                     existingDetail.BillDetailSgstPer = detailDto.BillDetailSgstPer;
+                    existingDetail.BillDetailStatus = detailDto.BillDetailStatus;
                 }
                 else
                 {
@@ -603,7 +659,13 @@ namespace FreightBKShipping.Controllers
                         BillDetailAmount = detailDto.BillDetailAmount,
                         BillDetailRemarks = detailDto.BillDetailRemarks,
                         BillDetailTotal = detailDto.BillDetailTotal,
-
+                        BillDetailSlabId = detailDto.BillDetailSlabId,
+                        BillDetailAccountId = detailDto.BillDetailAccountId,
+                        BillDetailSgstAcId = detailDto.BillDetailSgstAcId,
+                        BillDetailIgstAcId = detailDto.BillDetailIgstAcId,
+                        BillDetailCgstAcId = detailDto.BillDetailCgstAcId,
+                        BillDetailSno = detailDto.BillDetailSno,
+                        BillDetailExchUnit = detailDto.BillDetailExchUnit,
                         BillDetailHsnCode = detailDto.BillDetailHsnCode,
                         BillDetailUnit = detailDto.BillDetailUnit,
                         BillDetailExtraChrg = detailDto.BillDetailExtraChrg,
@@ -616,6 +678,7 @@ namespace FreightBKShipping.Controllers
                         BillDetailIgstPer = detailDto.BillDetailIgstPer,
                         BillDetailCgstPer = detailDto.BillDetailCgstPer,
                         BillDetailSgstPer = detailDto.BillDetailSgstPer,
+                        BillDetailStatus = detailDto.BillDetailStatus,
                     });
                 }
             }
@@ -665,12 +728,20 @@ namespace FreightBKShipping.Controllers
             if (bill == null) return NotFound();
 
             // Remove nested collections first
-            _context.BillDetails.RemoveRange(bill.BillDetails);
+            //   _context.BillDetails.RemoveRange(bill.BillDetails);
             //_context.BillRefDetails.RemoveRange(bill.BillRefDetails);
 
-            // Remove main bill
-            _context.Bills.Remove(bill);
 
+            // ✅ Mark main Bill as inactive
+            bill.BillStatus = false;
+
+            // Remove main bill
+            // _context.Bills.Remove(bill);
+            foreach (var detail in bill.BillDetails)
+            {
+                detail.BillDetailStatus = false; // make sure this column exists
+            }
+            _context.Bills.Update(bill);
             await _context.SaveChangesAsync();
             return Ok(true);
         }

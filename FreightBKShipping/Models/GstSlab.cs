@@ -53,43 +53,43 @@ namespace FreightBKShipping.Models
 
         [Column("gstslab_igst_account_id")]
        
-        public string? GstSlabIgstAccountId { get; set; }
+        public int? GstSlabIgstAccountId { get; set; }
 
         [Column("gstslab_cgst_account_id")]
       
-        public string? GstSlabCgstAccountId { get; set; }
+        public int? GstSlabCgstAccountId { get; set; }
 
         [Column("gstslab_sgst_account_id")]
       
-        public string? GstSlabSgstAccountId { get; set; }
+        public int? GstSlabSgstAccountId { get; set; }
 
         [Column("gstslab_cess_account_id")]
        
-        public string? GstSlabCessAccountId { get; set; }
+        public int? GstSlabCessAccountId { get; set; }
 
         [Column("gstslab_addcess_account_id")]
      
-        public string? GstSlabAddCessAccountId { get; set; }
+        public int? GstSlabAddCessAccountId { get; set; }
 
         [Column("gstslab_psgst_account_id")]
  
-        public string? GstSlabPsgstAccountId { get; set; }
+        public int? GstSlabPsgstAccountId { get; set; }
 
         [Column("gstslab_pcgst_account_id")]
      
-        public string? GstSlabPcgstAccountId { get; set; }
+        public int? GstSlabPcgstAccountId { get; set; }
 
         [Column("gstslab_pigst_account_id")]
      
-        public string? GstSlabPigstAccountId { get; set; }
+        public int? GstSlabPigstAccountId { get; set; }
 
         [Column("gstslab_pcess_account_id")]
       
-        public string? GstSlabPcessAccountId { get; set; }
+        public int? GstSlabPcessAccountId { get; set; }
 
         [Column("gstslab_pacess_account_id")]
       
-        public string? GstSlabPacessAccountId { get; set; }
+        public int? GstSlabPacessAccountId { get; set; }
 
         [Column("gstslab_status")]
         public bool GstSlabStatus { get; set; } = true;

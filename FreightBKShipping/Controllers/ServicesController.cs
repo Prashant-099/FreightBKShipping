@@ -22,66 +22,66 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> GetAll()
         {
 
-            var result = await FilterByCompany(_context.Services, "ServiceCompanyId")
-                                 .Join(_context.ServiceGroups,
-              s => s.ServiceGroupId,
-              g => g.ServiceGroupsId,
-              (s, g) => new { s, g })
-        .Join(_context.HsnSacs,
-              sg => sg.s.ServiceHsnId,
-              h => h.HsnId,
-              (sg, h) => new { sg.s, sg.g, h })
-        .Join(_context.Accounts,
-              sgh => sgh.s.ServiceAccountId,
-              a => a.AccountId,
-              (sgh, a) => new { sgh.s, sgh.g, sgh.h, a })
-        .Select(x => new ServiceReadDto
-        {
-            ServiceId = x.s.ServiceId,
-            ServiceCompanyId = x.s.ServiceCompanyId,
-            ServiceGroupId = x.s.ServiceGroupId,
-            ServiceUnitId = x.s.ServiceUnitId,
+            var query = FilterByCompany(_context.Services, "ServiceCompanyId")
+         .GroupJoin(_context.ServiceGroups,
+             s => s.ServiceGroupId,
+             g => g.ServiceGroupsId,
+             (s, g) => new { s, g })
+         .SelectMany(
+             sg => sg.g.DefaultIfEmpty(),
+             (sg, g) => new { sg.s, g })
+         .GroupJoin(_context.HsnSacs,
+             sg => sg.s.ServiceHsnId,
+             h => h.HsnId,
+             (sg, h) => new { sg.s, sg.g, h })
+         .SelectMany(
+             sgh => sgh.h.DefaultIfEmpty(),
+             (sgh, h) => new { sgh.s, sgh.g, h })
+         .GroupJoin(_context.Accounts,
+             sgh => sgh.s.ServiceAccountId,
+             a => a.AccountId,
+             (sgh, a) => new { sgh.s, sgh.g, sgh.h, a })
+         .SelectMany(
+             sgha => sgha.a.DefaultIfEmpty(),
+             (sgha, a) => new { sgha.s, sgha.g, sgha.h, a });
 
-            ServiceName = x.s.ServiceName,
-            ServiceCode = x.s.ServiceCode,
-            ServiceType = x.s.ServiceType,
+            var result = await query.Select(x => new ServiceReadDto
+            {
+                ServiceId = x.s.ServiceId,
+                ServiceCompanyId = x.s.ServiceCompanyId,
+                ServiceGroupId = x.s.ServiceGroupId,
+                ServiceUnitId = x.s.ServiceUnitId,
+                ServiceName = x.s.ServiceName,
+                ServiceCode = x.s.ServiceCode,
+                ServiceType = x.s.ServiceType,
+                ServiceSRate = x.s.ServiceSRate,
+                ServicePRate = x.s.ServicePRate,
+                ServiceChargeType = x.s.ServiceChargeType,
+                ServiceHsnId = x.s.ServiceHsnId,
+                ServiceExempt = x.s.ServiceExempt,
+                ServiceRemarks = x.s.ServiceRemarks,
+                ServicePrintName = x.s.ServicePrintName,
+                ServiceTallyName = x.s.ServiceTallyName,
+                ServiceStatus = x.s.ServiceStatus,
+                ServiceExtraCharge = x.s.ServiceExtraCharge,
+                ServiceCeilingType = x.s.ServiceCeilingType,
+                ServiceCeilingValue = x.s.ServiceCeilingValue,
+                ServiceVoucherId = x.s.ServiceVoucherId,
+                ServiceAccountId = x.s.ServiceAccountId,
+                ServiceIsGoods = x.s.ServiceIsGoods,
+                ServiceAddedByUserId = x.s.ServiceAddedByUserId,
+                ServiceUpdatedByUserId = x.s.ServiceUpdatedByUserId,
+                ServiceCreated = x.s.ServiceCreated,
+                ServiceUpdated = x.s.ServiceUpdated,
 
-            ServiceSRate = x.s.ServiceSRate,
-            ServicePRate = x.s.ServicePRate,
-            ServiceChargeType = x.s.ServiceChargeType,
-            ServiceHsnId = x.s.ServiceHsnId,
-            ServiceExempt = x.s.ServiceExempt,
+                // ✅ Safe fields
+                GroupName = x.g != null ? x.g.ServiceGroupsName : null,
+                HsnName = x.h != null ? x.h.HsnName : null,
+                HsnGstPer = x.h != null ? x.h.HsnGstPer : 0,
+                AccountName = x.a != null ? x.a.AccountName : null
+            }).ToListAsync();
 
-            ServiceRemarks = x.s.ServiceRemarks,
-            ServicePrintName = x.s.ServicePrintName,
-            ServiceTallyName = x.s.ServiceTallyName,
-
-            ServiceStatus = x.s.ServiceStatus,
-            ServiceExtraCharge = x.s.ServiceExtraCharge,
-            ServiceCeilingType = x.s.ServiceCeilingType,
-            ServiceCeilingValue = x.s.ServiceCeilingValue,
-
-            ServiceVoucherId = x.s.ServiceVoucherId,
-            ServiceAccountId = x.s.ServiceAccountId,
-            ServiceIsGoods = x.s.ServiceIsGoods,
-
-            ServiceAddedByUserId = x.s.ServiceAddedByUserId,
-            ServiceUpdatedByUserId = x.s.ServiceUpdatedByUserId,
-
-            ServiceCreated = x.s.ServiceCreated,
-            ServiceUpdated = x.s.ServiceUpdated,
-
-            // ✅ Joined fields
-            GroupName = x.g.ServiceGroupsName,
-            HsnName = x.h.HsnName,
-            HsnGstPer = x.h.HsnGstPer,
-            AccountName = x.a.AccountName   // 👈 Added here
-        })
-        .ToListAsync();
-
-
-
-            return Ok(result);
+            return Ok(result); // ✅ FIXED
         }
 
         // ✅ GET: api/Services/5
