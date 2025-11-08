@@ -47,9 +47,20 @@ namespace FreightBKShipping.Controllers
             if (exists)
                 return BadRequest("A notify with the same name and type already exists.");
             // Fetch state name from States table
-            var state = await _context.States.FindAsync(dto.NotifyStateId);
-            if (state == null) return BadRequest("Invalid StateId");
+            //  var state = await _context.States.FindAsync(dto.NotifyStateId);
+            // if (state == null) return BadRequest("Invalid StateId");
+            string? stateName = " ";
+            string? stateCode = " ";
 
+            if ( dto.NotifyStateId > 0)
+            {
+                var state = await _context.States.FindAsync(dto.NotifyStateId);
+                if (state != null)
+                {
+                    stateName = state.StateName;
+                    stateCode = state.StateCode;
+                }
+            }
             var notify = new Notify
             {
                 NotifyName = dto.NotifyName,
@@ -59,8 +70,8 @@ namespace FreightBKShipping.Controllers
                 //NotifyAddress3 = dto.NotifyAddress3,
                 NotifyCity = dto.NotifyCity,
                 NotifyStateId = dto.NotifyStateId,
-                NotifyState = state.StateName, // automatic join
-                NotifyStateCode = state.StateCode,
+                NotifyState = stateName, // automatic join
+                NotifyStateCode = stateCode,
                 NotifyPincode = dto.NotifyPincode,
                 NotifyCountry = dto.NotifyCountry,
                 NotifyTel = dto.NotifyContactNo,
