@@ -110,7 +110,11 @@ namespace FreightBKShipping.DTOs.BillDto
         public string? BillGstType { get; set; }
         public int BillJobId { get; set; }
         public string? BillCdnReason { get; set; }
-        public int BillLockedBy { get; set; }
+        public string? BillLockedBy { get; set; } = "";
+
+        // ✅ Add username display field
+        public string? BillLockedByUsername { get; set; }
+
         public int BillApprovedBy { get; set; }
         public int BillDrCrAccId { get; set; }
         public float BillAdvance { get; set; }

@@ -377,7 +377,7 @@ namespace FreightBKShipping.Models
         public string? BillCdnReason { get; set; }
 
         [Column("bill_locked_by")]
-        public int BillLockedBy { get; set; }
+        public string? BillLockedBy { get; set; } = "";
 
         [Column("bill_approved_by")]
         public int BillApprovedBy { get; set; }
@@ -427,6 +427,7 @@ namespace FreightBKShipping.Models
         public Account Party { get; set; }
         public State PlaceOfSupply { get; set; }
         public Voucher Voucher { get; set; }
+        
         // Navigation properties
         [InverseProperty(nameof(BillDetail.Bill))]
         public ICollection<BillDetail>? BillDetails { get; set; }

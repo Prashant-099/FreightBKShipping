@@ -36,6 +36,7 @@ namespace FreightBKShipping.Data
         public DbSet<Job> Jobs { get; set; }
         public DbSet<GridLayout> GridLayouts { get; set; }
         public DbSet<Reportdata> Reportdata { get; set; }
+        public DbSet<EinvConfig> EinvConfigs { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
