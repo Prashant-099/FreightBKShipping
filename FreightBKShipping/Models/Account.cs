@@ -45,6 +45,7 @@ namespace FreightBKShipping.Models
        
         public string? AccountContactPerson { get; set; }
 
+        [Required]
         [Column("account_address1")]
       
         public string? AccountAddress1 { get; set; }
