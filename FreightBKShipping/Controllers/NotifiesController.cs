@@ -13,7 +13,7 @@ namespace FreightBKShipping.Controllers
         private readonly AppDbContext _context;
 
         public NotifiesController(AppDbContext context)
-        {
+        {   
             _context = context;
         }
 
