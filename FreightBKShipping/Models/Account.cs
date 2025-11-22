@@ -47,7 +47,6 @@ namespace FreightBKShipping.Models
 
         [Required]
         [Column("account_address1")]
-      
         public string? AccountAddress1 { get; set; }
 
         [Column("account_address2")]

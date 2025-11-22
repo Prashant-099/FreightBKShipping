@@ -13,7 +13,6 @@
         //public string NotifyStateCode { get; set; }
         public string? NotifyPincode { get; set; }
         public string? NotifyCountry { get; set; }
-        //public string NotifyTel { get; set; }
         public string? NotifyEmail { get; set; }
         public string? NotifyContactNo { get; set; }
         //public string NotifyContactPerson { get; set; }

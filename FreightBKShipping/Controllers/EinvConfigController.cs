@@ -72,7 +72,7 @@ namespace FreightBKShipping.Controllers
                 return NotFound();
 
             // Update all editable fields
-            existing.Password = model.Password;
+            existing.eInvPwd = model.eInvPwd;
             existing.Gstin = model.Gstin;
             existing.AppKey = model.AppKey;
             existing.AuthToken = model.AuthToken;
@@ -81,7 +81,7 @@ namespace FreightBKShipping.Controllers
             existing.BranchId = model.BranchId;
             existing.GspName = model.GspName;
             existing.AspUserId = model.AspUserId;
-            existing.AspPassword = model.AspPassword;
+            existing.Password = model.Password;
             existing.AuthUrl = model.AuthUrl;
             existing.EwbByIrn = model.EwbByIrn;
             existing.EwbUrl = model.EwbUrl;
