@@ -9,7 +9,7 @@
         public string? LocationDistrict { get; set; }
         public bool LocationStatus { get; set; }
         public string? LocationCode { get; set; }
-        public int? LocationCountryId { get; set; }
+        public int? LocationCountryId { get; set; } 
         public string LocationType { get; set; } = "STATION";
     }
 }

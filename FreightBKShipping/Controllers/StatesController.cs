@@ -25,6 +25,22 @@ namespace FreightBKShipping.Controllers
             var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
             return await query.ToListAsync();
         }
+        [HttpGet("GetByCode/{code}")]
+        public async Task<ActionResult<State>> GetStateByCode(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return BadRequest("State code is required");
+
+            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
+
+            var state = await query
+                .FirstOrDefaultAsync(s => s.StateCode.ToLower() == code.Trim().ToLower());
+
+            if (state == null)
+                return NotFound($"State code '{code}' not found");
+
+            return state;
+        }
 
         // GET: api/States/5
         [HttpGet("{id}")]
