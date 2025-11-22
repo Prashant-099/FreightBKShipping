@@ -37,6 +37,11 @@ namespace FreightBKShipping.Data
         public DbSet<GridLayout> GridLayouts { get; set; }
         public DbSet<Reportdata> Reportdata { get; set; }
         public DbSet<EinvConfig> EinvConfigs { get; set; }
+
+        //added by dhruv
+        public DbSet<WpMailConfig> wpMailConfigs { get; set; }
+        public DbSet<SendWpMail> SendWpMails { get; set; }
+        //end dhruv
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
