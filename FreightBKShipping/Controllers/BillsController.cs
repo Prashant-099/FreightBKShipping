@@ -31,7 +31,7 @@ namespace FreightBKShipping.Controllers
                 .Include(b => b.Voucher)
                 .Include(b => b.Party)
                 .Include(b => b.PlaceOfSupply)
-                
+
                 .ToListAsync();
             // ✅ Get all unique user IDs who have locked bills
             var lockedByUserIds = bills
@@ -231,7 +231,7 @@ namespace FreightBKShipping.Controllers
             if (string.IsNullOrEmpty(bill.BillLockedBy))
             {
                 // Lock the bill
-                bill.BillLockedBy = GetUserId(); 
+                bill.BillLockedBy = GetUserId();
             }
             else
             {
@@ -805,167 +805,367 @@ namespace FreightBKShipping.Controllers
             await _context.SaveChangesAsync();
             return Ok(true);
         }
+        //[HttpGet("print/{id}")]
+        //public async Task<ActionResult<PrintBillFullDto>> GetPrintBill(int id)
+        //{
+        //    try
+        //    {
+        //        var result = await (
+        //            from Jobs in _context.Jobs
+        //            from Bills in _context.Bills
+        //                .Include(b => b.BillDetails)
+        //                .AsNoTracking()
+        //            join companies in _context.companies.AsNoTracking()
+        //                on Bills.BillCompanyId equals companies.CompanyId
+        //            join parties in _context.Accounts.AsNoTracking() // or .parties depending on your table name
+        //                on Bills.BillPartyId equals parties.AccountId
+        //            join state in _context.States.AsNoTracking()
+        //                on Bills.BillPlaceOfSupply equals state.StateId into statejoin
+        //            from state in statejoin.DefaultIfEmpty()
+        //            join billstate in _context.States.AsNoTracking()
+        //               on Bills.BillStateId equals billstate.StateId
+        //            join cargo in _context.Cargoes.AsNoTracking()
+        //           on Bills.BillCargoId equals cargo.CargoId
+        //            join Vessels in _context.Vessels.AsNoTracking()
+        //            on Bills.BillVesselId equals Vessels.VesselId
+        //            join lineNotifies in _context.Notifies.AsNoTracking()
+        //           on Bills.BillLineId equals lineNotifies.NotifyId
+        //            join shippNotifies in _context.Notifies.AsNoTracking()
+        //           on Bills.BillShipperId equals shippNotifies.NotifyId
+        //            join consigneeNotifies in _context.Notifies.AsNoTracking()
+        //           on Bills.BillConsigneeId equals consigneeNotifies.NotifyId
+        //            join POLLocations in _context.Locations.AsNoTracking()
+        //           on Bills.BillPolId equals POLLocations.LocationId
+        //            join PODLocations in _context.Locations.AsNoTracking()
+        //           on Bills.BillPodId equals PODLocations.LocationId
+        //            join Bankdetails in _context.Accounts.AsNoTracking()
+        //           on Bills.BillBankId equals Bankdetails.AccountId
+        //            join jobhbldt in _context.Jobs.AsNoTracking()
+        //            on Bills.BillHblNo equals jobhbldt.JobHblNo
+
+        //            join jobplacedelivery in _context.Jobs.AsNoTracking()
+        //            on Jobs.JobPlaceOfDelivery equals jobplacedelivery.JobPlaceOfDelivery
+        //            join jobplacereceipt in _context.Jobs.AsNoTracking()
+        //            on Jobs.JobPlaceOfReceipt equals jobplacereceipt.JobPlaceOfReceipt
+        //            join jobdetination in _context.Jobs.AsNoTracking()
+        //            on Jobs.JobTranshipment equals jobdetination.JobTranshipment
+
+        //            where Bills.BillId == id
+
+        //            select new PrintBillFullDto
+        //            {
+        //                Bill = new BillPrintDto
+        //                {
+        //                    bill_ack_no = Bills.BillAckNo,
+        //                    bill_ack_date = Bills.BillAckDate,
+        //                    bill_irn_no = Bills.BillIrnNo,
+
+        //                    BillId = Bills.BillId,
+        //                    bill_no = Bills.BillNo,
+        //                    bill_date = Bills.BillDate,
+        //                    bill_duedate = Bills.BillDueDate,
+        //                    account_print_name = parties.AccountName,   // ✅ party name
+        //                    account_address1 = Bills.BillAddress1,
+        //                    account_state = billstate.StateName,
+        //                    account_gstno = Bills.BillGstNo,
+        //                    Cargo = cargo.CargoName,
+        //                    bill_blno = Bills.BillBlNo,
+        //                    bill_hblno = Bills.BillHblNo,
+        //                    bill_hbldate = jobhbldt.JobHblDate,
+        //                    bill_sbno = Bills.BillSbNo,
+        //                    bill_bldate = Bills.BillBlDate,
+
+        //                    bill_sbdate = Bills.BillSbDate,
+        //                    bill_grosswt = Bills.BillGrossWt,
+        //                    bill_netwt = Bills.BillNetWt,
+        //                    Vessel = Vessels.VesselName,
+        //                    Line = lineNotifies.NotifyName,
+        //                    bill_20ft = Bills.Bill20Ft,
+        //                    bill_40ft = Bills.Bill40Ft,
+        //                    shipper_invno = Bills.BillShipperInvNo,
+        //                    Shipper = shippNotifies.NotifyName,
+        //                    Consignee = consigneeNotifies.NotifyName,
+        //                    PlaceofSupply = state.StateName,       // ✅ place of supply name
+        //                    ShipmentType = Bills.BillSupplyType,
+        //                    bill_jobno = Bills.BillJobNo,
+        //                    bill_jobtype = Bills.BillJobType,
+        //                    bill_container_no = Bills.BillContainerNo,
+        //                    POL = POLLocations.LocationName,
+        //                    POD = PODLocations.LocationName,
+
+        //                    GrossAmount = Bills.BillTotal,
+        //                    bill_taxableamt = Bills.BillTaxableAmt,
+        //                    bill_sgst = Bills.BillSgst,
+        //                    bill_cgst = Bills.BillCgst,
+        //                    bill_igst = Bills.BillIgst,
+
+
+        //                    bill_roundamt = Bills.BillRoundAmt,
+        //                    bill_total = Bills.BillNetAmount,
+        //                    bill_AmountInword = Bills.BillAmountInWord,
+        //                    bill_detail_remarks = Bills.BillRemarks,
+
+        //                    place_of_receipt = Jobs.JobPlaceOfReceipt,
+        //                    place_of_delivery = Jobs.JobPlaceOfDelivery,
+        //                    destination = Jobs.JobTranshipment,
+
+        //                    bankname = Bankdetails.AccountBankName,
+        //                    bank_accountno = Bankdetails.AccountAccNo,
+        //                    bank_ifsc = Bankdetails.AccountIfsCode,
+        //                    bank_branch = Bankdetails.AccountBankBranch,
+        //                    bank_address = Bankdetails.AccountAddress1,
+
+        //                    company_printname = companies.Name,
+        //                    company_address1 = companies.Address1,
+        //                    company_gstin = companies.Gstin,
+        //                    State_Company = companies.StateId,
+        //                    company_mobile = companies.Mobile,
+        //                    company_email = companies.Email,
+        //                    company_website = companies.Website,
+        //                    company_panno = companies.Panno
+        //                },
+        //                BillDetails = (
+        //                    from d in Bills.BillDetails
+        //                    join p in _context.Services.AsNoTracking()
+        //                        on d.BillDetailProductId equals p.ServiceId
+        //                    join c in _context.Currencies.AsNoTracking()
+        //                        on d.BillDetailCurrencyId equals c.CurrencyId into curjoin
+        //                    from c in curjoin.DefaultIfEmpty()
+
+        //                    select new BillDetailPrintDto
+        //                    {
+        //                        service_printname = p.ServiceName,
+        //                        bill_detail_hsncode = d.BillDetailHsnCode,
+        //                        bill_detail_qty = d.BillDetailQty,
+        //                        bill_detail_rate = d.BillDetailRate,
+        //                        bill_detail_exchunit = c.CurrencyName,
+        //                        bill_detail_exchrate = d.BillDetailExchRate,
+        //                        bill_detail_amount = d.BillDetailAmount,
+        //                        bill_detail_sgst = d.BillDetailSgst,
+        //                        bill_detail_cgst = d.BillDetailCgst,
+        //                        bill_detail_igst = d.BillDetailIgst,
+        //                        bill_detail_sgstper = d.BillDetailSgstPer,
+        //                        bill_detail_cgstper = d.BillDetailCgstPer,
+        //                        bill_detail_igstper = d.BillDetailIgstPer,
+        //                        bill_detail_taxableamt = d.BillDetailTaxableAmt,
+        //                        bill_detail_total = d.BillDetailTotal
+        //                    }
+        //                ).ToList()
+        //            }
+        //        ).FirstOrDefaultAsync();
+
+        //        if (result == null)
+        //            return NotFound();
+
+        //        return result;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return Problem($"Failed to fetch PrintBill: {ex.Message}");
+        //    }
+        //}
+
         [HttpGet("print/{id}")]
         public async Task<ActionResult<PrintBillFullDto>> GetPrintBill(int id)
         {
             try
             {
-                var result = await (
-                    from Jobs in _context.Jobs
-                    from Bills in _context.Bills
-                        .Include(b => b.BillDetails)
-                        .AsNoTracking()
-                    join companies in _context.companies.AsNoTracking()
-                        on Bills.BillCompanyId equals companies.CompanyId
-                    join parties in _context.Accounts.AsNoTracking() // or .parties depending on your table name
-                        on Bills.BillPartyId equals parties.AccountId
-                    join state in _context.States.AsNoTracking()
-                        on Bills.BillPlaceOfSupply equals state.StateId into statejoin
-                    from state in statejoin.DefaultIfEmpty()
-                    join billstate in _context.States.AsNoTracking()
-                       on Bills.BillStateId equals billstate.StateId
-                    join cargo in _context.Cargoes.AsNoTracking()
-                   on Bills.BillCargoId equals cargo.CargoId
-                    join Vessels in _context.Vessels.AsNoTracking()
-                    on Bills.BillVesselId equals Vessels.VesselId
-                    join lineNotifies in _context.Notifies.AsNoTracking()
-                   on Bills.BillLineId equals lineNotifies.NotifyId
-                    join shippNotifies in _context.Notifies.AsNoTracking()
-                   on Bills.BillShipperId equals shippNotifies.NotifyId
-                    join consigneeNotifies in _context.Notifies.AsNoTracking()
-                   on Bills.BillConsigneeId equals consigneeNotifies.NotifyId
-                    join POLLocations in _context.Locations.AsNoTracking()
-                   on Bills.BillPolId equals POLLocations.LocationId
-                    join PODLocations in _context.Locations.AsNoTracking()
-                   on Bills.BillPodId equals PODLocations.LocationId
-                    join Bankdetails in _context.Accounts.AsNoTracking()
-                   on Bills.BillBankId equals Bankdetails.AccountId
-                    join jobhbldt in _context.Jobs.AsNoTracking()
-                    on Bills.BillHblNo equals jobhbldt.JobHblNo
+                // ✅ First, get the bill with all related data
+                var bill = await _context.Bills
+                    .Include(b => b.BillDetails)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.BillId == id);
 
-                    join jobplacedelivery in _context.Jobs.AsNoTracking()
-                    on Jobs.JobPlaceOfDelivery equals jobplacedelivery.JobPlaceOfDelivery
-                    join jobplacereceipt in _context.Jobs.AsNoTracking()
-                    on Jobs.JobPlaceOfReceipt equals jobplacereceipt.JobPlaceOfReceipt
-                    join jobdetination in _context.Jobs.AsNoTracking()
-                    on Jobs.JobTranshipment equals jobdetination.JobTranshipment
+                if (bill == null)
+                {
+                    Console.WriteLine($"Bill with ID {id} not found");
+                    return NotFound($"Bill with ID {id} not found");
+                }
 
-                    where Bills.BillId == id
+                Console.WriteLine($"Found Bill: {bill.BillNo}");
 
-                    select new PrintBillFullDto
+                // ✅ Get related data with null-safe queries
+                var company = await _context.companies.AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.CompanyId == bill.BillCompanyId);
+
+                var party = await _context.Accounts.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.AccountId == bill.BillPartyId);
+
+                var state = bill.BillPlaceOfSupply > 0
+                    ? await _context.States.AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.StateId == bill.BillPlaceOfSupply)
+                    : null;
+
+                var billState = bill.BillStateId > 0
+                    ? await _context.States.AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.StateId == bill.BillStateId)
+                    : null;
+
+                var cargo = bill.BillCargoId > 0
+                    ? await _context.Cargoes.AsNoTracking()
+                        .FirstOrDefaultAsync(c => c.CargoId == bill.BillCargoId)
+                    : null;
+
+                var vessel = bill.BillVesselId > 0
+                    ? await _context.Vessels.AsNoTracking()
+                        .FirstOrDefaultAsync(v => v.VesselId == bill.BillVesselId)
+                    : null;
+
+                var lineNotify = bill.BillLineId > 0
+                    ? await _context.Notifies.AsNoTracking()
+                        .FirstOrDefaultAsync(n => n.NotifyId == bill.BillLineId)
+                    : null;
+
+                var shipperNotify = bill.BillShipperId > 0
+                    ? await _context.Notifies.AsNoTracking()
+                        .FirstOrDefaultAsync(n => n.NotifyId == bill.BillShipperId)
+                    : null;
+
+                var consigneeNotify = bill.BillConsigneeId > 0
+                    ? await _context.Notifies.AsNoTracking()
+                        .FirstOrDefaultAsync(n => n.NotifyId == bill.BillConsigneeId)
+                    : null;
+
+                var polLocation = bill.BillPolId > 0
+                    ? await _context.Locations.AsNoTracking()
+                        .FirstOrDefaultAsync(l => l.LocationId == bill.BillPolId)
+                    : null;
+
+                var podLocation = bill.BillPodId > 0
+                    ? await _context.Locations.AsNoTracking()
+                        .FirstOrDefaultAsync(l => l.LocationId == bill.BillPodId)
+                    : null;
+
+                var bankAccount = bill.BillBankId > 0
+                    ? await _context.Accounts.AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.AccountId == bill.BillBankId)
+                    : null;
+
+                // ✅ Get Job data if JobId exists
+                Job? job = null;
+                if (bill.BillJobId > 0)
+                {
+                    job = await _context.Jobs.AsNoTracking()
+                        .FirstOrDefaultAsync(j => j.JobId == bill.BillJobId);
+                }
+
+                // ✅ Get Job by HBL No if exists
+                Job? jobHbl = null;
+                if (!string.IsNullOrEmpty(bill.BillHblNo))
+                {
+                    jobHbl = await _context.Jobs.AsNoTracking()
+                        .FirstOrDefaultAsync(j => j.JobHblNo == bill.BillHblNo);
+                }
+
+                // ✅ Build the result
+                var result = new PrintBillFullDto
+                {
+                    Bill = new BillPrintDto
                     {
-                        Bill = new BillPrintDto
-                        {
-                            bill_ack_no = Bills.BillAckNo,
-                            bill_ack_date = Bills.BillAckDate,
-                            bill_irn_no = Bills.BillIrnNo,
+                        bill_ack_no = bill.BillAckNo,
+                        bill_ack_date = bill.BillAckDate,
+                        bill_irn_no = bill.BillIrnNo,
+                        BillId = bill.BillId,
+                        bill_no = bill.BillNo,
+                        bill_date = bill.BillDate,
+                        bill_duedate = bill.BillDueDate,
+                        account_print_name = party?.AccountName,
+                        account_address1 = bill.BillAddress1,
+                        account_state = billState?.StateName,
+                        account_gstno = bill.BillGstNo,
+                        Cargo = cargo?.CargoName,
+                        bill_blno = bill.BillBlNo,
+                        bill_hblno = bill.BillHblNo,
+                        bill_hbldate = jobHbl?.JobHblDate,
+                        bill_sbno = bill.BillSbNo,
+                        bill_bldate = bill.BillBlDate,
+                        bill_sbdate = bill.BillSbDate,
+                        bill_grosswt = bill.BillGrossWt,
+                        bill_netwt = bill.BillNetWt,
+                        Vessel = vessel?.VesselName,
+                        Line = lineNotify?.NotifyName,
+                        bill_20ft = bill.Bill20Ft,
+                        bill_40ft = bill.Bill40Ft,
+                        shipper_invno = bill.BillShipperInvNo,
+                        Shipper = shipperNotify?.NotifyName,
+                        Consignee = consigneeNotify?.NotifyName,
+                        PlaceofSupply = state?.StateName,
+                        ShipmentType = bill.BillSupplyType,
+                        bill_jobno = bill.BillJobNo,
+                        bill_jobtype = bill.BillJobType,
+                        bill_container_no = bill.BillContainerNo,
+                        POL = polLocation?.LocationName,
+                        POD = podLocation?.LocationName,
+                        GrossAmount = bill.BillTotal,
+                        bill_taxableamt = bill.BillTaxableAmt,
+                        bill_sgst = bill.BillSgst,
+                        bill_cgst = bill.BillCgst,
+                        bill_igst = bill.BillIgst,
+                        bill_roundamt = bill.BillRoundAmt,
+                        bill_total = bill.BillNetAmount,
+                        bill_AmountInword = bill.BillAmountInWord,
+                        bill_detail_remarks = bill.BillRemarks,
+                        place_of_receipt = job?.JobPlaceOfReceipt,
+                        place_of_delivery = job?.JobPlaceOfDelivery,
+                        destination = job?.JobTranshipment,
+                        bankname = bankAccount?.AccountBankName,
+                        bank_accountno = bankAccount?.AccountAccNo,
+                        bank_ifsc = bankAccount?.AccountIfsCode,
+                        bank_branch = bankAccount?.AccountBankBranch,
+                        bank_address = bankAccount?.AccountAddress1,
+                        company_printname = company?.Name,
+                        company_address1 = company?.Address1,
+                        company_gstin = company?.Gstin,
+                        State_Company = company?.StateId,
+                        company_mobile = company?.Mobile,
+                        company_email = company?.Email,
+                        company_website = company?.Website,
+                        company_panno = company?.Panno
+                    },
+                    BillDetails = new List<BillDetailPrintDto>()
+                };
 
-                            BillId = Bills.BillId,
-                            bill_no = Bills.BillNo,
-                            bill_date = Bills.BillDate,
-                            bill_duedate = Bills.BillDueDate,
-                            account_print_name = parties.AccountName,   // ✅ party name
-                            account_address1 = Bills.BillAddress1,
-                            account_state = billstate.StateName,
-                            account_gstno = Bills.BillGstNo,
-                            Cargo = cargo.CargoName,
-                            bill_blno = Bills.BillBlNo,
-                            bill_hblno = Bills.BillHblNo,
-                            bill_hbldate = jobhbldt.JobHblDate,
-                            bill_sbno = Bills.BillSbNo,
-                            bill_bldate = Bills.BillBlDate,
+                // ✅ Process bill details
+                foreach (var detail in bill.BillDetails.Where(d => d.BillDetailStatus == true))
+                {
+                    var service = await _context.Services.AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.ServiceId == detail.BillDetailProductId);
 
-                            bill_sbdate = Bills.BillSbDate,
-                            bill_grosswt = Bills.BillGrossWt,
-                            bill_netwt = Bills.BillNetWt,
-                            Vessel = Vessels.VesselName,
-                            Line = lineNotifies.NotifyName,
-                            bill_20ft = Bills.Bill20Ft,
-                            bill_40ft = Bills.Bill40Ft,
-                            shipper_invno = Bills.BillShipperInvNo,
-                            Shipper = shippNotifies.NotifyName,
-                            Consignee = consigneeNotifies.NotifyName,
-                            PlaceofSupply = state.StateName,       // ✅ place of supply name
-                            ShipmentType = Bills.BillSupplyType,
-                            bill_jobno = Bills.BillJobNo,
-                            bill_jobtype = Bills.BillJobType,
-                            bill_container_no = Bills.BillContainerNo,
-                            POL = POLLocations.LocationName,
-                            POD = PODLocations.LocationName,
+                    var currency = detail.BillDetailCurrencyId > 0
+                        ? await _context.Currencies.AsNoTracking()
+                            .FirstOrDefaultAsync(c => c.CurrencyId == detail.BillDetailCurrencyId)
+                        : null;
 
-                            GrossAmount = Bills.BillTotal,
-                            bill_taxableamt = Bills.BillTaxableAmt,
-                            bill_sgst = Bills.BillSgst,
-                            bill_cgst = Bills.BillCgst,
-                            bill_igst = Bills.BillIgst,
+                    result.BillDetails.Add(new BillDetailPrintDto
+                    {
+                        service_printname = service?.ServiceName,
+                        bill_detail_hsncode = detail.BillDetailHsnCode,
+                        bill_detail_qty = detail.BillDetailQty,
+                        bill_detail_rate = detail.BillDetailRate,
+                        bill_detail_exchunit = currency?.CurrencyName,
+                        bill_detail_exchrate = detail.BillDetailExchRate,
+                        bill_detail_amount = detail.BillDetailAmount,
+                        bill_detail_sgst = detail.BillDetailSgst,
+                        bill_detail_cgst = detail.BillDetailCgst,
+                        bill_detail_igst = detail.BillDetailIgst,
+                        bill_detail_sgstper = detail.BillDetailSgstPer,
+                        bill_detail_cgstper = detail.BillDetailCgstPer,
+                        bill_detail_igstper = detail.BillDetailIgstPer,
+                        bill_detail_taxableamt = detail.BillDetailTaxableAmt,
+                        bill_detail_total = detail.BillDetailTotal
+                    });
+                }
 
-
-                            bill_roundamt = Bills.BillRoundAmt,
-                            bill_total = Bills.BillNetAmount,
-                            bill_AmountInword = Bills.BillAmountInWord,
-                            bill_detail_remarks = Bills.BillRemarks,
-
-                            place_of_receipt = Jobs.JobPlaceOfReceipt,
-                            place_of_delivery = Jobs.JobPlaceOfDelivery,
-                            destination = Jobs.JobTranshipment,
-
-                            bankname = Bankdetails.AccountBankName,
-                            bank_accountno = Bankdetails.AccountAccNo,
-                            bank_ifsc = Bankdetails.AccountIfsCode,
-                            bank_branch = Bankdetails.AccountBankBranch,
-                            bank_address = Bankdetails.AccountAddress1,
-
-                            company_printname = companies.Name,
-                            company_address1 = companies.Address1,
-                            company_gstin = companies.Gstin,
-                            State_Company = companies.StateId,
-                            company_mobile = companies.Mobile,
-                            company_email = companies.Email,
-                            company_website = companies.Website,
-                            company_panno = companies.Panno
-                        },
-                        BillDetails = (
-                            from d in Bills.BillDetails
-                            join p in _context.Services.AsNoTracking()
-                                on d.BillDetailProductId equals p.ServiceId
-                            join c in _context.Currencies.AsNoTracking()
-                                on d.BillDetailCurrencyId equals c.CurrencyId into curjoin
-                            from c in curjoin.DefaultIfEmpty()
-
-                            select new BillDetailPrintDto
-                            {
-                                service_printname = p.ServiceName,
-                                bill_detail_hsncode = d.BillDetailHsnCode,
-                                bill_detail_qty = d.BillDetailQty,
-                                bill_detail_rate = d.BillDetailRate,
-                                bill_detail_exchunit = c.CurrencyName,
-                                bill_detail_exchrate = d.BillDetailExchRate,
-                                bill_detail_amount = d.BillDetailAmount,
-                                bill_detail_sgst = d.BillDetailSgst,
-                                bill_detail_cgst = d.BillDetailCgst,
-                                bill_detail_igst = d.BillDetailIgst,
-                                bill_detail_sgstper = d.BillDetailSgstPer,
-                                bill_detail_cgstper = d.BillDetailCgstPer,
-                                bill_detail_igstper = d.BillDetailIgstPer,
-                                bill_detail_taxableamt = d.BillDetailTaxableAmt,
-                                bill_detail_total = d.BillDetailTotal
-                            }
-                        ).ToList()
-                    }
-                ).FirstOrDefaultAsync();
-
-                if (result == null)
-                    return NotFound();
-
+                Console.WriteLine($"✅ Successfully built PrintBillFullDto for Bill {bill.BillNo}");
                 return result;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Error in GetPrintBill: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                 return Problem($"Failed to fetch PrintBill: {ex.Message}");
             }
         }
-
-
 
     }
 }
