@@ -5,6 +5,7 @@ using FreightBKShipping.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
 
 namespace FreightBKShipping.Controllers
 {
@@ -1116,7 +1117,7 @@ namespace FreightBKShipping.Controllers
                         company_printname = company?.Name,
                         company_address1 = company?.Address1,
                         company_gstin = company?.Gstin,
-                        State_Company = company?.StateId,
+                        State_Company = company.StateId,
                         company_mobile = company?.Mobile,
                         company_email = company?.Email,
                         company_website = company?.Website,
@@ -1166,6 +1167,206 @@ namespace FreightBKShipping.Controllers
                 return Problem($"Failed to fetch PrintBill: {ex.Message}");
             }
         }
+
+
+        [HttpGet("einvoice/{id}")]
+        public async Task<ActionResult<object>> GetEInvoiceJson(int id)
+        {
+            try
+            {
+                var bill = await FilterByCompany(_context.Bills, "BillCompanyId")
+                    .Include(b => b.BillDetails.Where(d => d.BillDetailStatus == true))
+                    .Include(b => b.Party)
+                    .Include(b => b.PlaceOfSupply)
+                    .Include(b => b.Voucher)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.BillId == id);
+
+                if (bill == null)
+                    return NotFound($"Bill with ID {id} not found");
+
+                // Company
+                var company = await _context.companies.AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.CompanyId == bill.BillCompanyId);
+
+                var companyState = await _context.States.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.StateId == company.StateId);
+
+                // Buyer
+                var buyer = await _context.Accounts.AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.AccountId == bill.BillPartyId);
+
+                var buyerState = await _context.States.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.StateId == bill.BillStateId);
+
+                // Ship-to
+                Account shipParty = null;
+                State shipState = null;
+
+                if (bill.BillShipPartyId > 0)
+                {
+                    shipParty = await _context.Accounts.AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.AccountId == bill.BillShipPartyId);
+
+                    if (shipParty?.AccountStateId != null)
+                    {
+                        shipState = await _context.States.AsNoTracking()
+                            .FirstOrDefaultAsync(s => s.StateId == shipParty.AccountStateId.Value);
+                    }
+                }
+
+                // ------------------ ITEM LIST ------------------
+                var itemList = new List<object>();
+                int slNo = 1;
+
+                foreach (var detail in bill.BillDetails.OrderBy(d => d.BillDetailSno))
+                {
+                    var service = await _context.Services.AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.ServiceId == detail.BillDetailProductId);
+
+                    itemList.Add(new
+                    {
+                        SlNo = slNo.ToString(),
+                        PrdDesc = service?.ServiceName,
+                        IsServc = "Y",
+                        HsnCd = detail.BillDetailHsnCode ?? "996799",
+
+                        Qty = (double?)null,          // PURE SERVICE → NULL
+                        FreeQty = (double?)null,
+                        Unit = (string)null,         // Service does not need UQC
+
+                        UnitPrice = (double?)null,
+                        TotAmt = Math.Round((double)detail.BillDetailAmount, 2),
+                        Discount = 0,
+                        PreTaxVal = 0,
+                        AssAmt = Math.Round((double)detail.BillDetailTaxableAmt, 2),
+                        GstRt = Math.Round((double)detail.BillDetailGstPer, 2),
+                        IgstAmt = Math.Round((double)detail.BillDetailIgst, 2),
+                        CgstAmt = Math.Round((double)detail.BillDetailCgst, 2),
+                        SgstAmt = Math.Round((double)detail.BillDetailSgst, 2),
+                        CesRt = 0,
+                        CesAmt = 0,
+                        CesNonAdvlAmt = 0,
+                        StateCesRt = 0,
+                        StateCesAmt = 0,
+                        StateCesNonAdvlAmt = 0,
+                        OthChrg = 0,
+                        TotItemVal = Math.Round((double)detail.BillDetailTotal, 2),
+
+                        OrdLineRef = (string)null,
+                        OrgCntry = (string)null,
+                        PrdSlNo = (string)null,
+                        AttribDtls = (object)null
+                    });
+
+                    slNo++;
+                }
+
+                // SUPPLY TYPE
+                string supplyType = bill.BillSupplyType switch
+                {
+                    "SEZWP" => "SEZWP",
+                    "SEZWOP" => "SEZWOP",
+                    "EXPWP" => "EXPWP",
+                    "EXPWOP" => "EXPWOP",
+                    _ => "B2B"
+                };
+
+                // ------------------ FINAL JSON ------------------
+                var eInvoice = new
+                {
+                    Version = "1.1",
+
+                    TranDtls = new
+                    {
+                        TaxSch = "GST",
+                        SupTyp = supplyType,
+                        RegRev = bill.BillIsRcm ? "Y" : null,
+                        EcmGstin = (string)null,
+                        IgstOnIntra = (string)null
+                    },
+
+                    DocDtls = new
+                    {
+                        Typ = "INV",
+                        No = bill.BillNo,
+                        Dt = Convert.ToDateTime(bill.BillDate)
+                             .ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                    },
+
+                    ExpDtls = (object)null,
+
+                    SellerDtls = new
+                    {
+                        Gstin = company?.Gstin,
+                        LglNm = company?.Name,
+                        TrdNm = company?.Name,
+                        Addr1 = company?.Address1,
+                        Addr2 = company?.Address2,
+                        Loc = company?.City,
+                        Pin = int.TryParse(company?.Pincode, out int p1) ? p1 : 0,
+                        Stcd = companyState?.StateCode.ToString()   // MUST BE STRING
+                    },
+
+                    BuyerDtls = new
+                    {
+                        Gstin = bill.BillGstNo ?? buyer?.AccountGstNo,
+                        LglNm = buyer?.AccountName,
+                        TrdNm = buyer?.AccountName,
+                        Pos = buyerState?.StateCode.ToString(),    // MUST BE STRING
+                        Addr1 = bill.BillAddress1 ?? buyer?.AccountAddress1,
+                        Addr2 = bill.BillAddress2 ?? buyer?.AccountAddress2,
+                        Loc = bill.BillCity ?? buyer?.AccountCity,
+                        Pin = int.TryParse(bill.BillPincode ?? buyer?.AccountPincode, out int p2) ? p2 : 0,
+                        Stcd = buyerState?.StateCode.ToString(),
+                        Ph = (string)null,
+                        Em = (string)null
+                    },
+
+                    DispDtls = (object)null,
+
+                    ShipDtls = shipParty != null ? new
+                    {
+                        Gstin = shipParty.AccountGstNo,
+                        LglNm = shipParty.AccountName,
+                        TrdNm = shipParty.AccountName,
+                        Addr1 = shipParty.AccountAddress1,
+                        Addr2 = shipParty.AccountAddress2,
+                        Loc = shipParty.AccountCity,
+                        Pin = int.TryParse(shipParty.AccountPincode, out int p3) ? p3 : 0,
+                        Stcd = shipState?.StateCode.ToString()
+                    } : null,
+
+                    ItemList = itemList,
+
+                    ValDtls = new
+                    {
+                        AssVal = bill.BillTaxableAmt,
+                        CgstVal = bill.BillCgst,
+                        SgstVal = bill.BillSgst,
+                        IgstVal = bill.BillIgst,
+                        CesVal = 0,
+                        StCesVal = 0,
+                        Discount = (double?)null,
+                        OthChrg = (double?)null,
+                        RndOffAmt = bill.BillRoundAmt,
+                        TotInvVal = bill.BillNetAmount,
+                        TotInvValFc = (double?)null
+                    },
+
+                    PayDtls = (object)null,
+                    RefDtls = (object)null,
+                    EwbDtls = (object)null
+                };
+
+                return Ok(eInvoice);
+            }
+            catch (Exception ex)
+            {
+                return Problem($"Failed to generate E-Invoice JSON: {ex.Message}");
+            }
+        }
+
 
     }
 }

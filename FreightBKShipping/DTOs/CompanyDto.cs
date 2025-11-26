@@ -16,7 +16,7 @@ namespace FreightBKShipping.DTOs
         public string? Remarks { get; set; }
         public string? City { get; set; }
         public string? Country { get; set; }
-        public string? StateId { get; set; }
+        public int StateId { get; set; }
         public string? Panno { get; set; }
 
     }
@@ -37,7 +37,7 @@ namespace FreightBKShipping.DTOs
         public string? Remarks { get; set; }
         public string? City { get; set; }
         public string? Country { get; set; }
-        public string? StateId { get; set; }
+        public int StateId { get; set; }
         public string? Panno { get; set; }
 
     }

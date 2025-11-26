@@ -37,7 +37,7 @@ namespace FreightBKShipping.Models
         public string? Address3 { get; set; }
 
         [Column("company_stateid")]
-        public string? StateId { get; set; }
+        public int StateId { get; set; }
 
         [Column("company_statecode")]
         public string? StateCode { get; set; }
@@ -129,5 +129,6 @@ namespace FreightBKShipping.Models
         //added by dhruv
         [Column("company_haswpmsg")]
         public bool? HasWhatsapp { get; set; }
+
     }
 }

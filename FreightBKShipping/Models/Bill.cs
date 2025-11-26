@@ -46,6 +46,7 @@ namespace FreightBKShipping.Models
         public int BillVchNo { get; set; }
 
         [Column("bill_date")]
+
         public DateTime BillDate { get; set; }
 
         [Column("bill_time")]

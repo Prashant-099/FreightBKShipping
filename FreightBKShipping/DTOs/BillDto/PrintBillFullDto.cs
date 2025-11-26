@@ -72,7 +72,7 @@
       
         public string? company_address1 { get; set; }
         public string? company_gstin { get; set; }
-        public string? State_Company { get; set; }
+        public int State_Company { get; set; }
         public string? company_mobile { get; set; }
         public string? company_email { get; set; }
         public string? company_panno { get; set; }
