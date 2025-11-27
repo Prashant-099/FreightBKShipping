@@ -1227,33 +1227,42 @@ namespace FreightBKShipping.Controllers
                     var service = await _context.Services.AsNoTracking()
                         .FirstOrDefaultAsync(s => s.ServiceId == detail.BillDetailProductId);
 
+                    // CRITICAL FIX: Ensure HSN code is 6 digits
+                    string hsnCode = detail.BillDetailHsnCode ;
+                 
+                    // CRITICAL FIX: Calculate AssAmt correctly
+                    double totAmt = Math.Round((double)detail.BillDetailAmount, 2);
+                    double discount = 0;
+                    double assAmt = totAmt - discount; // AssAmt = TotAmt - Discount
+
                     itemList.Add(new
                     {
                         SlNo = slNo.ToString(),
-                        PrdDesc = service?.ServiceName,
-                        IsServc = "Y",
-                        HsnCd = detail.BillDetailHsnCode ?? "996799",
+                        PrdDesc = service?.ServiceName ?? "SERVICE",
+                        IsServc = service?.ServiceIsGoods == false ? "N" : "Y",
 
-                        Qty = (double?)null,          // PURE SERVICE → NULL
+                        HsnCd = hsnCode,
+
+                        Qty = 1.0,                    // FIX: Use 1 instead of null for services
                         FreeQty = (double?)null,
-                        Unit = (string)null,         // Service does not need UQC
+                        Unit = detail.BillDetailUnit,                 // FIX: Use "NOS" for services
 
-                        UnitPrice = (double?)null,
-                        TotAmt = Math.Round((double)detail.BillDetailAmount, 2),
-                        Discount = 0,
-                        PreTaxVal = 0,
-                        AssAmt = Math.Round((double)detail.BillDetailTaxableAmt, 2),
+                        UnitPrice = assAmt,           // FIX: Set unit price
+                        TotAmt = totAmt,
+                        Discount = discount,
+                        PreTaxVal = (double?)null,
+                        AssAmt = assAmt,              // FIX: Must equal TotAmt - Discount
                         GstRt = Math.Round((double)detail.BillDetailGstPer, 2),
                         IgstAmt = Math.Round((double)detail.BillDetailIgst, 2),
                         CgstAmt = Math.Round((double)detail.BillDetailCgst, 2),
                         SgstAmt = Math.Round((double)detail.BillDetailSgst, 2),
-                        CesRt = 0,
-                        CesAmt = 0,
-                        CesNonAdvlAmt = 0,
-                        StateCesRt = 0,
-                        StateCesAmt = 0,
-                        StateCesNonAdvlAmt = 0,
-                        OthChrg = 0,
+                        CesRt = (double?)null,
+                        CesAmt = (double?)null,
+                        CesNonAdvlAmt = (double?)null,
+                        StateCesRt = (double?)null,
+                        StateCesAmt = (double?)null,
+                        StateCesNonAdvlAmt = (double?)null,
+                        OthChrg = (double?)null,
                         TotItemVal = Math.Round((double)detail.BillDetailTotal, 2),
 
                         OrdLineRef = (string)null,
@@ -1275,6 +1284,9 @@ namespace FreightBKShipping.Controllers
                     _ => "B2B"
                 };
 
+                // FIX: Ensure Pos matches buyer state
+                string pos = bill.BillPlaceOfSupply.ToString() ?? buyerState?.StateCode.ToString();
+
                 // ------------------ FINAL JSON ------------------
                 var eInvoice = new
                 {
@@ -1284,9 +1296,9 @@ namespace FreightBKShipping.Controllers
                     {
                         TaxSch = "GST",
                         SupTyp = supplyType,
-                        RegRev = bill.BillIsRcm ? "Y" : null,
+                        RegRev = bill.BillIsRcm ? "Y" : "N",        // FIX: Use "N" instead of null
                         EcmGstin = (string)null,
-                        IgstOnIntra = (string)null
+                        IgstOnIntra = "N"                            // FIX: Add explicit value
                     },
 
                     DocDtls = new
@@ -1304,24 +1316,24 @@ namespace FreightBKShipping.Controllers
                         Gstin = company?.Gstin,
                         LglNm = company?.Name,
                         TrdNm = company?.Name,
-                        Addr1 = company?.Address1,
+                        Addr1 = company?.Address1 ?? "",
                         Addr2 = company?.Address2,
-                        Loc = company?.City,
+                        Loc = company?.City ?? "",
                         Pin = int.TryParse(company?.Pincode, out int p1) ? p1 : 0,
-                        Stcd = companyState?.StateCode.ToString()   // MUST BE STRING
+                        Stcd = companyState?.StateCode.ToString() ?? "00"
                     },
 
                     BuyerDtls = new
                     {
                         Gstin = bill.BillGstNo ?? buyer?.AccountGstNo,
-                        LglNm = buyer?.AccountName,
+                        LglNm = buyer?.AccountName ?? "",
                         TrdNm = buyer?.AccountName,
-                        Pos = buyerState?.StateCode.ToString(),    // MUST BE STRING
-                        Addr1 = bill.BillAddress1 ?? buyer?.AccountAddress1,
+                        Pos = pos,                                    // FIX: Use correct POS
+                        Addr1 = bill.BillAddress1 ?? buyer?.AccountAddress1 ?? "",
                         Addr2 = bill.BillAddress2 ?? buyer?.AccountAddress2,
-                        Loc = bill.BillCity ?? buyer?.AccountCity,
+                        Loc = bill.BillCity ?? buyer?.AccountCity ?? "",
                         Pin = int.TryParse(bill.BillPincode ?? buyer?.AccountPincode, out int p2) ? p2 : 0,
-                        Stcd = buyerState?.StateCode.ToString(),
+                        Stcd = buyerState?.StateCode.ToString() ?? pos,
                         Ph = (string)null,
                         Em = (string)null
                     },
@@ -1344,16 +1356,16 @@ namespace FreightBKShipping.Controllers
 
                     ValDtls = new
                     {
-                        AssVal = bill.BillTaxableAmt,
-                        CgstVal = bill.BillCgst,
-                        SgstVal = bill.BillSgst,
-                        IgstVal = bill.BillIgst,
-                        CesVal = 0,
-                        StCesVal = 0,
+                        AssVal = Math.Round((double)bill.BillTaxableAmt, 2),
+                        CgstVal = Math.Round((double)bill.BillCgst, 2),
+                        SgstVal = Math.Round((double)bill.BillSgst, 2),
+                        IgstVal = Math.Round((double)bill.BillIgst, 2),
+                        CesVal = (double?)null,
+                        StCesVal = (double?)null,
                         Discount = (double?)null,
                         OthChrg = (double?)null,
-                        RndOffAmt = bill.BillRoundAmt,
-                        TotInvVal = bill.BillNetAmount,
+                        RndOffAmt = Math.Round((double)bill.BillRoundAmt, 2),
+                        TotInvVal = Math.Round((double)bill.BillNetAmount, 2),
                         TotInvValFc = (double?)null
                     },
 

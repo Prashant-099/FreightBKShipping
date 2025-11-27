@@ -104,7 +104,7 @@ namespace FreightBKShipping.Controllers
                 ServiceName = s.ServiceName,
                 ServiceCode = s.ServiceCode,
                 ServiceType = s.ServiceType,
-
+               
                 ServiceSRate = s.ServiceSRate,
                 ServicePRate = s.ServicePRate,
 
@@ -150,6 +150,7 @@ namespace FreightBKShipping.Controllers
                 ServiceCompanyId = GetCompanyId(),
                 ServiceAddedByUserId = GetUserId(),
                 ServiceUpdatedByUserId = GetUserId(),
+                ServiceHsnId=dto.ServiceHsnId,
                 ServiceName = dto.ServiceName,
                 ServiceCode = dto.ServiceCode,
                 ServiceGroupId = dto.ServiceGroupId,
@@ -190,7 +191,7 @@ namespace FreightBKShipping.Controllers
             service.ServiceType = dto.ServiceType;
             service.ServiceUpdatedByUserId = GetUserId();
             service.ServiceUpdated = DateTime.UtcNow;
-
+            service.ServiceHsnId = dto.ServiceHsnId;
             await _context.SaveChangesAsync();
             return NoContent();
         }
