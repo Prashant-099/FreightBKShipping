@@ -84,7 +84,7 @@ namespace FreightBKShipping.Controllers
                     throw;
             }
 
-            return NoContent();
+            return Ok(true);
         }
 
         // DELETE: api/HsnSac/5

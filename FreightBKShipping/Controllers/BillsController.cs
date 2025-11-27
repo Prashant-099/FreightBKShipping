@@ -619,7 +619,7 @@ namespace FreightBKShipping.Controllers
             bill.BillConsignor = billDto.BillConsignor;
             bill.BillStatus = billDto.BillStatus;
             bill.BillNonTaxable = billDto.BillNonTaxable;
-
+            bill.BillRoundAmt = billDto.BillRoundAmt;
             bill.BillTaxableAmt2 = billDto.BillTaxableAmt2;
             bill.BillGstType = billDto.BillGstType;
             bill.BillJobId = billDto.BillJobId;
@@ -989,6 +989,9 @@ namespace FreightBKShipping.Controllers
                 var company = await _context.companies.AsNoTracking()
                     .FirstOrDefaultAsync(c => c.CompanyId == bill.BillCompanyId);
 
+                var companyState = company?.StateId > 0 ? await _context.States.AsNoTracking().
+                    FirstOrDefaultAsync(s => s.StateId == company.StateId) : null;
+
                 var party = await _context.Accounts.AsNoTracking()
                     .FirstOrDefaultAsync(p => p.AccountId == bill.BillPartyId);
 
@@ -1117,7 +1120,7 @@ namespace FreightBKShipping.Controllers
                         company_printname = company?.Name,
                         company_address1 = company?.Address1,
                         company_gstin = company?.Gstin,
-                        State_Company = company.StateId,
+                        State_Company = companyState?.StateName,
                         company_mobile = company?.Mobile,
                         company_email = company?.Email,
                         company_website = company?.Website,
