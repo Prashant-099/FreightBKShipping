@@ -1247,7 +1247,7 @@ namespace FreightBKShipping.Controllers
                         UnitPrice = assAmt,           // FIX: Set unit price
                         TotAmt = totAmt,
                         Discount = discount,
-                        PreTaxVal = (double?)null,
+                        PreTaxVal = detail.BillDetailTaxableAmt,
                         AssAmt = assAmt,              // FIX: Must equal TotAmt - Discount
                         GstRt = Math.Round((double)detail.BillDetailGstPer, 2),
                         IgstAmt = Math.Round((double)detail.BillDetailIgst, 2),
