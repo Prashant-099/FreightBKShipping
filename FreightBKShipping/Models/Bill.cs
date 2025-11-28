@@ -377,11 +377,17 @@ namespace FreightBKShipping.Models
          
         public string? BillCdnReason { get; set; }
 
+
         [Column("bill_locked_by")]
         public string? BillLockedBy { get; set; } = "";
 
+          
+        [NotMapped]
+        public string? BillLockedByUsername { get; set;}
+
         [Column("bill_approved_by")]
         public int BillApprovedBy { get; set; }
+  
 
         [Column("bill_drcr_acc_id")]
         public int BillDrcrAccId { get; set; }
