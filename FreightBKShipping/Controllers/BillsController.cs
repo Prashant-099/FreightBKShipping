@@ -724,6 +724,10 @@ namespace FreightBKShipping.Controllers
             bill.BillRemarksDefault = billDto.BillRemarksDefault;
             bill.BillConsignor = billDto.BillConsignor;
             bill.BillStatus = billDto.BillStatus;
+            bill.BillIgst = billDto.BillIgst;
+            bill.BillSgst = billDto.BillSgst;
+            bill.BillCgst = billDto.BillCgst;
+            bill.BillTaxableAmt = billDto.BillTaxableAmt;
             bill.BillNonTaxable = billDto.BillNonTaxable;
             bill.BillRoundAmt = billDto.BillRoundAmt;
             bill.BillTaxableAmt2 = billDto.BillTaxableAmt2;
