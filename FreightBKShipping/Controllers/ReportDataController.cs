@@ -156,17 +156,29 @@ namespace FreightBKShipping.Controllers
         [HttpGet("layout/{id:int}")]
         public async Task<IActionResult> GetReportLayout(int id)
         {
-            var layout = await _context.Reportdata 
-                .Where(r => r.ReportDataId == id)
-                .Select(r => r.LayoutData)
-                .FirstOrDefaultAsync();
+            try
+            {
+                var layout = await _context.Reportdata
+                    .Where(r => r.ReportDataId == id)
+                    .Select(r => r.LayoutData)
+                    .FirstOrDefaultAsync();
 
-            if (string.IsNullOrWhiteSpace(layout))
-                return NotFound("Report layout not found.");
+                if (string.IsNullOrWhiteSpace(layout))
+                {
+                    return NotFound(new { error = "Report layout not found." });
+                }
 
-            var bytes = Encoding.UTF8.GetBytes(layout);
-            return File(bytes, "application/xml");
+                var bytes = Encoding.UTF8.GetBytes(layout);
+                return File(bytes, "application/xml");
+            }
+            catch (Exception ex)
+            {
+                // Maybe return a generic error message to the client
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "An error occurred while retrieving the report layout. Please try again later." });
+            }
         }
+
 
         // Designer endpoints remain mostly unchanged with minor fixes:
         [HttpGet("designer/reports")]
