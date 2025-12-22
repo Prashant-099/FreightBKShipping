@@ -1297,7 +1297,16 @@ namespace FreightBKShipping.Controllers
 
                 if (bill == null)
                     return NotFound($"Bill with ID {id} not found");
+                //voucher code
+                var voucher = await _context.Vouchers
+           .AsNoTracking()
+           .FirstOrDefaultAsync(c => c.VoucherId == bill.BillVoucherId);
 
+                string vcode = null;
+                if (voucher != null)
+                {
+                    vcode = voucher.VoucherCode;
+                }
                 // Company
                 var company = await _context.companies.AsNoTracking()
                     .FirstOrDefaultAsync(c => c.CompanyId == bill.BillCompanyId);
@@ -1413,7 +1422,7 @@ namespace FreightBKShipping.Controllers
 
                     DocDtls = new
                     {
-                        Typ = "INV",
+                        Typ = vcode,
                         No = bill.BillNo,
                         Dt = Convert.ToDateTime(bill.BillDate)
                              .ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
