@@ -20,7 +20,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var branches = await FilterByCompany( _context.Branches, "BranchCompanyId").ToListAsync();
+            var branches = await FilterByCompany( _context.Branches, "BranchCompanyId").OrderByDescending(b => b.BranchId).ToListAsync();
             return Ok(branches);
         }
 

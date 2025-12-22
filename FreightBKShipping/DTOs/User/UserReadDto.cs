@@ -13,7 +13,7 @@ namespace FreightBKShipping.DTOs.User
         public string? UserPhone { get; set; }
         public string? UserCountryCode { get; set; }
         public required string UserMobile { get; set; }
-        public required byte UserStatus { get; set; }
+        public required bool? UserStatus { get; set; }
         public int UserCompanyId { get; set; }
 
 

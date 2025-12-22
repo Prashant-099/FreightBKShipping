@@ -20,7 +20,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GstSlab>>> GetGstSlabs()
         {
-            return await FilterByCompany( _context.GstSlabs, "GstSlabCompanyId").ToListAsync();
+            return await FilterByCompany( _context.GstSlabs, "GstSlabCompanyId").OrderByDescending(b=>b.GstSlabId).ToListAsync();
         }
 
         // GET: api/GstSlab/5
@@ -88,7 +88,7 @@ namespace FreightBKShipping.Controllers
             _context.GstSlabs.Remove(slab);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(true);
         }
     }
 }

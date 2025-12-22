@@ -33,7 +33,7 @@ namespace FreightBKShipping.Controllers
             var usersQuery = FilterByCompany(
         _context.Users.Include(u => u.Role).AsNoTracking(),
         "UserCompanyId"
-    );
+    ).OrderByDescending(b=>b.UserCreated);
 
             var filteredUsers = _sieveProcessor.Apply(sieveModel, usersQuery, applyPagination: false);
             var totalRecords = await filteredUsers.CountAsync();
@@ -55,7 +55,7 @@ namespace FreightBKShipping.Controllers
                 UserPhone = u.UserPhone,
                 UserCountryCode = u.UserCountryCode,
                 UserMobile = u.UserMobile,
-                UserStatus = (byte)u.UserStatus,
+                UserStatus = u.UserStatus,
                 UserRoleId = u.UserRoleId,
                 UserRoleName = u.Role?.RoleName ?? "-",
                 UserAddress = u.UserAddress,
@@ -98,7 +98,7 @@ namespace FreightBKShipping.Controllers
                 UserPhone = user.UserPhone,
                 UserCountryCode = user.UserCountryCode,
                 UserMobile = user.UserMobile,
-                UserStatus = (byte)user.UserStatus,
+                UserStatus = user.UserStatus,
                 UserRoleId = user.UserRoleId,
                 UserRoleName = user.Role?.RoleName ?? "",
                 UserAddress = user.UserAddress,
@@ -132,7 +132,7 @@ namespace FreightBKShipping.Controllers
                 UserBranchId= GetBranchId(),
                 UserCompanyId = GetCompanyId(), // Set if available
                 UserName = dto.UserName,
-                UserStatus = 1, // default active
+                UserStatus = true, // default active
                 UserCreated = DateTime.UtcNow,
                 UserUpdated = DateTime.UtcNow,
                 UserAddbyUserId=GetUserId()
@@ -182,37 +182,12 @@ namespace FreightBKShipping.Controllers
         {
             var user = await FilterByCompany(_context.Users.Include(u => u.Role), "UserCompanyId").FirstOrDefaultAsync(u => u.UserId == id);
             if (user == null) return NotFound();
-            try
-            {
-                _context.Users.Remove(user);
+            _context.Users.Remove(user);
             await _context.SaveChangesAsync();
-                return Ok(new
-                {
-                    success = true,
-                    message = "User deleted successfully."
-                });
-            }
-            catch (DbUpdateException ex)
-            {
-                // This happens because of a foreign key restriction
-                return BadRequest(new
-                {
-                    message = "Cannot delete this user because it is linked to another record.",
-                    details = ex.InnerException?.Message
-                });
-
-            }
-            catch (Exception ex)
-            {
-                // For any other unexpected errors
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "An unexpected error occurred.",
-                    error = ex.Message
-                });
-            }
+            return Ok(true);
+            
         }
+           
 
 
     }

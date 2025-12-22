@@ -213,7 +213,7 @@ namespace FreightBKShipping.Controllers
                            // add rest of BillDetail columns...
                        }).ToList(),
             })
-                .ToList();
+              .OrderByDescending(b=>b.BillId) .ToList();
 
             return Ok(result);
         }
@@ -615,7 +615,7 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBill(int id, BillDto billDto)
         {
-            if (id != billDto.BillId)
+                if (id != billDto.BillId)
                 return BadRequest("Bill ID mismatch.");
 
             var bill = await _context.Bills

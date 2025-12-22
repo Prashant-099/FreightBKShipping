@@ -28,7 +28,7 @@ namespace FreightBKShipping.Controllers
         {
             try
             {
-                var locations = await FilterByCompany(_context.Locations, "LocationCompanyId").ToListAsync();
+                var locations = await FilterByCompany(_context.Locations, "LocationCompanyId").OrderByDescending(B=>B.LocationId).ToListAsync();
 
                 var result = locations.Select(l => new LocationReadDto
                 {
@@ -39,6 +39,8 @@ namespace FreightBKShipping.Controllers
                     LocationDistrict = l.LocationDistrict,
                     LocationStatus = l.LocationStatus,
                     LocationCode = l.LocationCode,
+                    LocationUpdated = l.LocationUpdated,
+                    LocationCreated = l.LocationCreated,
                     LocationCountryId = l.LocationCountryId,
                     LocationType = l.LocationType
                 });
@@ -166,7 +168,7 @@ namespace FreightBKShipping.Controllers
 
                 _context.Locations.Remove(location);
                 await _context.SaveChangesAsync();
-                return NoContent();
+                return Ok(true);
             }
             catch (Exception ex)
             {

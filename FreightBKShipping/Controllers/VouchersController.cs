@@ -25,6 +25,7 @@ namespace FreightBKShipping.Controllers
                  {
             var vouchers = await FilterByCompany( _context.Vouchers, "VoucherCompanyId")
                 .Include(v => v.VoucherDetails)
+                .OrderByDescending(b => b.VoucherId)
                 .ToListAsync();
 
             return vouchers.Select(v => new VoucherReadDto
@@ -46,6 +47,7 @@ namespace FreightBKShipping.Controllers
                     VoucherDetailPrefix = d.VoucherDetailPrefix,
                     VoucherDetailSufix = d.VoucherDetailSufix,
                     VoucherDetailZeroFill = d.VoucherDetailZeroFill,
+                    VoucherDetailLutno = d.VoucherDetailLutno,
                     VoucherDetailStatus = d.VoucherDetailStatus,
                     VoucherDetailLastNo = d.VoucherDetailLastNo
                 }).ToList()
@@ -102,8 +104,9 @@ namespace FreightBKShipping.Controllers
                     VoucherDetailSufix = d.VoucherDetailSufix,
                     VoucherDetailZeroFill = d.VoucherDetailZeroFill,
                     VoucherDetailLastNo = d.VoucherDetailLastNo,
-                    VoucherDetailStatus = d.VoucherDetailStatus,             
-                    VoucherDetailLutno = d.VoucherDetailLutno
+                    VoucherDetailLutno = d.VoucherDetailLutno,
+                    VoucherDetailStatus = d.VoucherDetailStatus             
+                   
                     
                 }).ToList()
             };
@@ -154,6 +157,7 @@ namespace FreightBKShipping.Controllers
                     VoucherDetailSufix = d.VoucherDetailSufix,
                     VoucherDetailZeroFill = d.VoucherDetailZeroFill,
                     VoucherDetailLastNo = d.VoucherDetailLastNo,
+                    VoucherDetailLutno = d.VoucherDetailLutno,
                     VoucherDetailStatus = d.VoucherDetailStatus,
                     VoucherDetailCreated = DateTime.UtcNow,
                     VoucherDetailUpdated = DateTime.UtcNow
@@ -221,6 +225,7 @@ namespace FreightBKShipping.Controllers
                         detail.VoucherDetailSufix = d.VoucherDetailSufix;
                         detail.VoucherDetailZeroFill = d.VoucherDetailZeroFill;
                         detail.VoucherDetailLastNo = d.VoucherDetailLastNo;
+                        detail.VoucherDetailLutno = d.VoucherDetailLutno;
                         detail.VoucherDetailStatus = d.VoucherDetailStatus;
                         detail.VoucherDetailUpdated = DateTime.UtcNow;
                     }
@@ -262,7 +267,7 @@ namespace FreightBKShipping.Controllers
             _context.Vouchers.Remove(voucher);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(true);
         }
     }
 }

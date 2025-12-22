@@ -20,14 +20,129 @@ namespace FreightBKShipping.Controllers
         {
             try
             {
-                var jobs = await _context.Jobs.ToListAsync();
-                return Ok(jobs);
+                var result = await FilterByCompany(_context.Jobs, "JobCompanyId")
+                    .OrderByDescending(j => j.JobId)
+
+                    // Vessel
+                    .GroupJoin(_context.Vessels,
+                        j => j.JobVesselId,
+                        v => v.VesselId,
+                        (j, v) => new { j, v })
+                    .SelectMany(
+                        x => x.v.DefaultIfEmpty(),
+                        (x, v) => new { x.j, v })
+
+                    // POL
+                    .GroupJoin(_context.Locations,
+                        x => x.j.JobPolId,
+                        l => l.LocationId,
+                        (x, l) => new { x.j, x.v, l })
+                    .SelectMany(
+                        x => x.l.DefaultIfEmpty(),
+                        (x, pol) => new { x.j, x.v, pol })
+
+                    // POD
+                    .GroupJoin(_context.Locations,
+                        x => x.j.JobPodId,
+                        l => l.LocationId,
+                        (x, l) => new { x.j, x.v, x.pol, l })
+                    .SelectMany(
+                        x => x.l.DefaultIfEmpty(),
+                        (x, pod) => new JobReadDto
+                        {
+                            JobId = x.j.JobId,
+                            JobCompanyId = x.j.JobCompanyId,
+                            JobAddedByUserId = x.j.JobAddedByUserId,
+                            JobUpdatedByUserId = x.j.JobUpdatedByUserId,
+                            JobPartyId = x.j.JobPartyId,
+                            JobYearId = x.j.JobYearId,
+                            JobDate = x.j.JobDate,
+                            JobNo = x.j.JobNo,
+                            JobType = x.j.JobType,
+
+                            JobPodId = x.j.JobPodId,
+                            JobPolId = x.j.JobPolId,
+                            JobVesselId = x.j.JobVesselId,
+                            JobLineId = x.j.JobLineId,
+                            JobCargoId = x.j.JobCargoId,
+                            JobConsigneeId = x.j.JobConsigneeId,
+                            JobShipperId = x.j.JobShipperId,
+                            JobSalesmanId = x.j.JobSalesmanId,
+
+                            JobSbNo = x.j.JobSbNo,
+                            JobSbDate = x.j.JobSbDate,
+                            JobBlNo = x.j.JobBlNo,
+                            JobBlDate = x.j.JobBlDate,
+                            JobShipperInvNo = x.j.JobShipperInvNo,
+                            JobShipperInvDate = x.j.JobShipperInvDate,
+
+                            JobGrossWt = x.j.JobGrossWt,
+                            JobNetWt = x.j.JobNetWt,
+                            JobQty = x.j.JobQty,
+                            JobExchRate = x.j.JobExchRate,
+
+                            Job20Ft = x.j.Job20Ft,
+                            Job40Ft = x.j.Job40Ft,
+                            JobContainer20Ft = x.j.JobContainer20Ft,
+                            JobContainer40Ft = x.j.JobContainer40Ft,
+
+                            JobDefCurrId = x.j.JobDefCurrId,
+                            JobRemarks = x.j.JobRemarks,
+                            JobStatus = x.j.JobStatus,
+
+                            JobCreated = x.j.JobCreated,
+                            JobUpdated = x.j.JobUpdated,
+
+                            JobVchNo = x.j.JobVchNo,
+                            JobPrefix = x.j.JobPrefix,
+                            JobSufix = x.j.JobSufix,
+                            JobState = x.j.JobState,
+                            JobTypeId = x.j.JobTypeId,
+
+                            JobCust1 = x.j.JobCust1,
+                            JobCust2 = x.j.JobCust2,
+                            JobCust3 = x.j.JobCust3,
+                            JobCust4 = x.j.JobCust4,
+                            JobCust5 = x.j.JobCust5,
+                            JobCust6 = x.j.JobCust6,
+                            JobCust7 = x.j.JobCust7,
+                            JobCust8 = x.j.JobCust8,
+                            JobCust9 = x.j.JobCust9,
+
+                            JobChaId = x.j.JobChaId,
+                            JobBeNo = x.j.JobBeNo,
+                            JobBeDate = x.j.JobBeDate,
+                            JobSupplierId = x.j.JobSupplierId,
+
+                            JobGoodsDesc = x.j.JobGoodsDesc,
+                            JobCountryOrigin = x.j.JobCountryOrigin,
+
+                            JobEta = x.j.JobEta,
+                            JobEtd = x.j.JobEtd,
+
+                            JobBranchId = x.j.JobBranchId,
+
+
+                            VesselName = x.v != null ? x.v.VesselName : null,
+                            PolName = x.pol != null ? x.pol.LocationName : null,
+                            PodName = pod != null ? pod.LocationName : null
+                        })
+
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = "Error fetching jobs", details = ex.Message, stack = ex.StackTrace });
+                return BadRequest(new
+                {
+                    error = "Error fetching jobs",
+                    details = ex.Message
+                });
             }
         }
+
 
         // GET: api/Job/5
         [HttpGet("{id}")]
@@ -129,7 +244,7 @@ namespace FreightBKShipping.Controllers
 
                 _context.Jobs.Remove(job);
                 await _context.SaveChangesAsync();
-                return Ok(new { success = true });
+                return Ok(true);
             }
             catch (DbUpdateException dbEx)
             {

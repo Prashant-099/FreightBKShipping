@@ -130,5 +130,7 @@ namespace FreightBKShipping.Models
         [Column("company_haswpmsg")]
         public bool? HasWhatsapp { get; set; }
 
+       
+
     }
 }

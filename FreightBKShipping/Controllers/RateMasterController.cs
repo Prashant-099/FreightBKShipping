@@ -27,8 +27,10 @@ public class RateMasterController : BaseController
                 ServiceName = r.Service.ServiceName,
                 RateMasterSaleRate = r.RateMasterSaleRate,
                 RateMasterPurchaseRate = r.RateMasterPurchaseRate,
+                RateMasterUpdated = r.RateMasterUpdated,
+                RateMasterCreated = r.RateMasterCreated,
                 RateMasterApplicableDt = r.RateMasterApplicableDt
-            })
+            }).OrderByDescending(b=>b.RateMasterId)
             .ToListAsync();
 
         return Ok(list);

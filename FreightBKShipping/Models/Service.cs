@@ -59,11 +59,11 @@ namespace FreightBKShipping.Models
         public string? ServiceRemarks { get; set; }
 
         [Column("service_printname")]
-        [MaxLength(100)]
+       
         public string? ServicePrintName { get; set; }
 
         [Column("service_tallyname")]
-        [MaxLength(150)]
+
         public string? ServiceTallyName { get; set; }
 
         [Column("service_status")]

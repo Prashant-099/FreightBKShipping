@@ -45,7 +45,7 @@ namespace FreightBKShipping.Models
         public DateTime LocationCreated { get; set; } = DateTime.UtcNow;
 
         [Column("location_updated")]
-        public DateTime? LocationUpdated { get; set; }
+        public DateTime? LocationUpdated { get; set; } = DateTime.UtcNow;
 
         [Column("location_code")]
         

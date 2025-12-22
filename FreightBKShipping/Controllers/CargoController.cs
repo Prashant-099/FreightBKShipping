@@ -81,7 +81,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var cargoes = await FilterByCompany( _context.Cargoes, "CargoCompanyId").ToListAsync();
+            var cargoes = await FilterByCompany( _context.Cargoes, "CargoCompanyId").OrderByDescending(b=>b.CargoId).ToListAsync();
             return Ok(cargoes);
         }
 

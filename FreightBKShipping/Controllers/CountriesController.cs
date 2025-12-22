@@ -21,7 +21,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CountryReadDto>>> GetAll()
         {
-            var countries = await FilterByCompany(_context.Countries, "CountryCompanyId")
+            var countries = await FilterByCompany(_context.Countries, "CountryCompanyId").OrderByDescending(b=>b.CountryId)
                   .Select(c => new CountryReadDto
                 {
                     CountryId = c.CountryId,
@@ -118,9 +118,27 @@ namespace FreightBKShipping.Controllers
             if (country == null) return NotFound();
 
             _context.Countries.Remove(country);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(true);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Foreign Key constraint violation
+                if (ex.InnerException != null &&
+                    ex.InnerException.Message.Contains("foreign key constraint fails"))
+                {
+                    return Ok(false);   // return false as you asked
+                }
 
-            return NoContent();
+                // Other unknown DB error – return 500 with detail
+                return StatusCode(500, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

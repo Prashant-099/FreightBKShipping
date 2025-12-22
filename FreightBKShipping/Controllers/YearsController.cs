@@ -20,7 +20,7 @@ namespace FreightBKShipping.Controllers
             [HttpGet]
             public async Task<ActionResult<IEnumerable<Year>>> GetYears()
             {
-            return await FilterByCompany(_context.Years.AsNoTracking(), "YearCompanyId").ToListAsync();
+            return await FilterByCompany(_context.Years.AsNoTracking(), "YearCompanyId").OrderByDescending(b => b.YearId).ToListAsync();
         }
 
             [HttpGet("{id}")]
@@ -108,7 +108,7 @@ namespace FreightBKShipping.Controllers
                 _context.Years.Remove(year);
                 await _context.SaveChangesAsync();
 
-                return NoContent();
+                return Ok(true);
             }
         }
     }

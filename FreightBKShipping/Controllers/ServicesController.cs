@@ -22,7 +22,7 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> GetAll()
         {
 
-            var query = FilterByCompany(_context.Services, "ServiceCompanyId")
+            var query = FilterByCompany(_context.Services, "ServiceCompanyId").OrderByDescending(b=>b.ServiceId)
          .GroupJoin(_context.ServiceGroups,
              s => s.ServiceGroupId,
              g => g.ServiceGroupsId,
@@ -152,6 +152,13 @@ namespace FreightBKShipping.Controllers
                 ServiceUpdatedByUserId = GetUserId(),
                 ServiceHsnId=dto.ServiceHsnId,
                 ServiceName = dto.ServiceName,
+                ServicePrintName = dto.ServicePrintName,
+                ServiceChargeType = dto.ServiceChargeType,
+                ServiceTallyName = dto.ServiceTallyName,
+                ServiceExtraCharge = dto.ServiceExtraCharge,
+                ServiceVoucherId = dto.ServiceVoucherId,
+                ServiceAccountId = dto.ServiceAccountId,
+                ServiceIsGoods = dto.ServiceIsGoods,
                 ServiceCode = dto.ServiceCode,
                 ServiceGroupId = dto.ServiceGroupId,
                 ServiceSRate = dto.ServiceSRate,
@@ -181,6 +188,13 @@ namespace FreightBKShipping.Controllers
                 return NotFound("Service not found");
 
             service.ServiceName = dto.ServiceName;
+            service.ServicePrintName = dto.ServicePrintName;
+                service.ServiceChargeType = dto.ServiceChargeType;
+            service.ServiceTallyName = dto.ServiceTallyName;
+            service.ServiceExtraCharge = dto.ServiceExtraCharge;
+            service.ServiceVoucherId = dto.ServiceVoucherId;
+            service.ServiceAccountId = dto.ServiceAccountId;
+            service.ServiceIsGoods = dto.ServiceIsGoods;
             service.ServiceCode = dto.ServiceCode;
             service.ServiceGroupId = dto.ServiceGroupId;
             service.ServiceSRate = dto.ServiceSRate;
@@ -209,7 +223,7 @@ namespace FreightBKShipping.Controllers
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(true);
         }
     }
 }

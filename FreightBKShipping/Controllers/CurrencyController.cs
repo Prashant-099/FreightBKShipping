@@ -21,7 +21,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CurrencyReadDto>>> GetAll()
         {
-            var currencies = await FilterByCompany( _context.Currencies, "CurrencyCompanyId")
+            var currencies = await FilterByCompany( _context.Currencies, "CurrencyCompanyId").OrderByDescending(b=>b.CurrencyId)
                 .Select(c => new CurrencyReadDto
                 {
                     CurrencyId = c.CurrencyId,
@@ -114,7 +114,7 @@ namespace FreightBKShipping.Controllers
             _context.Currencies.Remove(currency);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(true);
         }
     }
 }

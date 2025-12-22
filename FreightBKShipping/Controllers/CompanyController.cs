@@ -28,7 +28,7 @@ namespace FreightBKShipping.Controllers
             var currentPage = sieveModel.Page ?? 1;
             var pageSize = sieveModel.PageSize ?? 10;
 
-            var query = FilterByCompany(_context.companies.AsNoTracking(), "CompanyId");
+            var query = FilterByCompany(_context.companies.AsNoTracking(), "CompanyId").OrderByDescending(b => b.CompanyId);
 
             var filteredQuery = _sieveProcessor.Apply(sieveModel, query, applyPagination: false);
 
@@ -38,22 +38,28 @@ namespace FreightBKShipping.Controllers
             var pagedCompanies = await filteredQuery
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
+                .Join(_context.States,  // ✅ Join with states table
+            company => company.StateId,
+            state => state.StateId,
+            (company, state) => new { company, state })
                 .Select(c => new CompanyDto
                 {
-                    CompanyId = c.CompanyId,
-                    Name = c.Name,
-                    Code = c.Code,
-                    Address1 = c.Address1,
-                    Email = c.Email,
-                    Mobile = c.Mobile,
-                    IsGstApplicable = c.IsGstApplicable,
-                    Gstin = c.Gstin,
-                    Status = c.Status,
-                    Remarks = c.Remarks,
-                    City = c.City,
-                    Country = c.Country,
-                       StateId = c.StateId,
-                        Panno = c.Panno
+                    CompanyId = c.company.CompanyId,
+                    Name = c.company.Name,
+                    Code = c.company.Code,
+                    Address1 = c.company.Address1,
+                    PrintName = c.company.PrintName,
+                    Email = c.company.Email,
+                    Mobile = c.company.Mobile,
+                    IsGstApplicable = c.company.IsGstApplicable,
+                    Gstin = c.company.Gstin,
+                    Status = c.company.Status,
+                    Remarks = c.company.Remarks,
+                    City = c.company.City,
+                    Country = c.company.Country,
+                    StateName = c.state.StateName,
+                    StateId = c.company.StateId,
+                        Panno = c.company.Panno
                 })
                 .ToListAsync();
 
@@ -75,25 +81,34 @@ namespace FreightBKShipping.Controllers
         public async Task<ActionResult<CompanyDto>> Get(int id)
         {
             var company = await FilterByCompany(_context.companies.AsNoTracking(), "CompanyId")
-    .FirstOrDefaultAsync(c => c.CompanyId == id);
-            if (company == null) return NotFound();
+         .Join(_context.States,  // ✅ Join with states table
+             c => c.StateId,
+             s => s.StateId,
+             (c, s) => new { c, s })
+         .Where(cs => cs.c.CompanyId == id)
+         .Select(cs => new CompanyDto
+         {
+             CompanyId = cs.c.CompanyId,
+             Name = cs.c.Name,
+             Code = cs.c.Code,
+             Address1 = cs.c.Address1,
+             PrintName = cs.c.PrintName,
+             Email = cs.c.Email,
+             Mobile = cs.c.Mobile,
+             IsGstApplicable = cs.c.IsGstApplicable,
+             Gstin = cs.c.Gstin,
+             Status = cs.c.Status,
+             Remarks = cs.c.Remarks,
+             City = cs.c.City,
+             Country = cs.c.Country,
+             StateId = cs.c.StateId,
+             StateName = cs.s.StateName,  // ✅ Include state name
+             Panno = cs.c.Panno
+         })
+         .FirstOrDefaultAsync();
 
-            return Ok(new CompanyDto
-            {
-                CompanyId = company.CompanyId,
-                Name = company.Name,
-                Code = company.Code,
-                Address1 = company.Address1,
-                Email = company.Email,
-                Mobile = company.Mobile,
-                IsGstApplicable = company.IsGstApplicable,
-                Gstin = company.Gstin,
-                Status = company.Status,
-                Remarks = company.Remarks,
-                City = company.City,
-                Country = company.Country,
-                Panno = company.Panno
-            });
+            if (company == null) return NotFound();
+            return Ok(company);
         }
 
         [HttpPost]
@@ -105,6 +120,7 @@ namespace FreightBKShipping.Controllers
                 Name = dto.Name,
                 Code = dto.Code,
                 Address1 = dto.Address1,
+                PrintName= dto.PrintName,
                 Email = dto.Email,
                 Mobile = dto.Mobile,
                 IsGstApplicable = dto.IsGstApplicable,
@@ -135,6 +151,7 @@ namespace FreightBKShipping.Controllers
             company.Name = dto.Name;
             company.Code = dto.Code;
             company.Address1 = dto.Address1;
+            company.PrintName = dto.PrintName;
             company.Email = dto.Email;
             company.Mobile = dto.Mobile;
             company.IsGstApplicable = dto.IsGstApplicable;

@@ -22,14 +22,16 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var groups = await FilterByCompany(_context.ServiceGroups, "ServiceGroupsCompanyId").ToListAsync();
+            var groups = await FilterByCompany(_context.ServiceGroups, "ServiceGroupsCompanyId").OrderByDescending(b=>b.ServiceGroupsId).ToListAsync();
 
             var result = groups.Select(g => new ServiceGroupReadDto
             {
                 ServiceGroupsId = g.ServiceGroupsId,
                 ServiceGroupsName = g.ServiceGroupsName,
                 ServiceGroupsStatus = g.ServiceGroupsStatus,
-                ServiceGroupsRemarks = g.ServiceGroupsRemarks
+                ServiceGroupsRemarks = g.ServiceGroupsRemarks,
+                ServiceGroupsUpdated = g.ServiceGroupsUpdated,
+                ServiceGroupsAdded = g.ServiceGroupsAdded
             });
 
             return Ok(result);
@@ -107,7 +109,7 @@ namespace FreightBKShipping.Controllers
 
             _context.ServiceGroups.Remove(group);
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(true);
         }
     }
 }

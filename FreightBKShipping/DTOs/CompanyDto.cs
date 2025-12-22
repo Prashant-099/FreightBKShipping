@@ -8,6 +8,7 @@ namespace FreightBKShipping.DTOs
         public string? Name { get; set; }
         public string? Code { get; set; }
         public string? Address1 { get; set; }
+        public string? PrintName { get; set; }
         public string? Email { get; set; }
         public string? Mobile { get; set; }
         public bool IsGstApplicable { get; set; }
@@ -26,6 +27,7 @@ namespace FreightBKShipping.DTOs
         public string? Name { get; set; }
         public string? Code { get; set; }
         public string? Address1 { get; set; }
+        public string? PrintName { get; set; }
         public string? Address2 { get; set; }
         public string? Address3 { get; set; }
         public string? CompanyAddress { get; set; }
@@ -39,6 +41,8 @@ namespace FreightBKShipping.DTOs
         public string? Country { get; set; }
         public int StateId { get; set; }
         public string? Panno { get; set; }
+        //not mapped in db
+        public string? StateName { get; set; }
 
     }
 }

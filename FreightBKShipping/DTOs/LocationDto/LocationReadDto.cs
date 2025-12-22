@@ -9,6 +9,9 @@
         public string? LocationDistrict { get; set; }
         public bool LocationStatus { get; set; }
         public string? LocationCode { get; set; }
+        public DateTime? LocationUpdated { get; set; } = DateTime.UtcNow;
+        public DateTime? LocationCreated { get; set; } = DateTime.UtcNow;
+
         public int? LocationCountryId { get; set; } 
         public string LocationType { get; set; } = "STATION";
     }

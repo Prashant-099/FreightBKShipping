@@ -22,7 +22,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var vessels = await FilterByCompany(_context.Vessels, "VesselCompanyId").ToListAsync();
+            var vessels = await FilterByCompany(_context.Vessels, "VesselCompanyId").OrderByDescending(b=>b.VesselId).ToListAsync();
             return Ok(vessels);
         }
 

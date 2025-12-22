@@ -22,7 +22,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Unit>>> GetUnits()
         {
-            var query = FilterByCompany(_context.Units.AsQueryable(), "UnitCompanyId");
+            var query = FilterByCompany(_context.Units.AsQueryable(), "UnitCompanyId").OrderByDescending(b=>b.UnitId);
             return await query.ToListAsync();
         }
 
@@ -89,7 +89,7 @@ namespace FreightBKShipping.Controllers
 
             _context.Units.Remove(unit);
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(true);
         }
     }
 }

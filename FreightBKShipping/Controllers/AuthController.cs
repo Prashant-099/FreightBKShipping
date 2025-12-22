@@ -136,7 +136,7 @@ namespace FreightBKShipping.Controllers
                 UserMobile = dto.UserMobile,
                 UserName = dto.UserName,
                 UserCreated = DateTime.UtcNow,
-                UserStatus = 1
+                UserStatus = true
             };
 
 

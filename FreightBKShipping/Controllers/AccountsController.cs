@@ -16,7 +16,7 @@ public class AccountsController : BaseController
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var query = FilterByCompany(_context.Accounts, "AccountCompanyId");
+        var query = FilterByCompany(_context.Accounts, "AccountCompanyId").OrderByDescending(b => b.AccountId);
         return Ok(await query.ToListAsync());
     }
 

@@ -20,7 +20,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<HsnSac>>> GetHsnSacs()
         {
-            return await FilterByCompany(_context.HsnSacs, "HsnCompanyId").ToListAsync();
+            return await FilterByCompany(_context.HsnSacs, "HsnCompanyId").OrderByDescending(b=>b.HsnId).ToListAsync();
         }
 
         // GET: api/HsnSac/5
@@ -98,7 +98,7 @@ namespace FreightBKShipping.Controllers
             _context.HsnSacs.Remove(hsnSac);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(true);
         }
     }
 }

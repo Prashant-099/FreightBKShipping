@@ -2,6 +2,7 @@
 using FreightBKShipping.DTOs.User;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.Eventing.Reader;
 
 namespace FreightBKShipping.Models
 {
@@ -100,7 +101,7 @@ namespace FreightBKShipping.Models
         public int? UserApiKey { get; set; }
 
         [Column("user_status")]
-        public byte? UserStatus { get; set; }
+        public bool? UserStatus { get; set; }
 
         [Column("user_created")]
         public DateTime? UserCreated { get; set; } = DateTime.UtcNow;

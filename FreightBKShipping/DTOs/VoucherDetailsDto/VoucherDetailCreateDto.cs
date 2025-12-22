@@ -9,6 +9,7 @@
         public int VoucherDetailZeroFill { get; set; }
         public bool VoucherDetailStatus { get; set; } = true;
         public int VoucherDetailLastNo { get; set; }
+        public string? VoucherDetailLutno { get; set; }
 
     }
 }

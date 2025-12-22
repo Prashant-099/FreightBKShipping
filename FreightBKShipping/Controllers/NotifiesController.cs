@@ -3,6 +3,7 @@ using FreightBKShipping.DTOs;
 using FreightBKShipping.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography.X509Certificates;
 
 namespace FreightBKShipping.Controllers
 {
@@ -23,8 +24,7 @@ namespace FreightBKShipping.Controllers
         {
             try
             {
-                var notifies = await FilterByCompany(_context.Notifies, "NotifyCompanyId")
-                                    .ToListAsync();
+                var notifies = await FilterByCompany(_context.Notifies, "NotifyCompanyId").OrderByDescending(b=>b.NotifyId).ToListAsync();
                 return Ok(notifies);
             }
             catch (Exception ex)
@@ -133,17 +133,24 @@ namespace FreightBKShipping.Controllers
 
                 if (exists)
                     return BadRequest("A notify with the same name and type already exists.");
-
+                string? stateName = " ";
+                string? stateCode = " ";
                 var state = await _context.States.FindAsync(dto.NotifyStateId);
-                if (state == null) return BadRequest("Invalid StateId");
+                if (state != null)
+                {
+                    stateName = state.StateName;
+                    stateCode = state.StateCode;
+
+                }
+                //if (state == null) return BadRequest("Invalid StateId");
 
                 notify.NotifyName = dto.NotifyName;
                 notify.NotifyType = dto.NotifyType;
                 notify.NotifyAddress1 = dto.NotifyAddress1;
                 notify.NotifyCity = dto.NotifyCity;
                 notify.NotifyStateId = dto.NotifyStateId;
-                notify.NotifyState = state.StateName;
-                notify.NotifyStateCode = state.StateCode;
+                notify.NotifyState = stateName;
+                notify.NotifyStateCode = stateCode;
                 notify.NotifyPincode = dto.NotifyPincode;
                 notify.NotifyCountry = dto.NotifyCountry;
              
