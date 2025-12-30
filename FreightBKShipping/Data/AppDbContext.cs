@@ -51,6 +51,8 @@ namespace FreightBKShipping.Data
             modelBuilder.Entity<Bill>().Ignore(b => b.partyname);
             modelBuilder.Entity<Bill>().Ignore(b => b.Vouchname);
             modelBuilder.Entity<Bill>().Ignore(b => b.posname);
+            modelBuilder.Entity<Bill>().Ignore(b => b.branchname);
+            modelBuilder.Entity<Cargo>().Ignore(b => b.cargohsnname);
             modelBuilder.Entity<Bill>()
         .HasOne(b => b.Party)
         .WithMany() // or .WithMany(a => a.Bills) if Account has a collection
@@ -68,6 +70,12 @@ namespace FreightBKShipping.Data
                 .WithMany() // or .WithMany(s => s.Bills)
                 .HasForeignKey(b => b.BillVoucherId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Bill>()
+               .HasOne(b => b.branch)
+               .WithMany() // or .WithMany(s => s.Bills)
+               .HasForeignKey(b => b.BillBranchId)
+               .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }

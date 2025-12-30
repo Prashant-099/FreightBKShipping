@@ -52,5 +52,8 @@ namespace FreightBKShipping.Models
 
         [Column("cargo_cess")]
         public float CargoCess { get; set; }
+        //not mapped field
+        [NotMapped]
+        public string? cargohsnname { get; set; }
     }
 }

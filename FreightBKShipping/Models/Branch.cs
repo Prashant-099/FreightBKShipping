@@ -93,5 +93,8 @@ namespace FreightBKShipping.Models
 
         [Column("branch_status")]
         public bool BranchStatus { get; set; } = true;
+
+        [Column("branch_isdefault")]
+        public bool Branchisdefault { get; set; } 
     }
 }

@@ -419,10 +419,15 @@ namespace FreightBKShipping.Models
         //unMapped field in db
         [NotMapped]
         public string? VesselName { get; set; }
+
         [NotMapped]
         public string? PolName { get; set; }
+
         [NotMapped]
         public string? PodName { get; set; }
+
+        [NotMapped]
+        public string? BranchName { get; set; }
 
     }
 }

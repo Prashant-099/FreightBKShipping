@@ -27,12 +27,14 @@ namespace FreightBKShipping.Controllers
             // ✅ Use AsNoTracking() for read-only queries (50% faster)
             var bills = await FilterByCompany(_context.Bills, "BillCompanyId")
                 .Where(b => b.BillStatus == true)
+              .OrderByDescending(b => b.BillId)
+.ThenByDescending(b => b.BillDate)
                 .AsNoTracking()
                 .Include(b => b.BillDetails.Where(d => d.BillDetailStatus == true))
                 .Include(b => b.Voucher)
                 .Include(b => b.Party)
                 .Include(b => b.PlaceOfSupply)
-
+                 .Include(b => b.branch)
                 .ToListAsync();
             // ✅ Get all unique user IDs who have locked bills
             var lockedByUserIds = bills
@@ -173,6 +175,7 @@ namespace FreightBKShipping.Controllers
                 BillTcsAmt = b.BillTcsAmt,
                 partyname = b.Party.AccountName,
                 posname = b.PlaceOfSupply.StateName,
+                branchname = b.branch.BranchName,
                 Vouchname = b.Voucher.VoucherName,
 
                 BillDetails = b.BillDetails
@@ -417,6 +420,13 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<Bill>> CreateBill(BillDto billDto)
         {
+
+            var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
+            if (exists)
+            {
+
+                return Conflict(new { message = "job number already exists." });
+            }
             var shipparty = await _context.Accounts
       .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
             var party = await _context.Accounts
@@ -896,7 +906,13 @@ namespace FreightBKShipping.Controllers
             if (bill == null) return NotFound();
             if (!string.IsNullOrEmpty(bill.BillLockedBy) && bill.BillLockedBy != GetUserId())
             {
-                return BadRequest("This bill is locked by another user and cannot be deleted.");
+                //return BadRequest("This bill is locked by another user and cannot be deleted.");
+                return Ok(new { Success = false, Message = "Bill is locked" });
+            }
+            if (!string.IsNullOrEmpty(bill.BillAckNo) && !string.IsNullOrEmpty(bill.BillIrnNo))
+            {
+                //return BadRequest("This bill’s e-invoice is already generated and cannot be deleted.");
+                return Ok(new  { Success = false, Message = "E-Invoice generated" });
             }
             // Remove nested collections first
             //   _context.BillDetails.RemoveRange(bill.BillDetails);
@@ -1117,7 +1133,9 @@ namespace FreightBKShipping.Controllers
 
                 var cargo = bill.BillCargoId > 0
                     ? await _context.Cargoes.AsNoTracking()
-                        .FirstOrDefaultAsync(c => c.CargoId == bill.BillCargoId)
+                        .Where(c => c.CargoId == bill.BillCargoId)
+        .Select(c => new { c.CargoId, c.CargoName }) // Only select what you need
+        .FirstOrDefaultAsync()
                     : null;
 
                 var vessel = bill.BillVesselId > 0

@@ -33,6 +33,7 @@ namespace FreightBKShipping.DTOs.VoucherDto
 
         public DateTime VoucherCreated { get; set; }
         public DateTime? VoucherUpdated { get; set; }
+        public string? VoucherBranchName { get; set; }
 
         public List<VoucherDetailReadDto> VoucherDetails { get; set; } = new();
     }

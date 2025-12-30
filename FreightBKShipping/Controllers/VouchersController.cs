@@ -23,18 +23,20 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VoucherReadDto>>> GetVouchers()
                  {
-            var vouchers = await FilterByCompany( _context.Vouchers, "VoucherCompanyId")
-                .Include(v => v.VoucherDetails)
-                .OrderByDescending(b => b.VoucherId)
-                .ToListAsync();
-
-            return vouchers.Select(v => new VoucherReadDto
-            {
-                VoucherId = v.VoucherId,
+            var vouchers = await (
+     from v in _context.Vouchers
+     join b in _context.Branches on v.VoucherBranchId equals b.BranchId
+     where v.VoucherCompanyId == GetCompanyId()
+     orderby v.VoucherId descending
+     select new VoucherReadDto
+     {
+         VoucherId = v.VoucherId,
                 VoucherCompanyId = v.VoucherCompanyId,
                 VoucherName = v.VoucherName,
                 VoucherTitle = v.VoucherTitle,
                 VoucherGroup = v.VoucherGroup,
+                VoucherBranchId =v.VoucherBranchId,
+         VoucherBranchName = b.BranchName,
                 VoucherMethod = v.VoucherMethod,
                 VoucherStatus = v.VoucherStatus,
                 VoucherCreated = v.VoucherCreated,
@@ -51,7 +53,8 @@ namespace FreightBKShipping.Controllers
                     VoucherDetailStatus = d.VoucherDetailStatus,
                     VoucherDetailLastNo = d.VoucherDetailLastNo
                 }).ToList()
-            }).ToList();
+            }).ToListAsync();
+            return (vouchers);
         }
 
         // GET: api/vouchers/5

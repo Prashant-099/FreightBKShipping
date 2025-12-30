@@ -22,6 +22,7 @@ namespace FreightBKShipping.Controllers
             {
                 var result = await FilterByCompany(_context.Jobs, "JobCompanyId")
                     .OrderByDescending(j => j.JobId)
+                    .ThenByDescending(b => b.JobDate)
 
                     // Vessel
                     .GroupJoin(_context.Vessels,
@@ -41,24 +42,69 @@ namespace FreightBKShipping.Controllers
                         x => x.l.DefaultIfEmpty(),
                         (x, pol) => new { x.j, x.v, pol })
 
-                    // POD
-                    .GroupJoin(_context.Locations,
-                        x => x.j.JobPodId,
-                        l => l.LocationId,
-                        (x, l) => new { x.j, x.v, x.pol, l })
-                    .SelectMany(
-                        x => x.l.DefaultIfEmpty(),
-                        (x, pod) => new JobReadDto
-                        {
-                            JobId = x.j.JobId,
+            // POD
+            .GroupJoin(_context.Locations,
+                x => x.j.JobPodId,
+                l => l.LocationId,
+                (x, l) => new { x.j, x.v, x.pol, l })
+            .SelectMany(x => x.l.DefaultIfEmpty(),
+                (x, pod) => new { x.j, x.v, x.pol, pod })
+
+            // ✅ BRANCH JOIN
+            .GroupJoin(_context.Branches,
+                x => x.j.JobBranchId,
+                b => b.BranchId,
+                (x, b) => new { x.j, x.v, x.pol, x.pod, b })
+            .SelectMany(x => x.b.DefaultIfEmpty(),
+                (x, branch) => new JobReadDto
+                {
+                    JobId = x.j.JobId,
                             JobCompanyId = x.j.JobCompanyId,
                             JobAddedByUserId = x.j.JobAddedByUserId,
                             JobUpdatedByUserId = x.j.JobUpdatedByUserId,
                             JobPartyId = x.j.JobPartyId,
+                            JobPartyAddress = x.j.JobPartyAddress,
                             JobYearId = x.j.JobYearId,
                             JobDate = x.j.JobDate,
                             JobNo = x.j.JobNo,
                             JobType = x.j.JobType,
+                            JobHighSeas1 = x.j.JobHighSeas1,
+                            JobHighseas1Address = x.j.JobHighseas1Address,
+                            JobAgent = x.j.JobType,
+                            JobAgentAddress = x.j.JobAgentAddress,
+                            JobHsnCode = x.j.JobHsnCode,
+                            JobBrand = x.j.JobBrand,
+                            JobState = x.j.JobState,
+                            JobBookingNo = x.j.JobBookingNo,
+                            JobCertiOrigin = x.j.JobCertiOrigin,
+                            JobPlaceOfReceipt = x.j.JobPlaceOfReceipt,
+                            JobPlaceOfDelivery = x.j.JobPlaceOfDelivery,
+                            JobCbm = x.j.JobCbm,
+                            JobNetUnit = x.j.JobNetUnit,
+                            JobGrossUnit = x.j.JobGrossUnit,
+                            JobQtyUnit = x.j.JobQtyUnit,
+                            JobHblNo = x.j.JobHblNo,
+                            JobHblDate = x.j.JobHblDate,
+                            JobCfs = x.j.JobCfs,
+                            JobIcd = x.j.JobIcd,
+                            JobDoNo = x.j.JobDoNo,
+                            JobDoDate = x.j.JobDoDate,
+                            JobDoPer = x.j.JobDoPer,
+                            JobDoType = x.j.JobDoType,
+                            JobDoValid = x.j.JobDoValid,
+                            JobTerminal = x.j.JobTerminal,
+                            JobIgmNo = x.j.JobIgmNo,
+                            JobIgmDate = x.j.JobIgmDate,
+                            JobMarks = x.j.JobMarks,
+                            JobEmptyYard = x.j.JobEmptyYard,
+                            JobForwarder = x.j.JobForwarder,
+                            Surveyor = x.j.Surveyor,
+                            SurveyorAddress = x.j.SurveyorAddress,
+                            JobFreeDays = x.j.JobFreeDays,
+                            JobVolume = x.j.JobVolume,
+                            JobOutOfChargeDate = x.j.JobOutOfChargeDate,
+                            JobGoodsDesc1 = x.j.JobGoodsDesc1,
+
 
                             JobPodId = x.j.JobPodId,
                             JobPolId = x.j.JobPolId,
@@ -96,7 +142,7 @@ namespace FreightBKShipping.Controllers
                             JobVchNo = x.j.JobVchNo,
                             JobPrefix = x.j.JobPrefix,
                             JobSufix = x.j.JobSufix,
-                            JobState = x.j.JobState,
+                           // JobState = x.j.JobState,
                             JobTypeId = x.j.JobTypeId,
 
                             JobCust1 = x.j.JobCust1,
@@ -122,10 +168,10 @@ namespace FreightBKShipping.Controllers
 
                             JobBranchId = x.j.JobBranchId,
 
-
-                            VesselName = x.v != null ? x.v.VesselName : null,
+                    BranchName = branch != null ? branch.BranchName : null,
+                    VesselName = x.v != null ? x.v.VesselName : null,
                             PolName = x.pol != null ? x.pol.LocationName : null,
-                            PodName = pod != null ? pod.LocationName : null
+                            PodName = x.pod != null ? x.pod.LocationName : null
                         })
 
                     .AsNoTracking()
@@ -166,7 +212,12 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
         {   
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
+            if (exists)
+            {
 
+                return Conflict(new { message = "job number already exists." });
+            }
             try
             {
                 var job = MapDtoToJob(dto);
@@ -203,7 +254,11 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] JobUpdateDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
+            //var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType==dto.JobType && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
+            //if (exists)
+            //{
+            //    return Conflict(new { message = "job number already exists." });
+            //}
             try
             {
                 var job = await _context.Jobs.FindAsync(id);

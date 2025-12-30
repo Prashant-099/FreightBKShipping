@@ -151,6 +151,7 @@
         public string? VesselName { get; set; }
         public string? PolName { get; set; }
         public string? PodName { get; set; }
-    
-}
+        public string? BranchName { get; set; }
+
+    }
 }

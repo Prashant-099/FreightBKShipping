@@ -18,6 +18,7 @@
         public string? BranchCity { get; set; }
         public int BranchCompanyId { get; set; }
         public bool BranchStatus { get; set; } = true;
+        public bool Branchisdefault { get; set; }
     }
 
     public class BranchUpdateDto : BranchCreateDto

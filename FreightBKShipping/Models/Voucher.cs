@@ -106,6 +106,9 @@ namespace FreightBKShipping.Models
 
         [Column("voucher_branch_id")]
         public int? VoucherBranchId { get; set; }
+        //NOT MAPPED
+        [NotMapped]
+        public string? VoucherBranchName { get; set; }
 
         // 🔗 Navigation
         public ICollection<VoucherDetail> VoucherDetails { get; set; } = new List<VoucherDetail>();

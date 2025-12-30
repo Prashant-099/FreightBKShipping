@@ -81,7 +81,24 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var cargoes = await FilterByCompany( _context.Cargoes, "CargoCompanyId").OrderByDescending(b=>b.CargoId).ToListAsync();
+            var cargoes = await
+           (from c in FilterByCompany(_context.Cargoes, "CargoCompanyId")
+            join h in _context.HsnSacs
+                on c.CargoHsn equals h.HsnId into hsnJoin
+            from h in hsnJoin.DefaultIfEmpty()   // LEFT JOIN
+            orderby c.CargoId descending
+            select new Cargo
+            {
+                CargoId = c.CargoId,
+                CargoName = c.CargoName,
+                CargoType = c.CargoType,
+                CargoRemarks = c.CargoRemarks,
+                CargoHsn = c.CargoHsn,
+                cargohsnname = h != null ? h.HsnName : null, // ✅ 996512
+                CargoGstPer = c.CargoGstPer,
+                CargoCess = c.CargoCess,
+                CargoStatus = c.CargoStatus
+            }).ToListAsync();
             return Ok(cargoes);
         }
 

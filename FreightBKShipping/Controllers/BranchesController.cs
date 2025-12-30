@@ -3,6 +3,7 @@ using FreightBKShipping.DTOs;
 using FreightBKShipping.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.Design;
 
 namespace FreightBKShipping.Controllers
 {
@@ -37,6 +38,18 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] BranchCreateDto dto)
         {
+
+            if (dto.Branchisdefault)
+            {
+                var existingDefaults = await _context.Branches
+                    .Where(b => b.BranchCompanyId == GetCompanyId() && b.Branchisdefault)
+                    .ToListAsync();
+
+                foreach (var b in existingDefaults)
+                {
+                    b.Branchisdefault = false;
+                }
+            }
             var branch = new Branch
             {
                 BranchName = dto.BranchName,
@@ -53,6 +66,7 @@ namespace FreightBKShipping.Controllers
                 BranchContactNo = dto.BranchContactNo,
                 BranchEmail = dto.BranchEmail,
                 BranchCity = dto.BranchCity,
+                Branchisdefault = dto.Branchisdefault,
                 BranchCompanyId = GetCompanyId(),
                 BranchAddedBy =GetUserId(),
                 BranchStatus = dto.BranchStatus,
@@ -74,6 +88,18 @@ namespace FreightBKShipping.Controllers
             var branch = await _context.Branches.FindAsync(id);
             if (branch == null) return NotFound();
 
+            if (dto.Branchisdefault)
+            {
+                var existingDefaults = await _context.Branches
+                    .Where(b => b.BranchCompanyId == GetCompanyId() && b.Branchisdefault)
+                    .ToListAsync();
+
+                foreach (var b in existingDefaults)
+                {
+                    b.Branchisdefault = false;
+                }
+            }
+
             branch.BranchName = dto.BranchName;
             branch.BranchGstin = dto.BranchGstin;
             branch.BranchPan = dto.BranchPan;
@@ -88,6 +114,7 @@ namespace FreightBKShipping.Controllers
             branch.BranchContactNo = dto.BranchContactNo;
             branch.BranchEmail = dto.BranchEmail;
             branch.BranchCity = dto.BranchCity;
+            branch.Branchisdefault = dto.Branchisdefault;
             branch.BranchStatus = dto.BranchStatus;
             branch.BranchUpdated = DateTime.UtcNow;
             branch.BranchUpdatedBy = GetUserId();
