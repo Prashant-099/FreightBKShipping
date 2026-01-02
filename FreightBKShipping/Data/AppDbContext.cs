@@ -37,6 +37,9 @@ namespace FreightBKShipping.Data
         public DbSet<GridLayout> GridLayouts { get; set; }
         public DbSet<Reportdata> Reportdata { get; set; }
         public DbSet<EinvConfig> EinvConfigs { get; set; }
+        public DbSet<Status> Status { get; set; }
+        public DbSet<UserLoginSession> UserLoginSessions { get; set; }
+
 
         //added by dhruv
         public DbSet<WpMailConfig> wpMailConfigs { get; set; }

@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FreightBKShipping.Data;
-using FreightBKShipping.Models;
-using FreightBKShipping.Services;
-using FreightBKShipping.DTOs.User;
+﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
 using FreightBKShipping.DTOs.Auth;
-
+using FreightBKShipping.DTOs.User;
+using FreightBKShipping.Models;
+using FreightBKShipping.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using UAParser;
 namespace FreightBKShipping.Controllers
 {
 
@@ -30,6 +32,7 @@ namespace FreightBKShipping.Controllers
         // ✅ Login Endpoint
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        
         {
             try
             {
@@ -37,8 +40,22 @@ namespace FreightBKShipping.Controllers
                       .Include(u => u.Role)
                     .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
 
+                //if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
+                //    return Unauthorized("Invalid credentials");
                 if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
+                {
+                    _context.UserLoginSessions.Add(new UserLoginSession
+                    {
+                        UserName = dto.UserEmail,
+                        LoginTime = DateTime.UtcNow,
+                        LoginStatus = "FAILED",
+                        LoginType = "website",
+                        IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                    });
+
+                    await _context.SaveChangesAsync();
                     return Unauthorized("Invalid credentials");
+                }
 
                 var token = _tokenService.CreateToken(user);
                 //var tokenExpiry = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
@@ -49,6 +66,42 @@ namespace FreightBKShipping.Controllers
                 // Get refresh token expiry from config
                 var refreshExpiryDays = Convert.ToDouble(_config["Jwt:RefreshTokenExpiryDays"] ?? "1");
                 user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshExpiryDays);
+
+
+
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                // Detect login_type
+                string loginType;
+                if (userAgent.Contains("Android")) loginType = "android";
+                else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad") || userAgent.Contains("iOS")) loginType = "ios";
+                else loginType = "website";
+
+                // Detect IP
+                var ipAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                   ?? HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
+
+                // Parse browser
+                var uaParser = UAParser.Parser.GetDefault();
+                var clientInfo = uaParser.Parse(userAgent);
+                var browserName = clientInfo.UA.Family;
+                var browserVersion = int.TryParse(clientInfo.UA.Major, out int v) ? v : 0;
+
+                var loginSession = new UserLoginSession
+                {
+                    UserId = user.UserId,
+                    UserName = user.UserName,
+                    CompanyId = user.UserCompanyId,
+                    BranchId = user.UserBranchId,
+                    LoginTime = DateTime.UtcNow,
+                    LoginStatus = "SUCCESS",
+                    LoginType = loginType,
+                    IpAddress = ipAddress,
+                    Browser = browserName,
+                    BrowserVersion = browserVersion
+                };
+
+                _context.UserLoginSessions.Add(loginSession);
                 await _context.SaveChangesAsync();
                 return Ok(new AuthResponseDto
                 {
@@ -73,6 +126,30 @@ namespace FreightBKShipping.Controllers
                 return StatusCode(500, $"An unexpected error occurred while logging in -{ex}.");
             }
         }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("Invalid user");
+
+            var session = await _context.UserLoginSessions
+                .Where(s => s.UserId == userId && s.LogoutTime == null)
+                .OrderByDescending(s => s.LoginTime)
+                .FirstOrDefaultAsync();
+
+            if (session != null)
+            {
+                session.LogoutTime = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new { message = "Logged out successfully" });
+        }
+
 
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
