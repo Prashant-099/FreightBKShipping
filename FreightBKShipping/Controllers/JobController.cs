@@ -212,7 +212,7 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
         {   
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
+            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType && c.JobStatus == dto.JobStatus && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
             if (exists)
             {
 
