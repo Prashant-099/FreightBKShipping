@@ -421,7 +421,7 @@ namespace FreightBKShipping.Controllers
         public async Task<ActionResult<Bill>> CreateBill(BillDto billDto)
         {
 
-            var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
+            var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillStatus == billDto.BillStatus && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
             if (exists)
             {
 
