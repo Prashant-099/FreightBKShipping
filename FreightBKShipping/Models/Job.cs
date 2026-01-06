@@ -428,6 +428,8 @@ namespace FreightBKShipping.Models
 
         [NotMapped]
         public string? BranchName { get; set; }
+        [NotMapped]
+        public string? Partyname { get; set; }
 
     }
 }

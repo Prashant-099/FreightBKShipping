@@ -23,47 +23,56 @@ namespace FreightBKShipping.Controllers
                 var result = await FilterByCompany(_context.Jobs, "JobCompanyId")
                     .OrderByDescending(j => j.JobId)
                     .ThenByDescending(b => b.JobDate)
+.GroupJoin(_context.Vessels,
+    j => j.JobVesselId,
+    v => v.VesselId,
+    (j, vessels) => new { j, vessels })
+.SelectMany(
+    x => x.vessels.DefaultIfEmpty(),
+    (x, vessel) => new { x.j, vessel })
 
-                    // Vessel
-                    .GroupJoin(_context.Vessels,
-                        j => j.JobVesselId,
-                        v => v.VesselId,
-                        (j, v) => new { j, v })
-                    .SelectMany(
-                        x => x.v.DefaultIfEmpty(),
-                        (x, v) => new { x.j, v })
+.GroupJoin(_context.Accounts,
+    x => x.j.JobPartyId,
+    a => a.AccountId,
+    (x, accounts) => new { x.j, x.vessel, accounts })
+.SelectMany(
+    x => x.accounts.DefaultIfEmpty(),
+    (x, account) => new { x.j, x.vessel, account })
 
                     // POL
                     .GroupJoin(_context.Locations,
-                        x => x.j.JobPolId,
-                        l => l.LocationId,
-                        (x, l) => new { x.j, x.v, l })
-                    .SelectMany(
-                        x => x.l.DefaultIfEmpty(),
-                        (x, pol) => new { x.j, x.v, pol })
+    x => x.j.JobPolId,
+    l => l.LocationId,
+    (x, locations) => new { x.j, x.vessel, x.account, locations })
+.SelectMany(
+    x => x.locations.DefaultIfEmpty(),
+    (x, pol) => new { x.j, x.vessel, x.account, pol })
 
-            // POD
-            .GroupJoin(_context.Locations,
-                x => x.j.JobPodId,
-                l => l.LocationId,
-                (x, l) => new { x.j, x.v, x.pol, l })
-            .SelectMany(x => x.l.DefaultIfEmpty(),
-                (x, pod) => new { x.j, x.v, x.pol, pod })
+           // POD
+           .GroupJoin(_context.Locations,
+    x => x.j.JobPodId,
+    l => l.LocationId,
+    (x, locations) => new { x.j, x.vessel, x.account, x.pol, locations })
+.SelectMany(
+    x => x.locations.DefaultIfEmpty(),
+    (x, pod) => new { x.j, x.vessel, x.account, x.pol, pod })
 
-            // ✅ BRANCH JOIN
-            .GroupJoin(_context.Branches,
-                x => x.j.JobBranchId,
-                b => b.BranchId,
-                (x, b) => new { x.j, x.v, x.pol, x.pod, b })
-            .SelectMany(x => x.b.DefaultIfEmpty(),
-                (x, branch) => new JobReadDto
-                {
-                    JobId = x.j.JobId,
+          // ✅ BRANCH JOIN
+          .GroupJoin(_context.Branches,
+    x => x.j.JobBranchId,
+    b => b.BranchId,
+    (x, branches) => new { x.j, x.vessel, x.account, x.pol, x.pod, branches })
+.SelectMany(
+    x => x.branches.DefaultIfEmpty(),
+    (x, branch) => new JobReadDto
+    {
+        JobId = x.j.JobId,
                             JobCompanyId = x.j.JobCompanyId,
                             JobAddedByUserId = x.j.JobAddedByUserId,
                             JobUpdatedByUserId = x.j.JobUpdatedByUserId,
                             JobPartyId = x.j.JobPartyId,
-                            JobPartyAddress = x.j.JobPartyAddress,
+                    Partyname = x.account != null ? x.account.AccountName : null,
+                    JobPartyAddress = x.j.JobPartyAddress,
                             JobYearId = x.j.JobYearId,
                             JobDate = x.j.JobDate,
                             JobNo = x.j.JobNo,
@@ -169,8 +178,8 @@ namespace FreightBKShipping.Controllers
                             JobBranchId = x.j.JobBranchId,
 
                     BranchName = branch != null ? branch.BranchName : null,
-                    VesselName = x.v != null ? x.v.VesselName : null,
-                            PolName = x.pol != null ? x.pol.LocationName : null,
+                    VesselName = x.vessel != null ? x.vessel.VesselName : null,
+                    PolName = x.pol != null ? x.pol.LocationName : null,
                             PodName = x.pod != null ? x.pod.LocationName : null
                         })
 
