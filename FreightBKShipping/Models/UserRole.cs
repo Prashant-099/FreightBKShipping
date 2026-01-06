@@ -23,7 +23,7 @@ namespace FreightBKShipping.Models
 
         [Column("role_company_id")]
         
-        public  int RoleCompanyId { get; set; }
+        public  int? RoleCompanyId { get; set; }
 
         [Column("role_create_uid")]
      

@@ -37,9 +37,13 @@ namespace FreightBKShipping.Controllers
                       .Include(u => u.Role)
                     .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
 
+
+
                 if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
                     return Unauthorized("Invalid credentials");
-
+                
+                if (user.Role == null)
+                    return Unauthorized("User role not assigned");
                 var token = _tokenService.CreateToken(user);
                 //var tokenExpiry = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
                 var tokenExpiryMinutes = Convert.ToDouble(_config["Jwt:ExpireMinutes"] ?? "60");

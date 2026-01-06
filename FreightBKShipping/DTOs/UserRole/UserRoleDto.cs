@@ -12,13 +12,13 @@ namespace FreightBKShipping.DTOs.UserRole
         public int RoleStatus { get; set; }
         public DateTime RoleCreated { get; set; }
         public DateTime RoleUpdated { get; set; }
-        public int RoleCompanyId { get; set; }
+        public int? RoleCompanyId { get; set; }
     }
 
     public class UserRoleCreateDto
     {
         [Required]
-        public int RoleCompanyId { get; set; } = default!;
+        public int? RoleCompanyId { get; set; } = default!;
 
         [Required]
         [StringLength(60)]
