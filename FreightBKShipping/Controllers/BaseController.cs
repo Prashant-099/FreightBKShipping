@@ -50,11 +50,15 @@ namespace FreightBKShipping.Controllers
 
         protected IQueryable<T> FilterByCompany<T>(IQueryable<T> query, string companyPropName)
         {
-            var companyId = GetCompanyId();
+            // Agar user SuperAdmin hai → bypass
+            if (User.IsInRole("SuperAdmin"))
+                return query; // 🔥 SuperAdmin = all companies
 
-            // Build lambda dynamically: e => EF.Property<int>(e, "companyPropName") == companyId
+            // Normal user → apni company ke liye filter
+            var companyId = GetCompanyId();
             return query.Where(e => EF.Property<int>(e, companyPropName) == companyId);
         }
+
 
     }
 }

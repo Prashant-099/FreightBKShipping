@@ -112,6 +112,7 @@ namespace FreightBKShipping.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "CompanyManagementOnly")]
         public async Task<IActionResult> Create(CompanyAddDto dto)
         {
 
@@ -143,6 +144,7 @@ namespace FreightBKShipping.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "CompanyManagementOnly")]
         public async Task<IActionResult> Update(int id, CompanyDto dto)
         {
             var company = await _context.companies.FindAsync(id);
@@ -170,6 +172,7 @@ namespace FreightBKShipping.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "CompanyManagementOnly")]
         public async Task<IActionResult> Delete(int id)
         {
             var company = await _context.companies.FindAsync(id);

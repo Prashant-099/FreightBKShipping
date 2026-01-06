@@ -33,8 +33,17 @@ namespace FreightBKShipping.Services
             var userEmail = user.UserEmail ?? string.Empty;
             var roleName = user.Role?.RoleName ?? string.Empty;
             var roleId = user.UserRoleId ?? string.Empty;
-            var branchId = user.UserBranchId?.ToString() ?? string.Empty;
-            var companyId = user.UserCompanyId.ToString();
+            //var branchId = user.UserBranchId?.ToString() ?? string.Empty;
+            //var companyId = user.UserCompanyId.ToString();
+            var branchId =
+        roleName == "SuperAdmin"
+            ? string.Empty
+            : user.UserBranchId?.ToString() ?? string.Empty;
+
+            var companyId =
+                roleName == "SuperAdmin"
+                    ? string.Empty
+                    : user.UserCompanyId.ToString() ?? string.Empty;
 
             var claims = new[]
             {

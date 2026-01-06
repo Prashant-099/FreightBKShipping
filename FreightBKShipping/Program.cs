@@ -102,6 +102,11 @@ namespace FreightBKShipping
                 });
             });
 
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("CompanyManagementOnly", policy =>
+                    policy.RequireRole("SuperAdmin")); // sirf SuperAdmin company create/edit/delete kar sake
+            });
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();

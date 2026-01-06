@@ -27,14 +27,14 @@ namespace FreightBKShipping.Controllers
             // ✅ Use AsNoTracking() for read-only queries (50% faster)
             var bills = await FilterByCompany(_context.Bills, "BillCompanyId")
                 .Where(b => b.BillStatus == true)
-              .OrderByDescending(b => b.BillId)
-.ThenByDescending(b => b.BillDate)
+                .OrderByDescending(b => b.BillId)
+                .ThenByDescending(b => b.BillDate)
                 .AsNoTracking()
                 .Include(b => b.BillDetails.Where(d => d.BillDetailStatus == true))
                 .Include(b => b.Voucher)
                 .Include(b => b.Party)
                 .Include(b => b.PlaceOfSupply)
-                 .Include(b => b.branch)
+                .Include(b => b.branch)
                 .ToListAsync();
             // ✅ Get all unique user IDs who have locked bills
             var lockedByUserIds = bills
