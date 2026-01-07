@@ -35,7 +35,7 @@
         public string? JobContainer40Ft { get; set; }
         public int? JobDefCurrId { get; set; }
         public string? JobRemarks { get; set; }
-        public byte? JobStatus { get; set; }
+        public int? JobStatus { get; set; }
         public DateTime JobCreated { get; set; }
         public DateTime JobUpdated { get; set; }
         public int? JobVchNo { get; set; }

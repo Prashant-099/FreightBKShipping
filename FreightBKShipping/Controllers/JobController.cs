@@ -153,7 +153,7 @@ namespace FreightBKShipping.Controllers
                             JobSufix = x.j.JobSufix,
                            // JobState = x.j.JobState,
                             JobTypeId = x.j.JobTypeId,
-
+                            
                             JobCust1 = x.j.JobCust1,
                             JobCust2 = x.j.JobCust2,
                             JobCust3 = x.j.JobCust3,

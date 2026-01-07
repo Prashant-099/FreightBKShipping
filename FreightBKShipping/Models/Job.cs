@@ -108,7 +108,7 @@ namespace FreightBKShipping.Models
         public string? JobRemarks { get; set; }
 
         [Column("job_status")]
-        public byte? JobStatus { get; set; }
+        public int? JobStatus { get; set; }
 
         [Column("job_created")]
         public DateTime JobCreated { get; set; } = DateTime.UtcNow;

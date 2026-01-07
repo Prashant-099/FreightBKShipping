@@ -38,7 +38,7 @@ namespace FreightBKShipping.Controllers
             var pagedCompanies = await filteredQuery
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
-                .Join(_context.States,  // ✅ Join with states table
+                .Join(_context.States,  
             company => company.StateId,
             state => state.StateId,
             (company, state) => new { company, state })

@@ -37,7 +37,7 @@ namespace FreightBKShipping.DTOs
         public string? JobContainer40Ft { get; set; }
         public int? JobDefCurrId { get; set; }
         public string? JobRemarks { get; set; }
-        public byte JobStatus { get; set; }
+        public int JobStatus { get; set; }
         public int? JobVchNo { get; set; }
         public string? JobPrefix { get; set; }
         public string? JobSufix { get; set; }
