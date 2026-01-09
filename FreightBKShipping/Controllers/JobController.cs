@@ -221,7 +221,7 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
         {   
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType && c.JobStatus == dto.JobStatus && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
+            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType  && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
             if (exists)
             {
 
@@ -306,6 +306,18 @@ namespace FreightBKShipping.Controllers
                 var job = await _context.Jobs.FindAsync(id);
                 if (job == null) return NotFound(new { error = "Job not found" });
 
+                // Check if job exists in BillJobNo
+                bool existsInBill = await _context.Bills
+                    .AnyAsync(b => b.BillJobNo == job.JobNo); // Or b.JobId == job.Id if using Id
+
+                if (existsInBill)
+                {
+                    return BadRequest(new
+                    {
+                        error = "Cannot delete job",
+                        details = "This job is referenced in Bill and cannot be deleted."
+                    });
+                }
                 _context.Jobs.Remove(job);
                 await _context.SaveChangesAsync();
                 return Ok(true);
