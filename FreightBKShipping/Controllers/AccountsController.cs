@@ -130,24 +130,24 @@ catch (Exception ex)
         if (account == null) return NotFound();
         // 🔍 Check reference in Bills
         bool existsInBill = await _context.Bills.AnyAsync(b =>
-            b.BillPartyId == id && b.BillStatus == true  // change column name if different
+            b.BillPartyId == id || b.BillStatus == true  // change column name if different
 
         );
 
         // 🔍 Check reference in Jobs
         bool existsInJob = await _context.Jobs.AnyAsync(j =>
-            j.JobPartyId == id && j.JobActive ==true
+            j.JobPartyId == id || j.JobActive ==true
         );
 
         // 🔴 Check if Account used in GST Slab anywhere
         bool usedInGstSlab = await _context.GstSlabs.AnyAsync(g =>
-            g.GstSlabPurchaseAccountId == id &&
-            g.GstSlabSalesAccountId == id &&
-            g.GstSlabSgstAccountId == id &&
-            g.GstSlabCgstAccountId == id &&
-            g.GstSlabIgstAccountId == id &&
-            g.GstSlabPsgstAccountId == id &&
-            g.GstSlabPcgstAccountId == id &&
+            g.GstSlabPurchaseAccountId == id ||
+            g.GstSlabSalesAccountId == id ||
+            g.GstSlabSgstAccountId == id ||
+            g.GstSlabCgstAccountId == id ||
+            g.GstSlabIgstAccountId == id ||
+            g.GstSlabPsgstAccountId == id ||
+            g.GstSlabPcgstAccountId == id ||
             g.GstSlabPigstAccountId == id && g.GstSlabStatus == true
         );
         if (usedInGstSlab)
