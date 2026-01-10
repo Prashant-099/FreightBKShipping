@@ -12,7 +12,7 @@ using UAParser;
 namespace FreightBKShipping.Controllers
 {
 
-    [ApiController]
+    [ApiController] 
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
