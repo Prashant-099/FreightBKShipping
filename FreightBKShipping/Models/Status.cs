@@ -26,6 +26,6 @@ namespace FreightBKShipping.Models
         public string StatusUpdatedByUser { get; set; }
 
         [Column("Status_code")]
-        public string Status_code { get; set; }
+        public string? Status_code { get; set; } = string.Empty;
     }
 }

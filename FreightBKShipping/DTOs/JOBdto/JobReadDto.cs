@@ -41,7 +41,7 @@
         public int? JobVchNo { get; set; }
         public string? JobPrefix { get; set; }
         public string? JobSufix { get; set; }
-        public string? JobState { get; set; }
+        public bool? JobActive { get; set; }
         public int? JobTypeId { get; set; }
 
         public string? JobCust1 { get; set; }

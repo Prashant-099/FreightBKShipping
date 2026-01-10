@@ -128,6 +128,44 @@ catch (Exception ex)
     {
         var account = await FilterByCompany( _context.Accounts, "AccountCompanyId").FirstOrDefaultAsync(b => b.AccountId == id); ;
         if (account == null) return NotFound();
+        // 🔍 Check reference in Bills
+        bool existsInBill = await _context.Bills.AnyAsync(b =>
+            b.BillPartyId == id     // change column name if different
+            
+        );
+
+        // 🔍 Check reference in Jobs
+        bool existsInJob = await _context.Jobs.AnyAsync(j =>
+            j.JobPartyId == id 
+        );
+
+        // 🔴 Check if Account used in GST Slab anywhere
+        bool usedInGstSlab = await _context.GstSlabs.AnyAsync(g =>
+            g.GstSlabPurchaseAccountId == id ||
+            g.GstSlabSalesAccountId == id ||
+            g.GstSlabSgstAccountId == id ||
+            g.GstSlabCgstAccountId == id ||
+            g.GstSlabIgstAccountId == id ||
+            g.GstSlabPsgstAccountId == id ||
+            g.GstSlabPcgstAccountId == id ||
+            g.GstSlabPigstAccountId == id
+        );
+        if (usedInGstSlab)
+        {
+            return BadRequest(new
+            {
+                Message = "Account cannot be deleted. It is used in GST Tax Slab."
+            });
+        }
+
+        if (existsInBill || existsInJob)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = "It cannot be deleted because it is used in Bill or Job."
+            });
+        }
 
         _context.Accounts.Remove(account);
         await _context.SaveChangesAsync();
