@@ -125,8 +125,8 @@ namespace FreightBKShipping.Models
         [Column("job_sufix")]
         public string? JobSufix { get; set; }
 
-        [Column("job_state")]
-        public string? JobState { get; set; }
+        [Column("job_active")]
+        public bool? JobActive { get; set; }
 
         [Column("job_type_id")]
         public int? JobTypeId { get; set; }

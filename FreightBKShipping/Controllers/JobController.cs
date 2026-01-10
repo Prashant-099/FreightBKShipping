@@ -21,6 +21,7 @@ namespace FreightBKShipping.Controllers
             try
             {
                 var result = await FilterByCompany(_context.Jobs, "JobCompanyId")
+                    .Where(b => b.JobActive == true)
                     .OrderByDescending(j => j.JobId)
                     .ThenByDescending(b => b.JobDate)
 .GroupJoin(_context.Vessels,
@@ -83,7 +84,7 @@ namespace FreightBKShipping.Controllers
                             JobAgentAddress = x.j.JobAgentAddress,
                             JobHsnCode = x.j.JobHsnCode,
                             JobBrand = x.j.JobBrand,
-                            JobState = x.j.JobState,
+        JobActive = x.j.JobActive,
                             JobBookingNo = x.j.JobBookingNo,
                             JobCertiOrigin = x.j.JobCertiOrigin,
                             JobPlaceOfReceipt = x.j.JobPlaceOfReceipt,
@@ -221,7 +222,7 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
         {   
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobType == dto.JobType  && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
+            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobActive == dto.JobActive && c.JobType == dto.JobType  && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
             if (exists)
             {
 
@@ -230,7 +231,7 @@ namespace FreightBKShipping.Controllers
             try
             {
                 var job = MapDtoToJob(dto);
-                job.JobState = "1";
+                job.JobActive = true;
                 job.JobAddedByUserId = GetUserId();
                 job.JobUpdatedByUserId = GetUserId();
                 job.JobCompanyId = GetCompanyId().ToString();
@@ -318,7 +319,8 @@ namespace FreightBKShipping.Controllers
                         details = "This job is referenced in Bill and cannot be deleted."
                     });
                 }
-                _context.Jobs.Remove(job);
+                job.JobActive = false;
+                _context.Jobs.Update(job);
                 await _context.SaveChangesAsync();
                 return Ok(true);
             }
@@ -378,7 +380,7 @@ namespace FreightBKShipping.Controllers
             job.JobVchNo = dto.JobVchNo;
             job.JobPrefix = dto.JobPrefix;
             job.JobSufix = dto.JobSufix;
-            job.JobState = dto.JobState;
+            job.JobActive = dto.JobActive;
             job.JobTypeId = dto.JobTypeId;
             job.JobCust1 = dto.JobCust1;
             job.JobCust2 = dto.JobCust2;
