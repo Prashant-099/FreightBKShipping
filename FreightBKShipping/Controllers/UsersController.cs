@@ -152,7 +152,7 @@ namespace FreightBKShipping.Controllers
             {
                 _context.UserBranches.Add(new UserBranch
                 {
-                    UserId = userId,
+                    User_Id = userId,
                     BranchId = branchId
                 });
             }
@@ -198,7 +198,7 @@ namespace FreightBKShipping.Controllers
             {
                 _context.UserBranches.Add(new UserBranch
                 {
-                    UserId = id,
+                    User_Id = id,
                     BranchId = branchId
                 });
             }

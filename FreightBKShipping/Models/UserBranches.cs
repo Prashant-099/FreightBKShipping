@@ -11,8 +11,8 @@ namespace FreightBKShipping.Models
         [Column("user_branch_id")]
         public int UserBranchId { get; set; }
 
-        [Column("user_id")]
-        public string UserId { get; set; } = string.Empty;   // VARCHAR(60)
+        [Column("userbranch_id")]
+        public string User_Id { get; set; } = string.Empty;   // VARCHAR(60)
 
         [Column("branch_id")]
         public int BranchId { get; set; }
