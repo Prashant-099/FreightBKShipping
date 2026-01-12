@@ -141,15 +141,18 @@ catch (Exception ex)
 
         // 🔴 Check if Account used in GST Slab anywhere
         bool usedInGstSlab = await _context.GstSlabs.AnyAsync(g =>
-            g.GstSlabPurchaseAccountId == id &&
-            g.GstSlabSalesAccountId == id &&
-            g.GstSlabSgstAccountId == id &&
-            g.GstSlabCgstAccountId == id &&
-            g.GstSlabIgstAccountId == id &&
-            g.GstSlabPsgstAccountId == id &&
-            g.GstSlabPcgstAccountId == id &&
-            g.GstSlabPigstAccountId == id && g.GstSlabStatus == true
-        );
+     (
+         g.GstSlabPurchaseAccountId == id ||
+         g.GstSlabSalesAccountId == id ||
+         g.GstSlabSgstAccountId == id ||
+         g.GstSlabCgstAccountId == id ||
+         g.GstSlabIgstAccountId == id ||
+         g.GstSlabPsgstAccountId == id ||
+         g.GstSlabPcgstAccountId == id ||
+         g.GstSlabPigstAccountId == id
+     )
+     && g.GstSlabStatus == true
+ );
         if (usedInGstSlab)
         {
             return BadRequest(new
