@@ -165,7 +165,7 @@ catch (Exception ex)
         {
             return BadRequest(new
             {
-                success = false,
+               
                 message = "It cannot be deleted because it is used in Bill or Job."
             });
         }
