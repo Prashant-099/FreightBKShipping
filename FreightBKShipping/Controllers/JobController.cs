@@ -309,7 +309,7 @@ namespace FreightBKShipping.Controllers
 
                 // Check if job exists in BillJobNo
                 bool existsInBill = await _context.Bills
-                    .AnyAsync(b => b.BillJobNo == job.JobNo); // Or b.JobId == job.Id if using Id
+                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus==true); 
 
                 if (existsInBill)
                 {

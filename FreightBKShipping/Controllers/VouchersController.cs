@@ -40,7 +40,11 @@ namespace FreightBKShipping.Controllers
                 VoucherMethod = v.VoucherMethod,
                 VoucherStatus = v.VoucherStatus,
                 VoucherCreated = v.VoucherCreated,
-                VoucherUpdated = v.VoucherUpdated,
+         VoucherBank1 = v.VoucherBank1,
+         VoucherBank2 = v.VoucherBank2,
+         VoucherReportId = v.VoucherReportId,
+         VoucherReportId2 = v.VoucherReportId2,
+         VoucherUpdated = v.VoucherUpdated,
                 VoucherDetails = v.VoucherDetails.Select(d => new VoucherDetailReadDto
                 {
                     VoucherDetailId = d.VoucherDetailId,
