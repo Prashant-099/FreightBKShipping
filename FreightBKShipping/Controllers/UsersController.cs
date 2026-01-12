@@ -102,8 +102,10 @@ namespace FreightBKShipping.Controllers
                 UserRoleId = user.UserRoleId,
                 UserRoleName = user.Role?.RoleName ?? "",
                 UserAddress = user.UserAddress,
-                UserBranchId = user.UserBranchId,
+                //UserBranchId = user.UserBranchId,
                 UserCompanyId = user.UserCompanyId,
+              UserBranchId=  user.UserBranchId, // default branch
+                AssignedBranchIds = branchIds
 
             };
 
@@ -114,9 +116,10 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<User>> CreateUser(UserAddDto dto)
         {
+            var userId = Guid.NewGuid().ToString();
             var user = new User
             {
-               UserId = Guid.NewGuid().ToString(),
+               UserId = userId,
                 UserRoleId = dto.UserRoleId,
                 UserParentId = GetUserId(),
                 UserFirstName = dto.UserFirstName,
@@ -129,17 +132,27 @@ namespace FreightBKShipping.Controllers
                 UserMobile = dto.UserMobile,
                 UserImage = dto.UserImage,
                 UserAddress = dto.UserAddress,
-                UserBranchId= GetBranchId(),
+                //UserBranchId= GetBranchId(),
                 UserCompanyId = GetCompanyId(), // Set if available
                 UserName = dto.UserName,
                 UserStatus = true, // default active
                 UserCreated = DateTime.UtcNow,
                 UserUpdated = DateTime.UtcNow,
-                UserAddbyUserId=GetUserId()
-               
+                UserAddbyUserId=GetUserId(),
+                UserBranchId = dto.AssignedBranchIds.FirstOrDefault(),
+
+
             };
 
             _context.Users.Add(user);
+            foreach (var branchId in dto.AssignedBranchIds)
+            {
+                _context.UserBranches.Add(new UserBranch
+                {
+                    UserId = userId,
+                    BranchId = branchId
+                });
+            }
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetUserbyId), new { id = user.UserId }, user);
@@ -171,7 +184,21 @@ namespace FreightBKShipping.Controllers
             user.UserCompanyId =GetCompanyId();
             user.UserUpdated = DateTime.UtcNow;
             user.UserUpdatebyUserId = GetUserId();
+            user.UserBranchId = dto.AssignedBranchIds.FirstOrDefault();
 
+            // ✅ REMOVE OLD MAPPING
+            //var oldBranches = _context.UserBranches.Where(x => x.UserId == id);
+            //_context.UserBranches.RemoveRange(oldBranches);
+
+            // ✅ INSERT NEW MAPPING
+            foreach (var branchId in dto.AssignedBranchIds)
+            {
+                _context.UserBranches.Add(new UserBranch
+                {
+                    UserId = id,
+                    BranchId = branchId
+                });
+            }
             await _context.SaveChangesAsync();
             return Ok(user);
         }

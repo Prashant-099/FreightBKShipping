@@ -40,6 +40,22 @@ namespace FreightBKShipping.Controllers
                       .Include(u => u.Role)
                     .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
 
+                var userBranches = await _context.UserBranches
+                          .Where(ub => ub.UserId == user.UserId)
+                          .Include(ub => ub.Branch)
+                          .Select(ub => new UserBranchDto
+                          {
+                              BranchId = ub.BranchId,
+                              BranchName = ub.Branch.BranchName
+                          })
+                          .ToListAsync();
+
+                int? activeBranchId = null;
+                if (userBranches.Count == 1)
+                {
+                    activeBranchId = userBranches.First().BranchId;
+                }
+
                 //if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
                 //    return Unauthorized("Invalid credentials");
                 if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
@@ -92,7 +108,8 @@ namespace FreightBKShipping.Controllers
                     UserId = user.UserId,
                     UserName = user.UserName,
                     CompanyId = user.UserCompanyId,
-                    BranchId = user.UserBranchId,
+                    BranchId = activeBranchId,
+                    //BranchId = user.UserBranchId,
                     LoginTime = DateTime.UtcNow,
                     LoginStatus = "SUCCESS",
                     LoginType = loginType,
@@ -114,7 +131,10 @@ namespace FreightBKShipping.Controllers
                     //tokenExp = 60 * 60 * 24// Default to 1 day expiration
                     tokenExp = tokenExpiry,
                     BranchId = user.UserBranchId,
-                    Rolename = user.Role.RoleName
+                    Branches = userBranches,
+                    Rolename = user.Role.RoleName,
+
+                    ActiveBranchId = activeBranchId
                 });
             }
             catch (Exception ex)
@@ -126,6 +146,8 @@ namespace FreightBKShipping.Controllers
                 return StatusCode(500, $"An unexpected error occurred while logging in -{ex}.");
             }
         }
+
+
 
         [Authorize]
         [HttpPost("logout")]
