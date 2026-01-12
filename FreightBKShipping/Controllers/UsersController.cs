@@ -102,10 +102,13 @@ namespace FreightBKShipping.Controllers
                 UserRoleId = user.UserRoleId,
                 UserRoleName = user.Role?.RoleName ?? "",
                 UserAddress = user.UserAddress,
-                //UserBranchId = user.UserBranchId,
+                UserBranchId = user.UserBranchId,
                 UserCompanyId = user.UserCompanyId,
-              UserBranchId=  user.UserBranchId, // default branch
-                AssignedBranchIds = branchIds
+                AssignedBranchIds = user.UserBranchId.HasValue
+    ? new List<int> { user.UserBranchId.Value }
+    : new List<int>()
+
+
 
             };
 
