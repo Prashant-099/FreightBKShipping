@@ -41,7 +41,7 @@ namespace FreightBKShipping.Controllers
                     .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
 
                 var userBranches = await _context.UserBranches
-                          .Where(ub => ub.UserId == user.UserId)
+                          .Where(ub => ub.User_Id == user.UserId)
                           .Include(ub => ub.Branch)
                           .Select(ub => new UserBranchDto
                           {

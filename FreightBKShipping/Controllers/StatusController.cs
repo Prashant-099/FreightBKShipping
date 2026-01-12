@@ -20,7 +20,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var statuses = await _context.Status
+            var statuses = await  FilterByCompany( _context.Status, "StatusCompanyId")
                 .OrderByDescending(s => s.StatusId)
                 .ToListAsync();
 
@@ -31,7 +31,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
         {
-            var status = await _context.Status.FindAsync(id);
+            var status = await FilterByCompany(_context.Status, "StatusCompanyId").FirstOrDefaultAsync(a => a.StatusId == id);
             if (status == null) return NotFound();
 
             return Ok(status);
@@ -45,7 +45,7 @@ namespace FreightBKShipping.Controllers
             status.StatusUpdated = DateTime.UtcNow;
             status.StatusCreatedByUser = GetUserId();
             status.StatusUpdatedByUser = GetUserId();
-
+            status.StatusCompanyId = GetCompanyId();
             _context.Status.Add(status);
             await _context.SaveChangesAsync();
 
@@ -62,6 +62,7 @@ namespace FreightBKShipping.Controllers
             status.StatusName = model.StatusName;
             status.StatusUpdated = DateTime.UtcNow;
             status.StatusUpdatedByUser = GetUserId();
+            status.StatusCompanyId = GetCompanyId();
 
             _context.Status.Update(status);
             await _context.SaveChangesAsync();
@@ -73,7 +74,7 @@ namespace FreightBKShipping.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var status = await _context.Status.FindAsync(id);
+            var status = await FilterByCompany(_context.Status, "StatusCompanyId").FirstOrDefaultAsync(a => a.StatusId == id);
             if (status == null) return NotFound();
 
             _context.Status.Remove(status);
