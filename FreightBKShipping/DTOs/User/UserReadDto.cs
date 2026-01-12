@@ -23,6 +23,7 @@ namespace FreightBKShipping.DTOs.User
         public string? UserAddress { get; set; }
         public int? UserBranchId { get; set; }
 
+        public List<int> AssignedBranchIds { get; set; } = new();
 
 
         // Add other properties as needed

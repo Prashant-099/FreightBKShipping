@@ -38,5 +38,6 @@ namespace FreightBKShipping.DTOs.User
         [Required(ErrorMessage = "Username is required.")]
         [StringLength(50, MinimumLength = 4, ErrorMessage = "Username must be between 4 and 50 characters.")]
         public string UserName { get; set; } = string.Empty;
+        public List<int> AssignedBranchIds { get; set; } = new();
     }
 }

@@ -41,4 +41,6 @@ public class UserAddDto
 
     public string? UserAddress { get; set; }
 
+    public List<int> AssignedBranchIds { get; set; } = new();
+
 }

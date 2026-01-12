@@ -44,6 +44,8 @@ namespace FreightBKShipping.Data
         //added by dhruv
         public DbSet<WpMailConfig> wpMailConfigs { get; set; }
         public DbSet<SendWpMail> SendWpMails { get; set; }
+        public DbSet<UserBranch> UserBranches { get; set; }
+
         //end dhruv
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
