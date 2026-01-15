@@ -140,6 +140,11 @@ namespace FreightBKShipping.Models
         [Column("refresh_token_expiry")]
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
+    
+        public ICollection<UserBranch> UserBranches { get; set; }
+                 = new List<UserBranch>();
+
+ 
     }
 
     public class PagedUserResponse
@@ -157,5 +162,26 @@ namespace FreightBKShipping.Models
         public int TotalPages { get; set; }
     }
 
-   
+    [Table("user_branches")]
+    public class UserBranch
+    {
+        [Key]
+        [Column("user_branch_id")]
+        public int UserBranchId { get; set; }
+
+        [Column("userbranch_id")]
+        public string UserId { get; set; }
+
+        [Column("branch_id")]
+        public int BranchId { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [ForeignKey("UserId")]
+        public User User { get; set; }
+
+        [ForeignKey("BranchId")]
+        public Branch Branch { get; set; }
+    }
 }

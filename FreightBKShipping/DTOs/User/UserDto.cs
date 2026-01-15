@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using FreightBKShipping.Models;
+using System.ComponentModel.DataAnnotations;
 namespace FreightBKShipping.DTOs.User;
 public class UserAddDto
 {
@@ -42,5 +43,8 @@ public class UserAddDto
     public string? UserAddress { get; set; }
 
     public List<int> AssignedBranchIds { get; set; } = new();
+
+    public ICollection<UserBranch> UserBranches { get; set; }
+             = new List<UserBranch>();
 
 }

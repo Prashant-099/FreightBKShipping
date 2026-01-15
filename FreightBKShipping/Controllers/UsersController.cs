@@ -11,40 +11,48 @@ namespace FreightBKShipping.Controllers
 {
     [Authorize]
     [ApiController]
-
     [Route("api/[controller]")]
     public class UsersController : BaseController
     {
         private readonly AppDbContext _context;
         private readonly ISieveProcessor _sieveProcessor;
+
         public UsersController(AppDbContext context, ISieveProcessor sieveProcessor)
         {
             _context = context;
             _sieveProcessor = sieveProcessor;
         }
 
-        // ✅ GET: api/users
+        // ✅ GET: api/users (WITH ALL BRANCHES)
         [HttpGet]
-        public async Task<ActionResult> GetUsers([FromQuery] SieveModel sieveModel)
+        public async Task<IActionResult> GetUsers([FromQuery] SieveModel sieveModel)
         {
-            var currentPage = sieveModel.Page ?? 1;
-            var pageSize = sieveModel.PageSize ?? 10;
+            int currentPage = sieveModel.Page ?? 1;
+            int pageSize = sieveModel.PageSize ?? 10;
 
+            // 🔹 Base query: include role & branches, filter by company
             var usersQuery = FilterByCompany(
-        _context.Users.Include(u => u.Role).AsNoTracking(),
-        "UserCompanyId"
-    ).OrderByDescending(b=>b.UserCreated);
+                _context.Users
+                    .Include(u => u.Role)
+                    .Include(u => u.UserBranches), // multi-branch
+                "UserCompanyId"
+            )
+            .AsNoTracking()
+            .OrderByDescending(u => u.UserCreated);
 
+            // 🔹 Apply Sieve filters
             var filteredUsers = _sieveProcessor.Apply(sieveModel, usersQuery, applyPagination: false);
-            var totalRecords = await filteredUsers.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
-            var pagedUsers = filteredUsers
+            int totalRecords = await filteredUsers.CountAsync();
+            int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+            // 🔹 Apply pagination
+            var users = await filteredUsers
                 .Skip((currentPage - 1) * pageSize)
-                .Take(pageSize);
+                .Take(pageSize)
+                .ToListAsync();
 
-            var users = await pagedUsers.ToListAsync();
-
+            // 🔹 Map to DTO
             var result = users.Select(u => new UserReadDTo
             {
                 UserId = u.UserId,
@@ -60,31 +68,42 @@ namespace FreightBKShipping.Controllers
                 UserRoleName = u.Role?.RoleName ?? "-",
                 UserAddress = u.UserAddress,
                 UserCompanyId = u.UserCompanyId,
-                UserBranchId=u.UserBranchId
-            });
 
+                // 🔹 Multi-branches
+                AssignedBranchIds = u.UserBranches.Select(b => b.BranchId).ToList(),
+
+                // Optional: add branch names if needed
+                AssignedBranchNames = u.UserBranches
+    .Where(b => b.Branch != null)      // only branches that exist
+    .Select(b => b.Branch.BranchName)
+    .ToList(),
+
+            }).ToList();
+            // 🔹 Return paginated response
             return Ok(new
             {
                 pagination = new
                 {
                     page = currentPage,
-                    pageSize = pageSize,
-                    totalRecords = totalRecords,
-                    totalPages = totalPages
+                    pageSize,
+                    totalRecords,
+                    totalPages
                 },
                 data = result
             });
-    
         }
 
 
-
-        // ✅ GET: api/users/{id}
+        // ✅ GET: api/users/{id} (WITH ALL BRANCHES)
         [HttpGet("{id}")]
-        public async Task<ActionResult<UserReadDTo>> GetUserbyId(string id)
+        public async Task<IActionResult> GetUserbyId(string id)
         {
-            var user = await FilterByCompany(_context.Users.Include(u => u.Role), "UserCompanyId")
-        .FirstOrDefaultAsync(u => u.UserId == id);
+            var user = await FilterByCompany(
+                _context.Users
+                    .Include(u => u.Role)
+                    .Include(u => u.UserBranches), // 🔥
+                "UserCompanyId"
+            ).FirstOrDefaultAsync(u => u.UserId == id);
 
             if (user == null) return NotFound();
 
@@ -102,32 +121,31 @@ namespace FreightBKShipping.Controllers
                 UserRoleId = user.UserRoleId,
                 UserRoleName = user.Role?.RoleName ?? "",
                 UserAddress = user.UserAddress,
-                UserBranchId = user.UserBranchId,
                 UserCompanyId = user.UserCompanyId,
-                AssignedBranchIds = user.UserBranchId.HasValue
-    ? new List<int> { user.UserBranchId.Value }
-    : new List<int>()
 
-
-
+                // ✅ ALL ASSIGNED BRANCHES
+                AssignedBranchIds = user.UserBranches
+                    .Select(b => b.BranchId)
+                    .ToList()
             };
 
             return Ok(result);
         }
 
-        // ✅ POST: api/users
+        // ✅ POST: api/users (MULTI BRANCH CREATE)
         [HttpPost]
-        public async Task<ActionResult<User>> CreateUser(UserAddDto dto)
+        public async Task<IActionResult> CreateUser(UserAddDto dto)
         {
             var userId = Guid.NewGuid().ToString();
+
             var user = new User
             {
-               UserId = userId,
+                UserId = userId,
                 UserRoleId = dto.UserRoleId,
                 UserParentId = GetUserId(),
                 UserFirstName = dto.UserFirstName,
                 UserLastName = dto.UserLastName,
-                UserEmail = dto.UserEmail,               
+                UserEmail = dto.UserEmail,
                 UserPassword = BCrypt.Net.BCrypt.HashPassword(dto.UserPassword),
                 UserZipcode = dto.UserZipcode,
                 UserPhone = dto.UserPhone,
@@ -135,44 +153,43 @@ namespace FreightBKShipping.Controllers
                 UserMobile = dto.UserMobile,
                 UserImage = dto.UserImage,
                 UserAddress = dto.UserAddress,
-                //UserBranchId= GetBranchId(),
-                UserCompanyId = GetCompanyId(), // Set if available
+                UserCompanyId = GetCompanyId(),
                 UserName = dto.UserName,
-                UserStatus = true, // default active
+                UserStatus = true,
                 UserCreated = DateTime.UtcNow,
                 UserUpdated = DateTime.UtcNow,
-                UserAddbyUserId=GetUserId(),
-                UserBranchId = dto.AssignedBranchIds.FirstOrDefault(),
-
-
+                UserAddbyUserId = GetUserId()
             };
 
             _context.Users.Add(user);
+
             foreach (var branchId in dto.AssignedBranchIds)
             {
                 _context.UserBranches.Add(new UserBranch
                 {
-                    User_Id = userId,
+                    UserId = userId,
                     BranchId = branchId
                 });
             }
-            await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUserbyId), new { id = user.UserId }, user);
+            await _context.SaveChangesAsync();
+            return Ok(true);
         }
 
-        // ✅ PUT: api/users/{id}
+        // ✅ PUT: api/users/{id} (MULTI BRANCH UPDATE)
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, UserUpdateDto dto)
         {
             if (id != dto.UserId)
                 return BadRequest("ID mismatch");
 
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                .Include(u => u.UserBranches)
+                .FirstOrDefaultAsync(u => u.UserId == id);
+
             if (user == null) return NotFound();
 
             user.UserRoleId = dto.UserRoleId;
-            user.UserId = dto.UserId;
             user.UserFirstName = dto.UserFirstName;
             user.UserLastName = dto.UserLastName;
             user.UserEmail = dto.UserEmail;
@@ -180,45 +197,43 @@ namespace FreightBKShipping.Controllers
             user.UserCountryCode = dto.UserCountryCode;
             user.UserMobile = dto.UserMobile;
             user.UserAddress = dto.UserAddress;
-           
             user.UserStatus = dto.UserStatus;
-     
             user.UserName = dto.UserName;
-            user.UserCompanyId =GetCompanyId();
+            user.UserCompanyId = GetCompanyId();
             user.UserUpdated = DateTime.UtcNow;
             user.UserUpdatebyUserId = GetUserId();
-            user.UserBranchId = dto.AssignedBranchIds.FirstOrDefault();
 
-            // ✅ REMOVE OLD MAPPING
-            //var oldBranches = _context.UserBranches.Where(x => x.UserId == id);
-            //_context.UserBranches.RemoveRange(oldBranches);
+            // ❌ REMOVE OLD BRANCHES
+            _context.UserBranches.RemoveRange(user.UserBranches);
 
-            // ✅ INSERT NEW MAPPING
+            // ✅ ADD NEW BRANCHES
             foreach (var branchId in dto.AssignedBranchIds)
             {
                 _context.UserBranches.Add(new UserBranch
                 {
-                    User_Id = id,
+                    UserId = id,
                     BranchId = branchId
                 });
             }
+
             await _context.SaveChangesAsync();
-            return Ok(user);
+            return Ok(true);
         }
 
         // ✅ DELETE: api/users/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            var user = await FilterByCompany(_context.Users.Include(u => u.Role), "UserCompanyId").FirstOrDefaultAsync(u => u.UserId == id);
+            var user = await FilterByCompany(
+                _context.Users,
+                "UserCompanyId"
+            ).FirstOrDefaultAsync(u => u.UserId == id);
+
             if (user == null) return NotFound();
+
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return Ok(true);
-            
         }
-           
-
-
     }
 }
