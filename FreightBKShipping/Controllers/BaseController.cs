@@ -35,11 +35,8 @@ namespace FreightBKShipping.Controllers
 
         protected int GetBranchId()
         {
-            var branchIdClaim = User.FindFirst("BranchId");
-            if (branchIdClaim != null && int.TryParse(branchIdClaim.Value, out int branchId))
-                return branchId;
-
-            return 0;
+            var branchClaim = User.Claims.FirstOrDefault(c => c.Type == "BranchId")?.Value;
+            return int.TryParse(branchClaim, out int branchId) ? branchId : 0;
         }
 
 

@@ -21,7 +21,7 @@ namespace FreightBKShipping.DTOs
         public long tokenExp { get; set; }
         public string Rolename { get; set; }
         public string RefreshToken { get; set; }
-        public DateTime RefreshtokenExp { get; set; }
+        public DateTime RefreshtokenExp { get; set; }                   
     }
 
     public class UserBranchDto
