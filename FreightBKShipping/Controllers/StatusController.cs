@@ -60,6 +60,7 @@ namespace FreightBKShipping.Controllers
             if (status == null) return NotFound();
 
             status.StatusName = model.StatusName;
+            status.Status_code = model.Status_code;
             status.StatusUpdated = DateTime.UtcNow;
             status.StatusUpdatedByUser = GetUserId();
             status.StatusCompanyId = GetCompanyId();

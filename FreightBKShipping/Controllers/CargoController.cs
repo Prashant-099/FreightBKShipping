@@ -72,7 +72,18 @@ namespace FreightBKShipping.Controllers
         {
             var cargo = await FilterByCompany(_context.Cargoes, "CargoCompanyId").FirstOrDefaultAsync(b => b.CargoId == id);
             if (cargo == null) return NotFound();
+            
+            bool existsInjob = await _context.Jobs
+                .AnyAsync(b => b.JobCargoId == id && b.JobActive == true && b.JobCompanyId==GetCompanyId().ToString());
 
+            if (existsInjob)
+            {
+                return BadRequest(new
+                {
+                    error = "Cannot delete Cargo",
+                    details = "This Cargo is referenced in Job and cannot be deleted."
+                });
+            }
             _context.Cargoes.Remove(cargo);
             await _context.SaveChangesAsync();
             return Ok(true);

@@ -131,7 +131,7 @@ catch (Exception ex)
         // 🔍 Check reference in Bills
         bool existsInBill = await _context.Bills.AnyAsync(b =>
             b.BillPartyId == id && b.BillStatus == true  // change column name if different
-
+            && b.BillCompanyId == GetCompanyId()
         );
 
         // 🔍 Check reference in Jobs

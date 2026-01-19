@@ -220,6 +220,23 @@ namespace FreightBKShipping.Controllers
             if (service == null)
                 return NotFound("Service not found");
 
+            bool existsInBill = await _context.BillDetails
+     .Where(d => d.BillDetailProductId == id && d.BillDetailStatus == true)
+     .AnyAsync(d =>
+         _context.Bills.Any(b =>
+             b.BillId == d.BillDetailBillId &&
+             b.BillCompanyId == GetCompanyId()
+         )
+     );
+
+            if (existsInBill)
+            {
+                return BadRequest(new
+                {
+                    error = "Cannot delete Sevice",
+                    details = "This Sevice is referenced in Bill and cannot be deleted."
+                });
+            }
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
 

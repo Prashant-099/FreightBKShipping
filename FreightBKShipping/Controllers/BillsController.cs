@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.BillDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,9 +16,11 @@ namespace FreightBKShipping.Controllers
     public class BillsController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public BillsController(AppDbContext context)
+        public BillsController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -420,24 +424,104 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<Bill>> CreateBill(BillDto billDto)
         {
+            using var tx = await _context.Database.BeginTransactionAsync();
 
-            var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillStatus == billDto.BillStatus && c.BillBranchId == billDto.BillBranchId && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
-            if (exists)
+            try
             {
+                // 1️⃣ Get voucher based on BillType or VoucherId
+                var voucher = await _context.Vouchers
+                    .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId && v.VoucherBranchId== billDto.BillBranchId && v.VoucherCompanyId == GetCompanyId());
 
-                return Conflict(new { message = "Bill number already exists." });
-            }
-            var shipparty = await _context.Accounts
+                if (voucher == null)
+                    return BadRequest(new { message = "Invalid voucher selected." });
+
+                bool isAutomatic = voucher.VoucherMethod == "Automatic";
+
+                // 2️⃣ Get voucher detail for the year
+                var voucherDetail = await _context.VoucherDetails
+                    .FirstOrDefaultAsync(vd =>
+                        vd.VoucherDetailVoucherId == voucher.VoucherId &&
+                        vd.VoucherDetailYearId == billDto.BillYearId &&
+                        vd.VoucherDetailStatus == true);
+
+                if (voucherDetail == null)
+                    return BadRequest(new { message = "Voucher details not configured." });
+
+                int nextNo;
+                string billNo;
+
+                if (isAutomatic)
+                {
+                    // 3️⃣ Auto number
+                    nextNo = voucherDetail.VoucherDetailLastNo + 1;
+
+                    // Check if this number already exists
+                    bool exists = await _context.Bills.AnyAsync(b =>
+                        b.BillVchNo == nextNo &&
+                        b.BillCompanyId == GetCompanyId() &&
+                        b.BillBranchId == billDto.BillBranchId &&
+                        b.BillVoucherId == billDto.BillVoucherId &&
+                        b.BillYearId == billDto.BillYearId &&
+                        b.BillStatus ==true); // optional check
+
+                    if (exists)
+                    {
+                        nextNo = (await _context.Bills
+                            .Where(b => b.BillCompanyId == GetCompanyId() &&
+                                        b.BillBranchId == billDto.BillBranchId &&
+                                         b.BillVoucherId == billDto.BillVoucherId &&
+                                          b.BillStatus == true &&
+                                        b.BillYearId == billDto.BillYearId)
+                            .MaxAsync(b => (int?)b.BillVchNo) ?? nextNo) + 1;
+                    }
+
+                    billNo =
+                        (voucherDetail.VoucherDetailPrefix ?? "") +
+                        nextNo +
+                        (voucherDetail.VoucherDetailSufix ?? "");
+
+                    voucherDetail.VoucherDetailLastNo = nextNo;
+                    voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+                }
+                else
+                {
+                    // 4️⃣ Manual number
+                    bool exists = await _context.Bills.AnyAsync(b =>
+                        b.BillNo == billDto.BillNo &&
+                         b.BillStatus == true &&
+                        b.BillCompanyId == GetCompanyId() &&
+                        b.BillBranchId == billDto.BillBranchId &&
+                         b.BillVoucherId == billDto.BillVoucherId &&
+                        b.BillYearId == billDto.BillYearId);
+
+                    if (exists)
+                        return Conflict(new { message = "Bill number already exists." });
+
+                    nextNo =0;
+                    billNo = billDto.BillNo;
+                }
+
+                // Assign generated number to DTO or entity
+                billDto.BillNo = billNo;
+                billDto.BillVchNo = nextNo;
+
+                //var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillStatus == billDto.BillStatus && c.BillBranchId == billDto.BillBranchId && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
+                //if (exists)
+                //{
+
+                //    return Conflict(new { message = "Bill number already exists." });
+                //}
+                var shipparty = await _context.Accounts
       .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
             var party = await _context.Accounts
        .FirstOrDefaultAsync(p => p.AccountId == billDto.BillPartyId);
             var pos = await _context.States
                 .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
-            var voucher = await _context.Vouchers
-     .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
+     //       var voucher = await _context.Vouchers
+     //.FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
 
-            if (voucher == null)
-                return BadRequest("Invalid voucher selected.");
+            //if (voucher == null)
+            //    return BadRequest("Invalid voucher selected.");
             var bill = new Bill
             {
                 BillCompanyId = GetCompanyId(),
@@ -615,9 +699,38 @@ namespace FreightBKShipping.Controllers
 
             _context.Bills.Add(bill);
             await _context.SaveChangesAsync();
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Bills",
+                    RecordId = bill.BillId,
+                    VoucherType = bill.Voucher.VoucherName,
+                    Amount = (int)bill.BillNetAmount,
+                    Operations = "INSERT",
+                    Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                    BranchId = bill.BillBranchId,
+                    YearId = bill.BillYearId
+                }, GetCompanyId());
 
-            // return CreatedAtAction(nameof(GetBill), new { id = bill.BillId }, bill);
-            return NoContent();
+                await tx.CommitAsync();
+                // return CreatedAtAction(nameof(GetBill), new { id = bill.BillId }, bill);
+                return NoContent();
+
+            }
+            catch (DbUpdateException dbEx)
+            {
+                // Detailed inner exception for EF Core errors
+                return BadRequest(new
+                {
+                    error = "Database update error",
+                    details = dbEx.InnerException?.Message ?? dbEx.Message,
+                    stack = dbEx.StackTrace
+                });
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                return BadRequest(new { error = "Error creating bill", details = ex.Message, stack = ex.StackTrace });
+            }
         }
 
 
@@ -628,11 +741,30 @@ namespace FreightBKShipping.Controllers
                 if (id != billDto.BillId)
                 return BadRequest("Bill ID mismatch.");
 
+
             var bill = await _context.Bills
                 .Include(b => b.BillDetails)
                 .FirstOrDefaultAsync(b => b.BillId == id);
 
             if (bill == null) return NotFound();
+
+            var voucher = await _context.Vouchers
+    .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
+
+            if (voucher != null && voucher.VoucherMethod == "Manual")
+            {
+                bool exists =await _context.Bills.AnyAsync(b =>
+                        b.BillNo == billDto.BillNo &&
+                         b.BillStatus == true &&
+                        b.BillCompanyId == GetCompanyId() &&
+                        b.BillBranchId == billDto.BillBranchId &&
+                        b.BillYearId == billDto.BillYearId
+                );
+
+                if (exists)
+                    return Conflict(new { message = "Bill number already exists." });
+          
+            }
 
             // ✅ Check if bill is locked
             if (!string.IsNullOrEmpty(bill.BillLockedBy) && bill.BillLockedBy != GetUserId())
@@ -891,6 +1023,18 @@ namespace FreightBKShipping.Controllers
             //}
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Bills",
+                RecordId = bill.BillId,
+                VoucherType = bill.Voucher.VoucherName,
+                Amount = (int)bill.BillNetAmount,
+                Operations = "UPDATE",
+                Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                BranchId = bill.BillBranchId,
+                YearId = bill.BillYearId
+            }, GetCompanyId());
+
             return NoContent();
         }
 
@@ -900,6 +1044,7 @@ namespace FreightBKShipping.Controllers
         {
             var bill = await FilterByCompany(_context.Bills, "BillCompanyId")
                 .Include(b => b.BillDetails)
+                  .Include(b => b.Voucher)
                 // .Include(b => b.BillRefDetails)
                 .FirstOrDefaultAsync(b => b.BillId == id);
 
@@ -918,7 +1063,7 @@ namespace FreightBKShipping.Controllers
             //   _context.BillDetails.RemoveRange(bill.BillDetails);
             //_context.BillRefDetails.RemoveRange(bill.BillRefDetails);
 
-
+           
             // ✅ Mark main Bill as inactive
             bill.BillStatus = false;
 
@@ -929,7 +1074,20 @@ namespace FreightBKShipping.Controllers
                 detail.BillDetailStatus = false; // make sure this column exists
             }
             _context.Bills.Update(bill);
+           
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Bills",
+                RecordId = id,
+                VoucherType = bill.Voucher.VoucherName,
+                Amount = (int)bill.BillNetAmount,
+                Operations = "DELETE",
+                Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                BranchId = bill.BillBranchId,
+                YearId = bill.BillYearId
+            }, GetCompanyId());
+
             return Ok(true);
         }
         //[HttpGet("print/{id}")]

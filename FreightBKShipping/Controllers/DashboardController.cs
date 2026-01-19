@@ -1,6 +1,7 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs.Dashboarddto;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FreightBKShipping.Controllers
 {
@@ -45,17 +46,17 @@ namespace FreightBKShipping.Controllers
             var statusList =  _context.Status.ToList();
 
             var pendingIds = statusList
-                .Where(x => x.StatusName.ToLower() == "pending")
+                .Where(x => x.Status_code== "PENDING")
                 .Select(x => x.StatusId)
                 .ToList();
 
             var completedIds = statusList
-                .Where(x => x.StatusName.ToLower().Contains("complete"))
+                .Where(x => x.Status_code==("COMPLETED"))
                 .Select(x => x.StatusId)
                 .ToList();
 
             var cancelIds = statusList
-                .Where(x => x.StatusName.ToLower() == "cancel")
+                .Where(x => x.Status_code == "CANCELLED")
                 .Select(x => x.StatusId)
                 .ToList();
 
@@ -111,16 +112,34 @@ namespace FreightBKShipping.Controllers
                     Count = g.Count()
                 })
                 .ToList();
+            var year = await _context.Years
+    .FirstOrDefaultAsync(y =>
+        y.YearId == yearId &&
+        y.YearCompanyId == GetCompanyId() &&
+        y.YearStatus == true);
 
-            var revenueChart = allbills
-                .GroupBy(b => b.BillDate.Month)
-                .Select(g => new MonthlyRevenueDto
-                {
-                    Month = g.Key,
-                    Amount = g.Sum(x => (decimal)x.BillNetAmount)
-                })
-                .OrderBy(x => x.Month)
-                .ToList();
+            if (year == null)
+                return BadRequest("Invalid financial year");
+
+            var months = Enumerable.Range(0, 12)
+     .Select(i => year.YearDateFrom!.Value.AddMonths(i))
+     .ToList();
+
+
+            var revenueChart = months.Select((date, index) => new MonthlyRevenueDto
+            {
+                Month = date.Month,
+                MonthOrder = index + 1,
+                MonthName = date.ToString("MMM yyyy"), // ✅ Apr 2025, Jan 2026
+                Amount = billList
+           .Where(b =>
+               b.BillDate.Month == date.Month &&
+               b.BillDate.Year == date.Year)
+           .Sum(b => (decimal)b.BillNetAmount)
+            })
+   .ToList();
+
+
 
             return Ok(new DashboardResponseDto
             {

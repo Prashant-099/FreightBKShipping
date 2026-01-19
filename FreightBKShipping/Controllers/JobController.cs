@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +14,13 @@ namespace FreightBKShipping.Controllers
     public class JobController : BaseController
     {
         private readonly AppDbContext _context;
-        public JobController(AppDbContext context) => _context = context;
+        private readonly AuditLogService _auditLogService;
+        public JobController(AppDbContext context, AuditLogService auditLogService) 
+        {
+            _auditLogService = auditLogService;
+            _context = context;
+        
+        }
 
         // GET: api/Job
         [HttpGet]
@@ -222,15 +230,93 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
         {   
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var exists = await _context.Jobs.AnyAsync(c => c.JobNo == dto.JobNo && c.JobActive == dto.JobActive && c.JobType == dto.JobType  && c.JobBranchId==dto.JobBranchId && c.JobCompanyId == GetCompanyId().ToString() && c.JobYearId == dto.JobYearId);
-            if (exists)
-            {
 
-                return Conflict(new { message = "job number already exists." });
-            }
+            using var tx = await _context.Database.BeginTransactionAsync();
+
             try
             {
+                // 1️⃣ Voucher
+                var voucher = await _context.Vouchers
+                    .FirstOrDefaultAsync(v => v.VoucherGroup == dto.JobType && v.VoucherBranchId== dto.JobBranchId && v.VoucherCompanyId == GetCompanyId());
+
+                if (voucher == null)
+                    return BadRequest(new { message = "Invalid voucher selected." });
+
+                bool isAutomatic = voucher.VoucherMethod == "Automatic";
+
+                // 2️⃣ Voucher details
+                var voucherDetail = await _context.VoucherDetails
+                    .FirstOrDefaultAsync(vd =>
+                        vd.VoucherDetailVoucherId == voucher.VoucherId &&
+                        vd.VoucherDetailYearId == int.Parse(dto.JobYearId) &&
+                        vd.VoucherDetailStatus == true);
+
+                if (voucherDetail == null)
+                    return BadRequest(new { message = "Voucher details not configured." });
+
+                int nextNo;
+                string jobNo;
+
+                if (isAutomatic)
+                {
+                    // 3️⃣ Auto number
+                    nextNo = voucherDetail.VoucherDetailLastNo + 1;
+
+                    // 2️⃣ Check if this number already exists (manual entry conflict)
+                    bool exists = await _context.Jobs.AnyAsync(j =>
+                        j.JobVchNo == nextNo &&
+                        j.JobCompanyId == GetCompanyId().ToString() &&
+                        j.JobBranchId == dto.JobBranchId &&
+                          j.JobActive == true &&
+                           j.JobType == dto.JobType&&
+                        j.JobYearId == dto.JobYearId);
+
+                    if (exists)
+                    {
+                        // Only now, find the max JobVchNo in DB and continue from there
+                        nextNo = (await _context.Jobs
+                            .Where(j => j.JobCompanyId == GetCompanyId().ToString() &&
+                                        j.JobBranchId == dto.JobBranchId &&
+                                         j.JobActive == true &&
+                                         j.JobType == dto.JobType &&
+                                        j.JobYearId == dto.JobYearId)
+                            .MaxAsync(j => (int?)j.JobVchNo) ?? nextNo) + 1;
+                    }
+
+                    jobNo =
+                        (voucherDetail.VoucherDetailPrefix ?? "") +
+                        nextNo +
+                        (voucherDetail.VoucherDetailSufix ?? "");
+
+                    voucherDetail.VoucherDetailLastNo = nextNo;
+                    voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+                }
+                else
+                {
+                    // 4️⃣ Manual number
+                    bool exists = await _context.Jobs.AnyAsync(j =>
+                        j.JobNo == dto.JobNo &&
+                        j.JobCompanyId == GetCompanyId().ToString() &&
+                        j.JobBranchId == dto.JobBranchId &&
+                         j.JobActive == true &&
+                         j.JobType == dto.JobType &&
+                        j.JobYearId == dto.JobYearId);
+
+                    if (exists)
+                        return Conflict(new { message = "Job number already exists." });
+
+                    nextNo = 0;
+                    jobNo = dto.JobNo;
+                }
+
+                // 5️⃣ Create job
                 var job = MapDtoToJob(dto);
+                job.JobNo = jobNo;
+                job.JobVchNo = nextNo;
+                job.JobPrefix = voucherDetail.VoucherDetailPrefix;
+                job.JobSufix = voucherDetail.VoucherDetailSufix;
+
+
                 job.JobActive = true;
                 job.JobAddedByUserId = GetUserId();
                 job.JobUpdatedByUserId = GetUserId();
@@ -239,8 +325,22 @@ namespace FreightBKShipping.Controllers
                 job.JobUpdated = DateTime.UtcNow;
 
                 _context.Jobs.Add(job);
+
                 await _context.SaveChangesAsync();
 
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "jobs",
+                    RecordId = job.JobId,
+                    VoucherType = job.JobType,
+                    Amount = 0,
+                    Operations = "INSERT",
+                    Remarks = job.JobType  + " Job No: " + job.JobNo,
+                    BranchId = job.JobBranchId,
+                    YearId = int.Parse(job.JobYearId)
+                }, GetCompanyId());
+
+                await tx.CommitAsync();
                 return Ok(job);
             }
             catch (DbUpdateException dbEx)
@@ -255,6 +355,7 @@ namespace FreightBKShipping.Controllers
             }
             catch (Exception ex)
             {
+                await tx.RollbackAsync();
                 return BadRequest(new { error = "Error creating job", details = ex.Message, stack = ex.StackTrace });
             }
         }
@@ -269,6 +370,24 @@ namespace FreightBKShipping.Controllers
             //{
             //    return Conflict(new { message = "job number already exists." });
             //}
+            var voucher = await _context.Vouchers
+      .FirstOrDefaultAsync(v => v.VoucherGroup == dto.JobType);
+
+            if (voucher != null && voucher.VoucherMethod == "Manual")
+            {
+                bool exists = await _context.Jobs.AnyAsync(j =>
+                    j.JobId != id &&                     // exclude current job
+                    j.JobNo == dto.JobNo &&
+                     j.JobActive == true &&
+                    j.JobCompanyId == GetCompanyId().ToString() &&
+                    j.JobBranchId == dto.JobBranchId &&
+                    j.JobYearId == dto.JobYearId
+                );
+
+                if (exists)
+                    return Conflict(new { message = "Job number already exists." });
+            }
+
             try
             {
                 var job = await _context.Jobs.FindAsync(id);
@@ -279,6 +398,17 @@ namespace FreightBKShipping.Controllers
                 job.JobUpdated = DateTime.UtcNow;
 
                 _context.Jobs.Update(job);
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "jobs",
+                    RecordId = id,
+                    VoucherType = job.JobType,
+                    Amount = 0,
+                    Operations = "UPDATE",
+                    Remarks = job.JobType + " Job No: " + job.JobNo,
+                    BranchId = job.JobBranchId,
+                    YearId = int.Parse(job.JobYearId)
+                }, GetCompanyId());
                 await _context.SaveChangesAsync();
 
                 return Ok(job);
@@ -309,7 +439,7 @@ namespace FreightBKShipping.Controllers
 
                 // Check if job exists in BillJobNo
                 bool existsInBill = await _context.Bills
-                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus==true); 
+                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus==true && b.BillCompanyId ==GetCompanyId()); 
 
                 if (existsInBill)
                 {
@@ -322,6 +452,17 @@ namespace FreightBKShipping.Controllers
                 job.JobActive = false;
                 _context.Jobs.Update(job);
                 await _context.SaveChangesAsync();
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "jobs",
+                    RecordId = id,
+                    VoucherType = job.JobType,
+                    Amount = 0,
+                    Operations = "DELETE",
+                    Remarks = job.JobType + " Job No: " + job.JobNo,
+                    BranchId = job.JobBranchId,
+                    YearId = int.Parse(job.JobYearId)
+                }, GetCompanyId());
                 return Ok(true);
             }
             catch (DbUpdateException dbEx)

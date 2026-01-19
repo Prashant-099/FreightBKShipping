@@ -40,6 +40,8 @@ namespace FreightBKShipping.Data
         public DbSet<Status> Status { get; set; }
         public DbSet<UserLoginSession> UserLoginSessions { get; set; }
 
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
 
         //added by dhruv
         public DbSet<WpMailConfig> wpMailConfigs { get; set; }
