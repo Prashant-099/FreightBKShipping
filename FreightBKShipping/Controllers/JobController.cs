@@ -581,14 +581,14 @@ namespace FreightBKShipping.Controllers
             job.JobIgmDate = dto.JobIgmDate;
             job.JobDoType = dto.JobDoType;
             job.JobIcd = dto.JobIcd;
-            job.JobTerminal = dto.JobTerminal;
+            job.JobTerminal = dto.JobTerminal;  
             job.JobFreeDays = dto.JobFreeDays;
             job.JobEta = dto.JobEta;
             job.JobEtd = dto.JobEtd;
             job.JobSealNo = dto.JobSealNo;
             job.Surveyor = dto.Surveyor;
             job.SurveyorAddress = dto.SurveyorAddress;
-            job.JobBranchId = dto.JobBranchId;
+            job.JobBranchId = dto.JobBranchId != 0 ? dto.JobBranchId : GetBranchId(); // <-- default branch
             job.JobDoValid = dto.JobDoValid;
             job.JobDescSplitLine = dto.JobDescSplitLine;
             job.JobGoodsDesc1 = dto.JobGoodsDesc1;
