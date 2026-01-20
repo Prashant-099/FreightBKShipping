@@ -17,6 +17,38 @@ namespace FreightBKShipping.Controllers
             _context = context;
         }
 
+
+       // GET: api/UserBranches/byuser/{userId}
+[HttpGet("byuser/{userId}")]
+public async Task<IActionResult> GetUserBranches(string userId)
+{
+    if (string.IsNullOrWhiteSpace(userId))
+        return BadRequest(new { error = "UserId is required" });
+
+    try
+    {
+        var branches = await _context.UserBranches
+            .Where(ub => ub.UserId == userId)
+            .Include(ub => ub.Branch)      // 🔥 JOIN branches table
+            .Select(ub => ub.Branch)       // 🔥 project full Branch
+            .ToListAsync();
+
+        if (branches == null || branches.Count == 0)
+            return NotFound(new { message = "No branches found for this user" });
+
+        return Ok(branches);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new
+        {
+            error = "Error fetching user branches",
+            details = ex.Message
+        });
+    }
+}
+
+
         // GET: api/Branches
         [HttpGet]
         public async Task<IActionResult> GetAll()

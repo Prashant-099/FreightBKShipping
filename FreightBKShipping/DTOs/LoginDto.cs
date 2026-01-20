@@ -7,14 +7,14 @@ namespace FreightBKShipping.DTOs
         [Required] public string UserEmail { get; set; }
         [Required] public string UserPassword { get; set; }
         public bool RememberMe { get; set; }
-
     }
+
     public class AuthResponseDto
     {
         public string Token { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public int? BranchId { get; set; }
-        public int? ActiveBranchId { get; set; }        // <-- Active branch
+        public int? ActiveBranchId { get; set; }        
         public List<UserBranchDto> Branches { get; set; } = new();
         public string? UserId { get; set; }
         public string Email { get; set; } = string.Empty;
