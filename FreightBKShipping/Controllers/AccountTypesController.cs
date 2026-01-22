@@ -20,14 +20,17 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var types = await FilterByCompany( _context.AccountTypes, "CompanyId").ToListAsync();
+            //var types = await FilterByCompany( _context.AccountTypes, "CompanyId").ToListAsync();
+            var types = await _context.AccountTypes.ToListAsync();
             return Ok(types);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var type = await FilterByCompany( _context.AccountTypes, "CompanyId").FirstOrDefaultAsync(b => b.AccountTypeId == id); 
+            //var type = await FilterByCompany( _context.AccountTypes, "CompanyId").FirstOrDefaultAsync(b => b.AccountTypeId == id); 
+            var type = await _context.AccountTypes
+                                   .FirstOrDefaultAsync(b => b.AccountTypeId == id);
             if (type == null) return NotFound();
             return Ok(type);
         }
@@ -61,7 +64,9 @@ namespace FreightBKShipping.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var type = await FilterByCompany(_context.AccountTypes, "CompanyId").FirstOrDefaultAsync(b => b.AccountTypeId == id);
+            //var type = await FilterByCompany(_context.AccountTypes, "CompanyId").FirstOrDefaultAsync(b => b.AccountTypeId == id);
+            var type = await _context.AccountTypes
+                                   .FirstOrDefaultAsync(b => b.AccountTypeId == id);
             if (type == null) return NotFound();
 
             _context.AccountTypes.Remove(type);

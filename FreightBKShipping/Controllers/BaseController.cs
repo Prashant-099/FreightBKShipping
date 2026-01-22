@@ -45,6 +45,8 @@ namespace FreightBKShipping.Controllers
             return User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
         }
 
+
+
         protected IQueryable<T> FilterByCompany<T>(IQueryable<T> query, string companyPropName)
         {
             // Agar user SuperAdmin hai → bypass

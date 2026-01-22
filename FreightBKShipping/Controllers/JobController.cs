@@ -6,7 +6,6 @@ using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace FreightBKShipping.Controllers
 {
     [Route("api/[controller]")]
@@ -32,50 +31,50 @@ namespace FreightBKShipping.Controllers
                     .Where(b => b.JobActive == true)
                     .OrderByDescending(j => j.JobId)
                     .ThenByDescending(b => b.JobDate)
-.GroupJoin(_context.Vessels,
-    j => j.JobVesselId,
-    v => v.VesselId,
-    (j, vessels) => new { j, vessels })
-.SelectMany(
-    x => x.vessels.DefaultIfEmpty(),
-    (x, vessel) => new { x.j, vessel })
+                    .GroupJoin(_context.Vessels,
+                        j => j.JobVesselId,
+                        v => v.VesselId,
+                        (j, vessels) => new { j, vessels })
+                    .SelectMany(
+                        x => x.vessels.DefaultIfEmpty(),
+                        (x, vessel) => new { x.j, vessel })
 
-.GroupJoin(_context.Accounts,
-    x => x.j.JobPartyId,
-    a => a.AccountId,
-    (x, accounts) => new { x.j, x.vessel, accounts })
-.SelectMany(
-    x => x.accounts.DefaultIfEmpty(),
-    (x, account) => new { x.j, x.vessel, account })
+                    .GroupJoin(_context.Accounts,
+                        x => x.j.JobPartyId,
+                        a => a.AccountId,
+                        (x, accounts) => new { x.j, x.vessel, accounts })
+                    .SelectMany(
+                        x => x.accounts.DefaultIfEmpty(),
+                        (x, account) => new { x.j, x.vessel, account })
 
-                    // POL
-                    .GroupJoin(_context.Locations,
-    x => x.j.JobPolId,
-    l => l.LocationId,
-    (x, locations) => new { x.j, x.vessel, x.account, locations })
-.SelectMany(
-    x => x.locations.DefaultIfEmpty(),
-    (x, pol) => new { x.j, x.vessel, x.account, pol })
+                                        // POL
+                                        .GroupJoin(_context.Locations,
+                        x => x.j.JobPolId,
+                        l => l.LocationId,
+                        (x, locations) => new { x.j, x.vessel, x.account, locations })
+                    .SelectMany(
+                        x => x.locations.DefaultIfEmpty(),
+                        (x, pol) => new { x.j, x.vessel, x.account, pol })
 
-           // POD
-           .GroupJoin(_context.Locations,
-    x => x.j.JobPodId,
-    l => l.LocationId,
-    (x, locations) => new { x.j, x.vessel, x.account, x.pol, locations })
-.SelectMany(
-    x => x.locations.DefaultIfEmpty(),
-    (x, pod) => new { x.j, x.vessel, x.account, x.pol, pod })
+                               // POD
+                               .GroupJoin(_context.Locations,
+                        x => x.j.JobPodId,
+                        l => l.LocationId,
+                        (x, locations) => new { x.j, x.vessel, x.account, x.pol, locations })
+                    .SelectMany(
+                        x => x.locations.DefaultIfEmpty(),
+                        (x, pod) => new { x.j, x.vessel, x.account, x.pol, pod })
 
-          // ✅ BRANCH JOIN
-          .GroupJoin(_context.Branches,
-    x => x.j.JobBranchId,
-    b => b.BranchId,
-    (x, branches) => new { x.j, x.vessel, x.account, x.pol, x.pod, branches })
-.SelectMany(
-    x => x.branches.DefaultIfEmpty(),
-    (x, branch) => new JobReadDto
-    {
-        JobId = x.j.JobId,
+                              // ✅ BRANCH JOIN
+                              .GroupJoin(_context.Branches,
+                        x => x.j.JobBranchId,
+                        b => b.BranchId,
+                        (x, branches) => new { x.j, x.vessel, x.account, x.pol, x.pod, branches })
+                    .SelectMany(
+                        x => x.branches.DefaultIfEmpty(),
+                        (x, branch) => new JobReadDto
+                        {
+                            JobId = x.j.JobId,
                             JobCompanyId = x.j.JobCompanyId,
                             JobAddedByUserId = x.j.JobAddedByUserId,
                             JobUpdatedByUserId = x.j.JobUpdatedByUserId,

@@ -16,10 +16,12 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ISieveProcessor _sieveProcessor;
-        public CompanyController(AppDbContext context, ISieveProcessor sieveProcessor)
+        private readonly CompanySetupService _setupService;
+        public CompanyController(AppDbContext context, ISieveProcessor sieveProcessor, CompanySetupService setupService)
         {
             _context = context;
             _sieveProcessor = sieveProcessor;
+            _setupService = setupService;
         }
 
         [HttpGet]
@@ -42,26 +44,48 @@ namespace FreightBKShipping.Controllers
             company => company.StateId,
             state => state.StateId,
             (company, state) => new { company, state })
-                .Select(c => new CompanyDto
-                {
-                    CompanyId = c.company.CompanyId,
-                    Name = c.company.Name,
-                    Code = c.company.Code,
-                    Address1 = c.company.Address1,
-                    PrintName = c.company.PrintName,
-                    Email = c.company.Email,
-                    Mobile = c.company.Mobile,
-                    IsGstApplicable = c.company.IsGstApplicable,
-                    Gstin = c.company.Gstin,
-                    Status = c.company.Status,
-                    Remarks = c.company.Remarks,
-                    City = c.company.City,
-                    Country = c.company.Country,
-                    StateName = c.state.StateName,
-                    StateId = c.company.StateId,
-                        Panno = c.company.Panno
-                })
-                .ToListAsync();
+            .Select(c => new CompanyDto
+            {
+                CompanyId = c.company.CompanyId,
+                Name = c.company.Name,
+                Code = c.company.Code,
+
+                Address1 = c.company.Address1,
+                Address2 = c.company.Address2,
+                Address3 = c.company.Address3,
+                CompanyAddress = c.company.Address1+ c.company.Address2+ c.company.Address3,
+
+                PrintName = c.company.PrintName,
+                Email = c.company.Email,
+                Mobile = c.company.Mobile,
+
+                IsGstApplicable = c.company.IsGstApplicable,
+                Gstin = c.company.Gstin,
+                Status = c.company.Status,
+                Remarks = c.company.Remarks,
+
+                City = c.company.City,
+                Country = c.company.Country,
+
+                StateId = c.company.StateId,
+                StateName = c.state.StateName,
+                StateCode = c.state.StateCode,   // agar hai
+
+                Panno = c.company.Panno,
+                Website = c.company.Website,
+                Pincode = c.company.Pincode,
+
+                CurrencySymbol = c.company.CurrencySymbol,
+                Tagline1 = c.company.Tagline1,
+                ExtendDays = c.company.ExtendDays,
+
+                HasWhatsapp = c.company.HasWhatsapp,
+
+                ContactPerson = c.company.ContactPerson,
+                AddedByUserId = c.company.AddedByUserId
+            })
+            .ToListAsync();
+
 
             return Ok(new
             {
@@ -103,7 +127,8 @@ namespace FreightBKShipping.Controllers
              Country = cs.c.Country,
              StateId = cs.c.StateId,
              StateName = cs.s.StateName,  // ✅ Include state name
-             Panno = cs.c.Panno
+             Panno = cs.c.Panno,
+             Website= cs.c.Website,
          })
          .FirstOrDefaultAsync();
 
@@ -111,40 +136,53 @@ namespace FreightBKShipping.Controllers
             return Ok(company);
         }
 
+
+        //[HttpPost]
+        //[Authorize(Policy = "CompanyManagementOnly")]
+        //public async Task<IActionResult> Create(CompanyAddDto dto)
+        //{
+
+        //    var company = new Company
+        //    {
+        //        Name = dto.Name,
+        //        Code = dto.Code,
+        //        Address1 = dto.Address1,
+        //        PrintName= dto.PrintName,
+        //        Email = dto.Email,
+        //        Mobile = dto.Mobile,
+        //        IsGstApplicable = dto.IsGstApplicable,
+        //        Gstin = dto.Gstin,
+        //        Status = dto.Status,
+        //        Remarks = dto.Remarks,
+        //        City = dto.City,
+        //        Country = dto.Country,
+        //        Created = DateTime.UtcNow,
+        //        Updated = DateTime.UtcNow,
+        //        StateId = dto.StateId,
+        //        Panno = dto.Panno,
+        //        AddedByUserId = GetUserId().ToString(), // 👈 replace with logged-in user if available
+        //        Website=dto.Website,
+        //    };
+
+        //    _context.companies.Add(company);
+        //    await _context.SaveChangesAsync();
+
+
+
+        //    return Ok(new { company.CompanyId });
+        //}
+
         [HttpPost]
         [Authorize(Policy = "CompanyManagementOnly")]
         public async Task<IActionResult> Create(CompanyAddDto dto)
         {
-
-            var company = new Company
-            {
-                Name = dto.Name,
-                Code = dto.Code,
-                Address1 = dto.Address1,
-                PrintName= dto.PrintName,
-                Email = dto.Email,
-                Mobile = dto.Mobile,
-                IsGstApplicable = dto.IsGstApplicable,
-                Gstin = dto.Gstin,
-                Status = dto.Status,
-                Remarks = dto.Remarks,
-                City = dto.City,
-                Country = dto.Country,
-                Created = DateTime.UtcNow,
-                Updated = DateTime.UtcNow,
-                StateId = dto.StateId,
-                Panno = dto.Panno,
-                AddedByUserId = GetUserId().ToString() // 👈 replace with logged-in user if available
-            };
-
-            _context.companies.Add(company);
-            await _context.SaveChangesAsync();
-
+            var userId = GetUserId(); // from token
+            var company = await _setupService.CreateCompanyWithDefaultsAsync(dto, userId);
             return Ok(new { company.CompanyId });
         }
 
         [HttpPut("{id}")]
-        [Authorize(Policy = "CompanyManagementOnly")]
+        //[Authorize(Policy = "CompanyManagementOnly")]
         public async Task<IActionResult> Update(int id, CompanyDto dto)
         {
             var company = await _context.companies.FindAsync(id);
@@ -166,7 +204,10 @@ namespace FreightBKShipping.Controllers
             company.StateId = dto.StateId;
             company.Panno = dto.Panno;
             company.UpdatedByUserId = GetUserId().ToString(); // 👈 replace with logged-in user
-
+            company.Website = dto.Website;
+            company.HasWhatsapp = dto.HasWhatsapp;
+            company.StateCode = dto.StateCode;
+            
             await _context.SaveChangesAsync();
             return NoContent();
         }

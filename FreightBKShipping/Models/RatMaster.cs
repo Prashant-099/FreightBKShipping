@@ -39,6 +39,9 @@ namespace FreightBKShipping.Models
         [Column("ratemaster_updated")]
         public DateTime? RateMasterUpdated { get; set; }
 
+        [Column("ratemaster_companyid")]
+        public int RateMasterCompanyId { get; set; }
+
         [ForeignKey(nameof(RateMasterPartyId))]
         [ValidateNever]
         public Account Party { get; set; }  // Navigation property

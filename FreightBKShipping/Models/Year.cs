@@ -40,7 +40,7 @@ namespace FreightBKShipping.Models
         public DateTime YearCreated { get; set; }
 
         [Column("year_updated")]
-        public DateTime YearUpdated { get; set; }
+        public DateTime? YearUpdated { get; set; }
 
         [Column("year_isdefault")]
         public bool YearIsDefault { get; set; }

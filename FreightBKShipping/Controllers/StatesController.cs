@@ -22,41 +22,53 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<State>>> GetStates()
         {
-            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
-            return await query.ToListAsync();
+            // ❌ Company filter removed
+            // var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
+
+            var states = await _context.States.ToListAsync();
+            return Ok(states);
         }
+
+        // GET: api/States/GetByCode/GJ
         [HttpGet("GetByCode/{code}")]
         public async Task<ActionResult<State>> GetStateByCode(string code)
         {
             if (string.IsNullOrWhiteSpace(code))
                 return BadRequest("State code is required");
 
-            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
+            // ❌ Company filter removed
+            // var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
 
-            var state = await query
+            var state = await _context.States
                 .FirstOrDefaultAsync(s => s.StateCode.ToLower() == code.Trim().ToLower());
 
             if (state == null)
                 return NotFound($"State code '{code}' not found");
 
-            return state;
+            return Ok(state);
         }
 
         // GET: api/States/5
         [HttpGet("{id}")]
         public async Task<ActionResult<State>> GetState(int id)
         {
-            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
-            var state = await query.FirstOrDefaultAsync(s => s.StateId == id);
+            // ❌ Company filter removed
+            // var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
 
-            if (state == null) return NotFound();
-            return state;
+            var state = await _context.States
+                                      .FirstOrDefaultAsync(s => s.StateId == id);
+
+            if (state == null)
+                return NotFound();
+
+            return Ok(state);
         }
 
         // POST: api/States
         [HttpPost]
         public async Task<ActionResult<State>> CreateState(State state)
         {
+            // 🔹 Ye rehne diya, future multi-company ke kaam aa sakta hai
             state.StateCompanyId = GetCompanyId();
             state.StateAddedByUserId = GetUserId();
             state.StateCreated = DateTime.UtcNow;
@@ -73,18 +85,24 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateState(int id, State state)
         {
-            if (id != state.StateId) return BadRequest();
+            if (id != state.StateId)
+                return BadRequest();
 
-            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
-            var existing = await query.FirstOrDefaultAsync(s => s.StateId == id);
+            // ❌ Company filter removed
+            // var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
+            // var existing = await query.FirstOrDefaultAsync(s => s.StateId == id);
 
-            if (existing == null) return NotFound();
+            var existing = await _context.States
+                                         .FirstOrDefaultAsync(s => s.StateId == id);
+
+            if (existing == null)
+                return NotFound();
 
             existing.StateName = state.StateName;
             existing.StateCode = state.StateCode;
             existing.StateStatus = state.StateStatus;
             existing.StateUpdatedByUserId = GetUserId();
-            existing.StateCompanyId = GetCompanyId();
+            existing.StateCompanyId = GetCompanyId(); // optional
             existing.StateUpdated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -95,10 +113,15 @@ namespace FreightBKShipping.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteState(int id)
         {
-            var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
-            var state = await query.FirstOrDefaultAsync(s => s.StateId == id);
+            // ❌ Company filter removed
+            // var query = FilterByCompany(_context.States.AsQueryable(), "StateCompanyId");
+            // var state = await query.FirstOrDefaultAsync(s => s.StateId == id);
 
-            if (state == null) return NotFound();
+            var state = await _context.States
+                                      .FirstOrDefaultAsync(s => s.StateId == id);
+
+            if (state == null)
+                return NotFound();
 
             _context.States.Remove(state);
             await _context.SaveChangesAsync();

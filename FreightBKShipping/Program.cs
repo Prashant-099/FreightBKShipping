@@ -50,6 +50,8 @@ namespace FreightBKShipping
             builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<SentWpEmailService>();
             builder.Services.AddScoped<AuditLogService>();
+            builder.Services.AddScoped<CompanySetupService>();
+
             builder.Services.AddHttpContextAccessor();
             // ✅ 4. Add JWT Authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -112,6 +114,7 @@ namespace FreightBKShipping
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+           
 
             var app = builder.Build();
 
