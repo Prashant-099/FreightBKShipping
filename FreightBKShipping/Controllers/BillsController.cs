@@ -181,7 +181,7 @@ namespace FreightBKShipping.Controllers
                 posname = b.PlaceOfSupply.StateName,
                 branchname = b.branch.BranchName,
                 Vouchname = b.Voucher.VoucherName,
-
+               Bill_due_amt = b.Bill_due_amt,
                 BillDetails = b.BillDetails
                 .Where(d => d.BillDetailStatus == true)
                        .OrderBy(d => d.BillDetailSno)
@@ -389,6 +389,7 @@ namespace FreightBKShipping.Controllers
                 partyname = bill.partyname,
                 posname = bill.posname,
                 Vouchname = bill.Vouchname,
+                Bill_due_amt = bill.Bill_due_amt,
                 BillDetails = bill.BillDetails.Select(d => new BillDetailDto
                 {
                     BillDetailId = d.BillDetailId,
@@ -645,7 +646,7 @@ namespace FreightBKShipping.Controllers
                 BillShipPartyId = billDto.BillShipPartyId,
                 BillTcsPer = billDto.BillTcsPer,
                 BillTcsAmt = billDto.BillTcsAmt,
-
+                Bill_due_amt = billDto.BillNetAmount,
                 // Details
                 BillDetails = billDto.BillDetails.Select(d => new BillDetail
                 {
@@ -755,6 +756,7 @@ namespace FreightBKShipping.Controllers
             {
                 bool exists =await _context.Bills.AnyAsync(b =>
                         b.BillNo == billDto.BillNo &&
+                        b.BillId != billDto.BillId &&
                          b.BillStatus == true &&
                         b.BillCompanyId == GetCompanyId() &&
                         b.BillBranchId == billDto.BillBranchId &&
@@ -795,7 +797,7 @@ namespace FreightBKShipping.Controllers
             bill.BillJobId = billDto.BillJobId;
             bill.BillNo = billDto.BillNo;
             bill.BillDate = billDto.BillDate;
-            bill.BillType = billDto.BillType;
+            bill.BillType = voucher.VoucherGroup;
             bill.BillAmount = billDto.BillAmount;
             bill.BillRemarks = billDto.BillRemarks;
             bill.BillTotalUsd = billDto.BillTotalUsd;
@@ -891,6 +893,7 @@ namespace FreightBKShipping.Controllers
             bill.BillTcsPer = billDto.BillTcsPer;
             bill.BillTcsAmt = billDto.BillTcsAmt;
             bill.BillYearId = billDto.BillYearId;
+            bill.Bill_due_amt = billDto.Bill_due_amt;
             // ---- Handle BillDetails ----
             // Remove deleted details
             //var detailsToRemove = bill.BillDetails
@@ -1049,15 +1052,15 @@ namespace FreightBKShipping.Controllers
                 .FirstOrDefaultAsync(b => b.BillId == id);
 
             if (bill == null) return NotFound();
-            if (!string.IsNullOrEmpty(bill.BillLockedBy) && bill.BillLockedBy != GetUserId())
+            if (!string.IsNullOrEmpty(bill.BillLockedBy) )
             {
                 //return BadRequest("This bill is locked by another user and cannot be deleted.");
-                return Ok(new { Success = false, Message = "Bill is locked" });
+                return BadRequest(new {  Message = "Bill is locked" });
             }
             if (!string.IsNullOrEmpty(bill.BillAckNo) && !string.IsNullOrEmpty(bill.BillIrnNo))
             {
                 //return BadRequest("This bill’s e-invoice is already generated and cannot be deleted.");
-                return Ok(new  { Success = false, Message = "E-Invoice generated" });
+                return BadRequest(new  { Message = "E-Invoice generated" });
             }
             // Remove nested collections first
             //   _context.BillDetails.RemoveRange(bill.BillDetails);
