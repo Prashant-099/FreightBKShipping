@@ -427,6 +427,9 @@ namespace FreightBKShipping.Models
         [Column("bill_tcs_amt")]
         public double BillTcsAmt { get; set; }
 
+        [Column("bill_due_amt")]
+        public double Bill_due_amt { get; set; }
+
         //NOT MAPPED IN DB    
         public string? partyname { get; set; }
         public string? posname { get; set; }

@@ -41,6 +41,9 @@ namespace FreightBKShipping.Data
         public DbSet<UserLoginSession> UserLoginSessions { get; set; }
 
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Journal> Journals { get; set; }
+        public DbSet<BillRefDetail> BillRefDetails { get; set; }
+
 
 
         //added by dhruv
