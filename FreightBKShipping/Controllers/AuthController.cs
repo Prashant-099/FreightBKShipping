@@ -31,8 +31,7 @@ namespace FreightBKShipping.Controllers
 
         // ✅ Login Endpoint
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
-        
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)        
         {
             try
             {
@@ -192,6 +191,7 @@ namespace FreightBKShipping.Controllers
                 await _context.SaveChangesAsync();
                 return Unauthorized("Invalid Refresh Token");
             }
+
             if (user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 return Unauthorized("Refresh token has expired");
 

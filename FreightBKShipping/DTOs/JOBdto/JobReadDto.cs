@@ -154,5 +154,16 @@
         public string? BranchName { get; set; }
         public string? Partyname { get; set; }
 
+        //-------------------------------------
+        public string? JobSubType { get; set; }
+
+        public bool? IsTransportaion { get; set; }
+        public bool? IsClearing { get; set; }
+
+        public bool? IsForwarding { get; set; }
+        public bool? IsMiscService { get; set; }
+        public string? JobShipmentType { get; set; }
+
+
     }
 }
