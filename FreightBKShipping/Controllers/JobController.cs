@@ -184,8 +184,17 @@ namespace FreightBKShipping.Controllers
                             JobEtd = x.j.JobEtd,
 
                             JobBranchId = x.j.JobBranchId,
+                            IsClearing=x.j.IsClearing,
+                            IsForwarding=x.j.IsForwarding,
+                            IsMiscService=x.j.IsMiscService,
+                            IsTransportaion=x.j.IsTransportaion,
+                            JobIssuePlace = x.j.JobIssuePlace,
+                            JobShipmentType= x.j.JobShipmentType,
+                            JobSubType=x.j.JobSubType,
+                            
 
-                    BranchName = branch != null ? branch.BranchName : null,
+
+                            BranchName = branch != null ? branch.BranchName : null,
                     VesselName = x.vessel != null ? x.vessel.VesselName : null,
                     PolName = x.pol != null ? x.pol.LocationName : null,
                             PodName = x.pod != null ? x.pod.LocationName : null
@@ -616,6 +625,21 @@ namespace FreightBKShipping.Controllers
             job.JobAgent = dto.JobAgent;
             job.JobPartyAddress = dto.JobPartyAddress;
             job.JobHighseas1Address = dto.JobHighseas1Address;
+         
+           
+           
+  
+            job.JobShipmentType = dto.JobShipmentType;
+         
+            job.JobStatus = dto.JobStatus;  
+            job.JobType = dto.JobType;
+            job.JobLockedBy = dto.JobLockedBy;
+            job.IsClearing = dto.IsClearing;
+            job.IsForwarding = dto.IsForwarding;
+            job.IsMiscService = dto.IsMiscService;
+            job.IsTransportaion = dto.IsTransportaion;
+            job.JobSubType = dto.JobSubType;
+           
             return job;
         }
 

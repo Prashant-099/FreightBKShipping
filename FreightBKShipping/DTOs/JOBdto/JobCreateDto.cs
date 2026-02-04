@@ -137,5 +137,13 @@ namespace FreightBKShipping.DTOs
         public string? JobAgent { get; set; }
         public string? JobPartyAddress { get; set; }
         public string? JobHighseas1Address { get; set; }
+        public string? JobSubType { get; set; }
+
+        public bool? IsTransportaion { get; set; }
+        public bool? IsClearing { get; set; }
+
+        public bool? IsForwarding { get; set; }
+        public bool? IsMiscService { get; set; }
+        public string? JobShipmentType { get; set; }
     }
 }
