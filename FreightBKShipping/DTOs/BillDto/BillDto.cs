@@ -121,7 +121,7 @@ namespace FreightBKShipping.DTOs.BillDto
         public float BillNetAmount { get; set; }
         public float BillTdsAmt { get; set; }
         public float BillTdsPer { get; set; }
-        public string? BillAgainstBillId { get; set; }
+        public int? BillAgainstBillId { get; set; }
         public bool BillIsRcm { get; set; }
         public int BillBranchId { get; set; }
         public string? BillHblNo { get; set; }
