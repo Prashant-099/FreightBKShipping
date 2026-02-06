@@ -111,6 +111,7 @@ catch (Exception ex)
         account.AccountTdsApplicable = dto.AccountTdsApplicable;
         account.AccountTdsPer = dto.AccountTdsPer;
         account.AccountGroupId = dto.AccountGroupId;
+        account.AccountTypeId = dto.AccountTypeId;
 
         // Metadata (do NOT update AccountAddedByUserId)
         account.AccountUpdatedByUserId = GetUserId();

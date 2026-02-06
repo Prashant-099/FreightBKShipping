@@ -639,7 +639,7 @@ namespace FreightBKShipping.Controllers
             job.IsMiscService = dto.IsMiscService;
             job.IsTransportaion = dto.IsTransportaion;
             job.JobSubType = dto.JobSubType;
-           
+            
             return job;
         }
 
