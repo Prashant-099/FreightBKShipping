@@ -220,32 +220,32 @@ namespace FreightBKShipping.Models
 
         // 🔹 Consignee Notify Address
         [Column("lr_consignee_notify_address")]
-        [StringLength(45)]
+       
         public string? LrConsigneeNotifyAddress { get; set; }
 
         // 🔹 Consignor Notify GST
         [Column("lr_consignor_notify_gst")]
-        [StringLength(45)]
+       
         public string? LrConsignorNotifyGst { get; set; }
 
         // 🔹 Consignor Notify State
         [Column("lr_consignor_notify_state")]
-        [StringLength(45)]
+     
         public string? LrConsignorNotifyState { get; set; }
 
         // 🔹 Consignee Notify GST
         [Column("lr_consignee_notify_gst")]
-        [StringLength(45)]
+     
         public string? LrConsigneeNotifyGst { get; set; }
 
         // 🔹 Consignee Notify State
         [Column("lr_consignee_notify_state")]
-        [StringLength(45)]
+    
         public string? LrConsigneeNotifyState { get; set; }
 
         // ================= Billing / Truck =================
         [Column("lr_billtypebill")]
-        public int? LrBillTypeBill { get; set; }
+        public string? LrBillTypeBill { get; set; }
 
         [Column("lr_billtypetruck")]
         public int? LrBillTypeTruck { get; set; }
@@ -316,6 +316,10 @@ namespace FreightBKShipping.Models
 
         [Column("lr_unload_date")]
         public string? LrUnloadDate { get; set; }
+
+        [Column("lr_load_date")]
+        public string? LrloadDate { get; set; }
+
 
         [Column("lr_unload_time")]
         public string? LrUnloadTime { get; set; }

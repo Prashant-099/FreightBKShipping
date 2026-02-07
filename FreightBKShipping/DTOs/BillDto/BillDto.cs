@@ -135,6 +135,8 @@ namespace FreightBKShipping.DTOs.BillDto
         public string? posname { get; set; }
         public string? Vouchname { get; set; }
         public string? branchname { get; set; }
+        public string? LrBillTypeBill { get; set; }
+
         // Nested collections
         public List<BillDetailDto> BillDetails { get; set; } = new();
         //public List<BillRefDetailDto> BillRefDetails { get; set; } = new();

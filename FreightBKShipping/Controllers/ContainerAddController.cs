@@ -87,7 +87,7 @@ namespace FreightBKShipping.Controllers
                     stack = ex.StackTrace
                 });
             }
-            }
+        }
 
         // =========================
         // PUT: api/Lrs/{id}
@@ -95,98 +95,22 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] Lr dto)
         {
+            if (id != dto.LrId)
+                return BadRequest("ID mismatch");
+
             var lr = await _context.Lrs.FindAsync(id);
             if (lr == null)
                 return NotFound();
 
-            // 🔹 Copy updatable fields
-            lr.LrVoucherId = dto.LrVoucherId;
-            lr.LrPartyAccountId = dto.LrPartyAccountId;
-            lr.LrConsigneeNotifyId = dto.LrConsigneeNotifyId;
-            lr.LrConsignorNotifyId = dto.LrConsignorNotifyId;
-            lr.LrProductId = dto.LrProductId;
-            lr.LrVehicleId = dto.LrVehicleId;
-            lr.LrSupplierAccountId = dto.LrSupplierAccountId;
-            lr.LrDriverId = dto.LrDriverId;
+            // Copy everything except keys & metadata
+            _context.Entry(lr).CurrentValues.SetValues(dto);
 
-            lr.LrNo = dto.LrNo;
-            lr.LrNoStr = dto.LrNoStr;
-            lr.LrDate = dto.LrDate;
-            lr.LrTime = dto.LrTime;
-            lr.LrTripNo = dto.LrTripNo;
-
-            lr.LrFromLocationId = dto.LrFromLocationId;
-            lr.LrToLocationId = dto.LrToLocationId;
-            lr.LrBackLocationId = dto.LrBackLocationId;
-
-            lr.LrContainer1 = dto.LrContainer1;
-            lr.LrContainer2 = dto.LrContainer2;
-
-            lr.LrGrossWt = dto.LrGrossWt;
-            lr.LrTareWt = dto.LrTareWt;
-            lr.LrLoadWt = dto.LrLoadWt;
-            lr.LrChargeQty = dto.LrChargeQty;
-            lr.LrUnloadWt = dto.LrUnloadWt;
-
-            lr.LrShortWt = dto.LrShortWt;
-            lr.LrShortAllowBill = dto.LrShortAllowBill;
-            lr.LrShortPerBill = dto.LrShortPerBill;
-            lr.LrShortPerTruck = dto.LrShortPerTruck;
-            lr.LrShortAllowType = dto.LrShortAllowType;
-            lr.LrShortNetBill = dto.LrShortNetBill;
-
-            lr.LrPaymentType = dto.LrPaymentType;
-            lr.LrRateBill = dto.LrRateBill;
-            lr.LrGrossFreightBill = dto.LrGrossFreightBill;
-            lr.LrTripChargeBill = dto.LrTripChargeBill;
-            lr.LrAdvanceBill = dto.LrAdvanceBill;
-            lr.LrNetFreightBill = dto.LrNetFreightBill;
-
-            lr.LrRefBy = dto.LrRefBy;
-            lr.LrStartKm = dto.LrStartKm;
-            lr.LrEndKm = dto.LrEndKm;
-
-            lr.LrCustom1 = dto.LrCustom1;
-            lr.LrCustom2 = dto.LrCustom2;
-            lr.LrCustom3 = dto.LrCustom3;
-            lr.LrCustom4 = dto.LrCustom4;
-            lr.LrRemarks = dto.LrRemarks;
-
-            // 🔹 NT fields
-            lr.LrNtSize = dto.LrNtSize;
-            lr.LrNtSealNo = dto.LrNtSealNo;
-            lr.LrNtDate = dto.LrNtDate;
-            lr.LrNtRfidSeal = dto.LrNtRfidSeal;
-            lr.LrNtQty = dto.LrNtQty;
-            lr.LrNtInvNo = dto.LrNtInvNo;
-            lr.LrNtPickupDt = dto.LrNtPickupDt;
-            lr.LrNtPickupLoc = dto.LrNtPickupLoc;
-            lr.LrNtShipingBillNo = dto.LrNtShipingBillNo;
-            lr.LrNtUnit = dto.LrNtUnit;
-            lr.LrNtNetWt = dto.LrNtNetWt;
-            lr.LrNtCbm = dto.LrNtCbm;
-            lr.LrNtVehicleNo = dto.LrNtVehicleNo;
-            lr.LrNtTransporter = dto.LrNtTransporter;
-            lr.LrNtGateOutDt = dto.LrNtGateOutDt;
-            lr.LrNtGateInDt = dto.LrNtGateInDt;
-            lr.LrNtDischargeDt = dto.LrNtDischargeDt;
-
-            // 🔹 Notify fields
-            lr.LrConsignorNotifyAddress = dto.LrConsignorNotifyAddress;
-            lr.LrConsigneeNotifyAddress = dto.LrConsigneeNotifyAddress;
-            lr.LrConsignorNotifyGst = dto.LrConsignorNotifyGst;
-            lr.LrConsignorNotifyState = dto.LrConsignorNotifyState;
-            lr.LrConsigneeNotifyGst = dto.LrConsigneeNotifyGst;
-            lr.LrConsigneeNotifyState = dto.LrConsigneeNotifyState;
-
-            // 🔹 Metadata
+            // Override system-controlled fields
             lr.LrUpdatedByUserId = GetUserId();
             lr.LrUpdated = DateTime.UtcNow;
             lr.LrCompanyId = GetCompanyId();
 
-            _context.Lrs.Update(lr);
             await _context.SaveChangesAsync();
-
             return Ok(lr);
         }
 
@@ -212,5 +136,133 @@ namespace FreightBKShipping.Controllers
 
             return Ok(true);
         }
+
+
+        // =========================
+        // GET: api/ContainerAdd/print/{id}
+        // =========================
+
+        [HttpGet("print/{id}")]
+        public async Task<IActionResult> Print(int id)
+        {
+            var data = await (
+                from lr in _context.Lrs
+
+                    // 🔹 From Location
+                join fromLoc in _context.Locations
+                    on lr.LrFromLocationId equals fromLoc.LocationId into fl
+                from fromLocation in fl.DefaultIfEmpty()
+
+                    // 🔹 To Location
+                join toLoc in _context.Locations
+                    on lr.LrToLocationId equals toLoc.LocationId into tl
+                from toLocation in tl.DefaultIfEmpty()
+
+                    // 🔹 Party
+                join party in _context.Accounts
+                    on lr.LrPartyAccountId equals party.AccountId into pa
+                from partyAccount in pa.DefaultIfEmpty()
+
+                    // 🔹 Supplier
+                join supplier in _context.Accounts
+                    on lr.LrSupplierAccountId equals supplier.AccountId into sa
+                from supplierAccount in sa.DefaultIfEmpty()
+
+                    // 🔹 Consignee Notify
+                join cn in _context.Notifies
+                    on lr.LrConsigneeNotifyId equals cn.NotifyId into cng
+                from consignee in cng.DefaultIfEmpty()
+
+                    // 🔹 Consignor Notify
+                join cg in _context.Notifies
+                    on lr.LrConsignorNotifyId equals cg.NotifyId into crg
+                from consignor in crg.DefaultIfEmpty()
+
+                    // 🔹 Product
+                join p in _context.Cargoes
+                    on lr.LrProductId equals p.CargoId into pr
+                from product in pr.DefaultIfEmpty()
+
+                join comp in _context.companies
+    on lr.LrCompanyId equals comp.CompanyId into cg
+
+                from company in cg.DefaultIfEmpty() 
+                where lr.LrId == id
+                   && lr.LrStatus == 1
+                   && lr.LrCompanyId == GetCompanyId()
+
+                select new
+                {
+                    // ================= FULL LR =================
+                    Lr = lr,
+
+                    // ================= LOCATIONS =================
+                    FromLocationName = fromLocation != null ? fromLocation.LocationName : null,
+                    ToLocationName = toLocation != null ? toLocation.LocationName : null,
+
+                    // ================= PARTY / SUPPLIER =================
+                    PartyName = partyAccount != null ? partyAccount.AccountName : null,
+                    SupplierName = supplierAccount != null ? supplierAccount.AccountName : null,
+
+                    // ================= CONSIGNEE =================
+                    ConsigneeName = consignee != null ? consignee.NotifyName : null,
+                    ConsigneeGst = consignee != null ? consignee.NotifyGstNo : null,
+                    ConsigneeState = consignee != null ? consignee.NotifyState : null,
+                    ConsigneeFullAddress =
+                        ((consignee != null ? consignee.NotifyAddress1 : "") + " " +
+                         (consignee != null ? consignee.NotifyAddress2 : "") + " " +
+                         (consignee != null ? consignee.NotifyAddress3 : "")).Trim(),
+
+                    // ================= CONSIGNOR =================
+                    ConsignorName = consignor != null ? consignor.NotifyName : null,
+                    ConsignorGst = consignor != null ? consignor.NotifyGstNo : null,
+                    ConsignorState = consignor != null ? consignor.NotifyState : null,
+                    ConsignorFullAddress =
+                        ((consignor != null ? consignor.NotifyAddress1 : "") + " " +
+                         (consignor != null ? consignor.NotifyAddress2 : "") + " " +
+                         (consignor != null ? consignor.NotifyAddress3 : "")).Trim(),
+
+                    // ================= PRODUCT =================
+                    ProductName = product != null ? product.CargoName : null
+
+
+                    ,// ================= COMPANY =================
+                    Company = company == null ? null : new
+                    {
+                      
+                        company.Name,
+                        company.PrintName,
+                        company.Gstin,
+                        company.Panno,
+                        company.Regno,
+                        company.Email,
+                        company.Mobile,
+                        company.Telephone,
+                        company.Website,
+                        company.City,
+                        company.StateCode,
+                        company.Country,
+                        company.Pincode,
+                        company.CurrencySymbol,
+                        company.Tagline1,
+                        company.Tagline2,
+                     
+
+                        FullAddress =
+        ((company.Address1 ?? "") + " " +
+         (company.Address2 ?? "") + " " +
+         (company.Address3 ?? "")).Trim()
+                    }
+
+                }
+            ).FirstOrDefaultAsync();
+
+            if (data == null)
+                return NotFound();
+
+            return Ok(data);
+        }
+
+
     }
 }
