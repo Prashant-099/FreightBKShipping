@@ -355,29 +355,35 @@ namespace FreightBKShipping.Controllers
                             continue;
 
                         // 🔹 Already settled from DB (OLD receipts)
-                        var dbSettled = await _context.BillRefDetails
-                            .Where(r => r.BillRefVchId == bill.BillId)
-                            .SumAsync(r =>
-                                r.BillRefVchAmount +
-                                r.BillRefVchDis +
-                                r.BillRefVchTds +
-                                r.BillRefVchShort);
+                        //var dbSettled = await _context.BillRefDetails
+                        //    .Where(r => r.BillRefVchId == bill.BillId)
+                        //    .SumAsync(r =>
+                        //        r.BillRefVchAmount +
+                        //        r.BillRefVchDis +
+                        //        r.BillRefVchTds +
+                        //        r.BillRefVchShort);
+                        var receivedAmount =
+    refDetail.BillRefVchAmount +
+    refDetail.BillRefVchDis +
+    refDetail.BillRefVchTds +
+    refDetail.BillRefVchShort;
 
                         // 🔹 Current receipt settlement (NOT yet in DB)
-                        var currentSettlement =
-                            refDetail.BillRefVchAmount +
-                            refDetail.BillRefVchDis +
-                            refDetail.BillRefVchTds +
-                            refDetail.BillRefVchShort;
+                        //var currentSettlement =
+                        //    refDetail.BillRefVchAmount +
+                        //    refDetail.BillRefVchDis +
+                        //    refDetail.BillRefVchTds +
+                        //    refDetail.BillRefVchShort;
 
-                        var totalSettled = dbSettled + currentSettlement;
+                       // var totalSettled = dbSettled + currentSettlement;
 
                         bill.Bill_due_amt = Math.Round(
-                            Math.Max(bill.BillNetAmount - totalSettled, 0),
+                            Math.Max(bill.Bill_due_amt- receivedAmount, 0),
                             2
                         );
 
                         bill.BillUpdated = DateTime.UtcNow;
+                        bill.BillUpdatedByUserId = GetUserId();
                     }
                 }
 
@@ -537,31 +543,76 @@ namespace FreightBKShipping.Controllers
                         continue;
 
                     // 🔹 Already settled from DB (OLD receipts)
-                    var dbSettled = await _context.BillRefDetails
-      .Where(r =>
-          r.BillRefVchId == bill.BillId &&
-          r.BillRefAgainstId != journalDto.JournalId) // 👈 IMPORTANT
-      .SumAsync(r =>
-          r.BillRefVchAmount +
-          r.BillRefVchDis +
-          r.BillRefVchTds +
-          r.BillRefVchShort);
+                    //              var dbSettled = await _context.BillRefDetails
+                    //.Where(r =>
+                    //    r.BillRefVchId == bill.BillId &&
+                    //    r.BillRefAgainstId != journalDto.JournalId) // 👈 IMPORTANT
+                    //.SumAsync(r =>
+                    //    r.BillRefVchAmount +
+                    //    r.BillRefVchDis +
+                    //    r.BillRefVchTds +
+                    //    r.BillRefVchShort);
+
 
                     // 🔹 Current receipt settlement (NOT yet in DB)
-                    var currentSettlement =
-                        refDetail.BillRefVchAmount +
-                        refDetail.BillRefVchDis +
-                        refDetail.BillRefVchTds +
-                        refDetail.BillRefVchShort;
+                    //var currentSettlement =
+                    //    refDetail.BillRefVchAmount +
+                    //    refDetail.BillRefVchDis +
+                    //    refDetail.BillRefVchTds +
+                    //    refDetail.BillRefVchShort;
 
-                    var totalSettled = dbSettled + currentSettlement;
+                    //var totalSettled = dbSettled + currentSettlement;
 
-                    bill.Bill_due_amt = Math.Round(
-                        Math.Max(bill.BillNetAmount - totalSettled, 0),
-                        2
-                    );
+
+                    //    var receivedAmount =
+                    //refDetail.BillRefVchAmount +
+                    //refDetail.BillRefVchDis +
+                    //refDetail.BillRefVchTds +
+                    //refDetail.BillRefVchShort;
+                    //    bill.Bill_due_amt = Math.Round(
+                    //        Math.Max( receivedAmount, 0),
+                    //        2
+                    //    );
+
+                    //    bill.BillUpdated = DateTime.UtcNow;
+                    //    bill.BillUpdatedByUserId = GetUserId();
+                    decimal oldSettlement = await _context.BillRefDetails
+     .Where(r =>
+         r.BillRefVchId == bill.BillId &&
+         r.BillRefAgainstId == journal.JournalId)
+     .SumAsync(r =>
+         (decimal)r.BillRefVchAmount +
+         (decimal)r.BillRefVchDis +
+         (decimal)r.BillRefVchTds +
+         (decimal)r.BillRefVchShort
+     );
+
+
+                    decimal billDue = Convert.ToDecimal(bill.Bill_due_amt);
+
+                    // Re-open bill
+                    decimal reopenedDue = billDue + oldSettlement;
+
+                    // New receipt amount
+                    decimal newSettlement =
+      (decimal)refDetail.BillRefVchAmount +
+      (decimal)refDetail.BillRefVchDis +
+      (decimal)refDetail.BillRefVchTds +
+      (decimal)refDetail.BillRefVchShort;
+
+
+                    // Apply new settlement
+                    decimal finalDue = Math.Round(
+     Math.Max(reopenedDue - newSettlement, 0),
+     2
+ );
+
+                    // assign back as double ONLY here
+                    bill.Bill_due_amt = (double)finalDue;
 
                     bill.BillUpdated = DateTime.UtcNow;
+                    bill.BillUpdatedByUserId = GetUserId();
+
                 }
             }
 
@@ -618,22 +669,28 @@ namespace FreightBKShipping.Controllers
                         continue;
 
                     // 🔹 Total settled EXCLUDING this journal
-                    var totalSettled = await _context.BillRefDetails
-                        .Where(r =>
-                            r.BillRefVchId == bill.BillId &&
-                            r.BillRefAgainstId != journal.JournalId)
-                        .SumAsync(r =>
-                            r.BillRefVchAmount +
-                            r.BillRefVchDis +
-                            r.BillRefVchTds +
-                            r.BillRefVchShort);
+                    //var totalSettled = await _context.BillRefDetails
+                    //    .Where(r =>
+                    //        r.BillRefVchId == bill.BillId &&
+                    //        r.BillRefAgainstId != journal.JournalId)
+                    //    .SumAsync(r =>
+                    //        r.BillRefVchAmount +
+                    //        r.BillRefVchDis +
+                    //        r.BillRefVchTds +
+                    //        r.BillRefVchShort);
+                    var reverseAmount =
+                    refDetail.BillRefVchAmount +
+                    refDetail.BillRefVchDis +
+                    refDetail.BillRefVchTds +
+                    refDetail.BillRefVchShort;
 
                     bill.Bill_due_amt = Math.Round(
-                        Math.Max(bill.BillNetAmount - totalSettled, 0),
+                        Math.Max(bill.Bill_due_amt+reverseAmount, 0),
                         2
                     );
 
                     bill.BillUpdated = DateTime.UtcNow;
+                    bill.BillUpdatedByUserId = GetUserId();
                 }
 
                 // 🔥 Delete BillRefDetails
