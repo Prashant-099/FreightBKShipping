@@ -51,6 +51,7 @@ namespace FreightBKShipping.Data
         public DbSet<SendWpMail> SendWpMails { get; set; }
         public DbSet<UserBranch> UserBranches { get; set; }
         public DbSet<Lr> Lrs { get; set; }
+        public DbSet<DocumentsSaved> DocumentsSaved { get; set; }
 
         //end dhruv
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
