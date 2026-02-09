@@ -523,6 +523,11 @@ namespace FreightBKShipping.Controllers
 
             //if (voucher == null)
             //    return BadRequest("Invalid voucher selected.");
+
+
+                 bool isCreditNote =
+    string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+
             var bill = new Bill
             {
                 BillCompanyId = GetCompanyId(),
@@ -640,13 +645,20 @@ namespace FreightBKShipping.Controllers
                 BillTdsAmt = billDto.BillTdsAmt,
                 BillTdsPer = billDto.BillTdsPer,
                 BillAgainstBillId = billDto.BillAgainstBillId,
+                BillAgainstBillDate = billDto.BillAgainstBillDate,
+                BillAgainstBillNo = billDto.BillAgainstBillNo,
                 BillIsRcm = billDto.BillIsRcm,
                 BillBranchId = billDto.BillBranchId,
                 BillHblNo = billDto.BillHblNo,
                 BillShipPartyId = billDto.BillShipPartyId,
                 BillTcsPer = billDto.BillTcsPer,
                 BillTcsAmt = billDto.BillTcsAmt,
-                Bill_due_amt = billDto.BillNetAmount,
+                // Bill_due_amt = billDto.BillNetAmount,
+
+                Bill_due_amt =
+    isCreditNote && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
+        ? 0
+        : billDto.BillNetAmount,
                 // Details
                 BillDetails = billDto.BillDetails.Select(d => new BillDetail
                 {
@@ -697,8 +709,59 @@ namespace FreightBKShipping.Controllers
                 //    BillRefVchAmount = r.BillRefVchAmount
                 //}).ToList()
             };
+                // 🔹 If bill is created against another bill, update due amount
+                //if (bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0)
+                //{
+                //    var refBill = await _context.Bills
+                //        .FirstOrDefaultAsync(b =>
+                //            b.BillId == bill.BillAgainstBillId &&
+                //            b.BillCompanyId == GetCompanyId() &&
+                //            b.BillStatus == true);
 
-            _context.Bills.Add(bill);
+                //    if (refBill == null)
+                //        throw new Exception("Reference bill not found.");
+
+                //    // 🔹 Validation: cannot exceed due amount
+                //    if (bill.BillNetAmount > refBill.Bill_due_amt)
+                //        throw new Exception("Bill amount cannot be greater than reference bill due amount.");
+
+                //    // 🔹 Reduce due amount
+                //    refBill.Bill_due_amt -= bill.BillNetAmount;
+                //    refBill.BillUpdated = DateTime.UtcNow;
+                //    refBill.BillUpdatedByUserId = GetUserId();
+
+                //    _context.Bills.Update(refBill);
+
+                //}
+               
+
+                if (isCreditNote &&
+    bill.BillAgainstBillId.HasValue &&
+    bill.BillAgainstBillId > 0)
+                {
+                    var refBill = await _context.Bills
+                        .FirstOrDefaultAsync(b =>
+                            b.BillId == bill.BillAgainstBillId &&
+                            b.BillCompanyId == GetCompanyId() &&
+                            b.BillStatus == true);
+
+                    if (refBill == null)
+                        throw new Exception("Reference bill not found.");
+
+                    // 🔒 Safety validation
+                    if (bill.BillNetAmount > refBill.Bill_due_amt)
+                        throw new Exception("Credit note amount cannot exceed bill due amount.");
+
+                    refBill.Bill_due_amt -= bill.BillNetAmount;
+                    refBill.BillUpdated = DateTime.UtcNow;
+                    refBill.BillUpdatedByUserId = GetUserId();
+
+                    _context.Bills.Update(refBill);
+                }
+
+
+                
+                _context.Bills.Add(bill);
             await _context.SaveChangesAsync();
                 await _auditLogService.AddAsync(new AuditLogCreateDto
                 {
@@ -773,6 +836,38 @@ namespace FreightBKShipping.Controllers
             {
                 return BadRequest("This bill is locked by another user and cannot be edited.");
             }
+            // 🔹 VALIDATION: Credit Note cannot exceed bill
+            //       if (string.Equals(bill.BillType, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase))
+            //       {
+            //           var totalCreditNotes = await _context.Bills
+            //               .Where(b =>
+            //                   b.BillType == "CREDIT NOTE" &&
+            //                   b.BillAgainstBillId == bill.BillId)
+            //               .SumAsync(b => b.BillNetAmount);
+
+            //           if (bill.BillNetAmount < totalCreditNotes)
+            //           {
+            //               return BadRequest("Bill amount cannot be less than applied credit notes.");
+            //           }
+
+            //           if (string.Equals(bill.BillType, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase)
+            //&& bill.BillAgainstBillId > 0)
+            //           {
+            //               await RecalculateSalesBillDueAsync(bill.BillAgainstBillId);
+            //           }
+
+            //       }
+            var oldAgainstBillId = bill.BillAgainstBillId;
+            var oldNetAmount = bill.BillNetAmount;
+
+            bool isOldCreditNote =
+                string.Equals(bill.BillType, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+            bool isNewCreditNote =
+                string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+
+
 
             var shipparty = await _context.Accounts
            .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
@@ -893,7 +988,16 @@ namespace FreightBKShipping.Controllers
             bill.BillTcsPer = billDto.BillTcsPer;
             bill.BillTcsAmt = billDto.BillTcsAmt;
             bill.BillYearId = billDto.BillYearId;
-            bill.Bill_due_amt = billDto.Bill_due_amt;
+            // bill.Bill_due_amt = billDto.BillNetAmount;
+            if (isNewCreditNote)
+            {
+                bill.Bill_due_amt =
+                    bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0
+                        ? 0
+                        : bill.BillNetAmount;
+            }
+
+
             // ---- Handle BillDetails ----
             // Remove deleted details
             //var detailsToRemove = bill.BillDetails
@@ -1026,6 +1130,25 @@ namespace FreightBKShipping.Controllers
             //}
 
             await _context.SaveChangesAsync();
+
+            if (isOldCreditNote)
+            {
+                // OLD linked bill (amount changed / unlink)
+                if (oldAgainstBillId.HasValue && oldAgainstBillId > 0)
+                {
+                    await RecalculateSalesBillDueAsync(oldAgainstBillId);
+                }
+
+                // NEW linked bill (relink)
+                if (bill.BillAgainstBillId.HasValue &&
+                    bill.BillAgainstBillId > 0 &&
+                    bill.BillAgainstBillId != oldAgainstBillId)
+                {
+                    await RecalculateSalesBillDueAsync(bill.BillAgainstBillId);
+                }
+            }
+            await _context.SaveChangesAsync();
+
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "Bills",
@@ -1041,6 +1164,43 @@ namespace FreightBKShipping.Controllers
             return NoContent();
         }
 
+        private async Task RecalculateSalesBillDueAsync(int? salesBillId)
+        {
+            var bill = await _context.Bills
+                .FirstOrDefaultAsync(b => b.BillId == salesBillId);
+
+            // ✅ MUST be SALES bill
+            if (bill == null ||
+                !string.Equals(bill.BillType, "SALES", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var totalReceipts = await _context.BillRefDetails
+                .Where(r => r.BillRefVchId == salesBillId)
+                .SumAsync(r =>
+                    r.BillRefVchAmount +
+                    r.BillRefVchDis +
+                    r.BillRefVchTds +
+                    r.BillRefVchShort
+                );
+
+            var totalCreditNotes = await _context.Bills
+                .Where(b =>
+                    b.BillType == "CREDIT NOTE" &&
+                    b.BillAgainstBillId == salesBillId)
+                .SumAsync(b => b.BillNetAmount);
+
+            bill.Bill_due_amt = Math.Round(
+                Math.Max(
+                    bill.BillNetAmount
+                    - totalReceipts
+                    - totalCreditNotes,
+                    0
+                ),
+                2
+            );
+
+            bill.BillUpdated = DateTime.UtcNow;
+        }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBill(int id)
@@ -1066,7 +1226,43 @@ namespace FreightBKShipping.Controllers
             //   _context.BillDetails.RemoveRange(bill.BillDetails);
             //_context.BillRefDetails.RemoveRange(bill.BillRefDetails);
 
-           
+            var hasCreditNotes = await _context.Bills.AnyAsync(b =>
+            b.BillAgainstBillId == id &&
+            b.BillStatus == true &&
+            b.BillCompanyId == GetCompanyId());
+
+            if (hasCreditNotes)
+            {
+                return BadRequest(new { Message = "Cannot delete bill. Credit notes exist against this bill." });
+            }
+
+            // 🔹 CRITICAL: Check if bill has receipts against it
+            var hasReceipts = await _context.BillRefDetails.AnyAsync(r =>
+                r.BillRefVchId == id);
+
+            if (hasReceipts)
+            {
+                return BadRequest(new { Message = "Cannot delete bill. Receipt entries exist against this bill." });
+            }
+
+            // 🔹 If this is a Credit Note, restore the original bill's due amount
+            if (bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0)
+            {
+                var originalBill = await _context.Bills
+                    .FirstOrDefaultAsync(b =>
+                        b.BillId == bill.BillAgainstBillId &&
+                        b.BillStatus == true &&
+                        b.BillCompanyId == GetCompanyId());
+
+                if (originalBill != null)
+                {
+                    // Add back the credit note amount to the original bill's due amount
+                    originalBill.Bill_due_amt += bill.BillNetAmount;
+                    originalBill.BillUpdated = DateTime.UtcNow;
+                    originalBill.BillUpdatedByUserId = GetUserId();
+                    _context.Bills.Update(originalBill);
+                }
+            }
             // ✅ Mark main Bill as inactive
             bill.BillStatus = false;
 
