@@ -94,7 +94,7 @@ namespace FreightBKShipping.Controllers
         // =========================
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] Lr dto)
-        {
+            {
             if (id != dto.LrId)
                 return BadRequest("ID mismatch");
 

@@ -51,6 +51,7 @@ namespace FreightBKShipping
             builder.Services.AddScoped<SentWpEmailService>();
             builder.Services.AddScoped<AuditLogService>();
             builder.Services.AddScoped<CompanySetupService>();
+            builder.Services.AddScoped<ISasUrlService, SasUrlService>();
 
             builder.Services.AddHttpContextAccessor();
             // ✅ 4. Add JWT Authentication
