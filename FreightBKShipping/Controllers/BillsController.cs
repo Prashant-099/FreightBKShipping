@@ -527,8 +527,11 @@ namespace FreightBKShipping.Controllers
 
                  bool isCreditNote =
     string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+                bool isdebitNote =
+    string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
 
-            var bill = new Bill
+
+                var bill = new Bill
             {
                 BillCompanyId = GetCompanyId(),
                 BillAddedByUserId = GetUserId(),
@@ -656,7 +659,7 @@ namespace FreightBKShipping.Controllers
                 // Bill_due_amt = billDto.BillNetAmount,
 
                 Bill_due_amt =
-    isCreditNote && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
+   (isCreditNote || isdebitNote) && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
         ? 0
         : billDto.BillNetAmount,
                 // Details
@@ -735,7 +738,7 @@ namespace FreightBKShipping.Controllers
                 //}
                
 
-                if (isCreditNote &&
+                if ((isCreditNote || isdebitNote) &&
     bill.BillAgainstBillId.HasValue &&
     bill.BillAgainstBillId > 0)
                 {
@@ -750,7 +753,7 @@ namespace FreightBKShipping.Controllers
 
                     // 🔒 Safety validation
                     if (bill.BillNetAmount > refBill.Bill_due_amt)
-                        throw new Exception("Credit note amount cannot exceed bill due amount.");
+                        throw new Exception(" amount cannot exceed bill due amount.");
 
                     refBill.Bill_due_amt -= bill.BillNetAmount;
                     refBill.BillUpdated = DateTime.UtcNow;
@@ -866,6 +869,42 @@ namespace FreightBKShipping.Controllers
             bool isNewCreditNote =
                 string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
 
+
+            bool isOldDebitNote =
+                string.Equals(bill.BillType, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+            bool isNewDebitNote =
+                string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+            // 🔒 VALIDATION: CN / DN cannot exceed available due
+            // 🔒 VALIDATION: Allow edit but prevent negative due
+            if (isNewCreditNote || isNewDebitNote)
+            {
+                if (billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0)
+                {
+                    var againstBill = await _context.Bills
+                        .FirstOrDefaultAsync(b =>
+                            b.BillId == billDto.BillAgainstBillId &&
+                            b.BillStatus == true);
+
+                    if (againstBill == null)
+                        return BadRequest(new { Message = "Against bill not found." });
+
+                    decimal currentDue = Convert.ToDecimal(againstBill.Bill_due_amt);
+                    decimal oldAdjustment = Convert.ToDecimal(oldNetAmount);
+                    decimal newAdjustment = Convert.ToDecimal(billDto.BillNetAmount);
+
+
+                    // 🔹 KEY FORMULA
+                    decimal newDue = currentDue + oldAdjustment - newAdjustment;
+
+                    if (newDue < 0)
+                    {
+                        return BadRequest(new { message = $"Adjustment not allowed. Available due is {currentDue + oldAdjustment}." });
+
+                    }
+                }
+            }
 
 
 
@@ -989,14 +1028,17 @@ namespace FreightBKShipping.Controllers
             bill.BillTcsAmt = billDto.BillTcsAmt;
             bill.BillYearId = billDto.BillYearId;
             // bill.Bill_due_amt = billDto.BillNetAmount;
-            if (isNewCreditNote)
+            if (isNewCreditNote || isNewDebitNote)
             {
                 bill.Bill_due_amt =
                     bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0
                         ? 0
                         : bill.BillNetAmount;
             }
-
+            else
+            {
+                bill.Bill_due_amt = bill.BillNetAmount;
+            }
 
             // ---- Handle BillDetails ----
             // Remove deleted details
@@ -1131,7 +1173,7 @@ namespace FreightBKShipping.Controllers
 
             await _context.SaveChangesAsync();
 
-            if (isOldCreditNote)
+            if (isOldCreditNote || isOldDebitNote)
             {
                 // OLD linked bill (amount changed / unlink)
                 if (oldAgainstBillId.HasValue && oldAgainstBillId > 0)
@@ -1170,11 +1212,20 @@ namespace FreightBKShipping.Controllers
                 .FirstOrDefaultAsync(b => b.BillId == salesBillId);
 
             // ✅ MUST be SALES bill
-            if (bill == null ||
-                !string.Equals(bill.BillType, "SALES", StringComparison.OrdinalIgnoreCase))
+            if (bill == null )
                 return;
 
-            var totalReceipts = await _context.BillRefDetails
+            bool isSalesBill =
+                string.Equals(bill.BillType, "SALES", StringComparison.OrdinalIgnoreCase);
+
+            bool isPurchaseBill =
+                string.Equals(bill.BillType, "PURCHASE", StringComparison.OrdinalIgnoreCase);
+
+            if (!isSalesBill && !isPurchaseBill)
+                return;
+
+            // 🔹 Receipts / Payments
+            var totalSettlements = await _context.BillRefDetails
                 .Where(r => r.BillRefVchId == salesBillId)
                 .SumAsync(r =>
                     r.BillRefVchAmount +
@@ -1182,23 +1233,55 @@ namespace FreightBKShipping.Controllers
                     r.BillRefVchTds +
                     r.BillRefVchShort
                 );
+            // 🔹 Credit / Debit Notes
+            float totalAdjustments = 0;
 
-            var totalCreditNotes = await _context.Bills
-                .Where(b =>
-                    b.BillType == "CREDIT NOTE" &&
-                    b.BillAgainstBillId == salesBillId)
-                .SumAsync(b => b.BillNetAmount);
+            //var totalCreditNotes = await _context.Bills
+            //    .Where(b =>
+            //        b.BillType == "CREDIT NOTE" &&
+            //        b.BillAgainstBillId == salesBillId)
+            //    .SumAsync(b => b.BillNetAmount);
 
+            //bill.Bill_due_amt = Math.Round(
+            //    Math.Max(
+            //        bill.BillNetAmount
+            //        - totalReceipts
+            //        - totalCreditNotes,
+            //        0
+            //    ),
+            //    2
+            //);
+            if (isSalesBill)
+            {
+                // SALES → CREDIT NOTE
+                totalAdjustments = await _context.Bills
+                    .Where(b =>
+                        b.BillType == "CREDIT NOTE" &&
+                        b.BillAgainstBillId == salesBillId &&
+                        b.BillStatus == true)
+                    .SumAsync(b => b.BillNetAmount);
+            }
+            else if (isPurchaseBill)
+            {
+                // PURCHASE → PURCHASE DEBIT NOTE
+                totalAdjustments = await _context.Bills
+                    .Where(b =>
+                        b.BillType == "DEBIT NOTE" &&
+                        b.BillAgainstBillId == salesBillId &&
+                        b.BillStatus == true)
+                    .SumAsync(b => b.BillNetAmount);
+            }
+
+            // 🔹 Final Due Calculation
             bill.Bill_due_amt = Math.Round(
                 Math.Max(
                     bill.BillNetAmount
-                    - totalReceipts
-                    - totalCreditNotes,
+                    - totalSettlements
+                    - totalAdjustments,
                     0
                 ),
                 2
             );
-
             bill.BillUpdated = DateTime.UtcNow;
         }
 
@@ -1231,9 +1314,10 @@ namespace FreightBKShipping.Controllers
             b.BillStatus == true &&
             b.BillCompanyId == GetCompanyId());
 
+
             if (hasCreditNotes)
             {
-                return BadRequest(new { Message = "Cannot delete bill. Credit notes exist against this bill." });
+                return BadRequest(new { Message = "Cannot delete bill. Credit/debit notes exist against this bill." });
             }
 
             // 🔹 CRITICAL: Check if bill has receipts against it
@@ -1242,7 +1326,7 @@ namespace FreightBKShipping.Controllers
 
             if (hasReceipts)
             {
-                return BadRequest(new { Message = "Cannot delete bill. Receipt entries exist against this bill." });
+                return BadRequest(new { Message = "Cannot delete bill. Receipt/Payment entries exist against this bill." });
             }
 
             // 🔹 If this is a Credit Note, restore the original bill's due amount
