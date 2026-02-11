@@ -3,7 +3,7 @@
     public class JobReadDto
     {
         public int JobId { get; set; }
-        public string? JobCompanyId { get; set; }
+        public int? JobCompanyId { get; set; }
         public string? JobAddedByUserId { get; set; }
         public string? JobUpdatedByUserId { get; set; }
         public int? JobPartyId { get; set; }
@@ -112,7 +112,6 @@
         public DateTime? JobEta { get; set; }
         public DateTime? JobEtd { get; set; }
         public string? JobSealNo { get; set; }
-
         public string? Surveyor { get; set; }
         public string? SurveyorAddress { get; set; }
         public int? JobBranchId { get; set; }

@@ -72,6 +72,6 @@ namespace FreightBKShipping.DTOs
         public string? ContactPerson { get; set; }
 
         public string AddedByUserId { get; set; } = string.Empty;
-
+        public string FullAddress { get; set; }
     }
 }

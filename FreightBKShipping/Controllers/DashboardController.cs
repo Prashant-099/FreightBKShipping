@@ -23,7 +23,7 @@ namespace FreightBKShipping.Controllers
             DateTime? toDate)
         {
             var alljobs = _context.Jobs
-                .Where(j => j.JobYearId == yearId.ToString()&& j.JobCompanyId== GetCompanyId().ToString()&&j.JobActive==true);
+                .Where(j => j.JobYearId == yearId.ToString()&& j.JobCompanyId== GetCompanyId()&&j.JobActive==true);
 
             var allbills = _context.Bills
                 .Where(b => b.BillYearId == yearId && b.BillCompanyId == GetCompanyId() && b.BillStatus == true);

@@ -74,7 +74,7 @@ namespace FreightBKShipping.Controllers
             if (cargo == null) return NotFound();
             
             bool existsInjob = await _context.Jobs
-                .AnyAsync(b => b.JobCargoId == id && b.JobActive == true && b.JobCompanyId==GetCompanyId().ToString());
+                .AnyAsync(b => b.JobCargoId == id && b.JobActive == true && b.JobCompanyId==GetCompanyId());
 
             if (existsInjob)
             {

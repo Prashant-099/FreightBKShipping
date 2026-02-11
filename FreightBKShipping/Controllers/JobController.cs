@@ -14,11 +14,11 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-        public JobController(AppDbContext context, AuditLogService auditLogService) 
+        public JobController(AppDbContext context, AuditLogService auditLogService)
         {
             _auditLogService = auditLogService;
             _context = context;
-        
+
         }
 
         // GET: api/Job
@@ -79,8 +79,8 @@ namespace FreightBKShipping.Controllers
                             JobAddedByUserId = x.j.JobAddedByUserId,
                             JobUpdatedByUserId = x.j.JobUpdatedByUserId,
                             JobPartyId = x.j.JobPartyId,
-                    Partyname = x.account != null ? x.account.AccountName : null,
-                    JobPartyAddress = x.j.JobPartyAddress,
+                            Partyname = x.account != null ? x.account.AccountName : null,
+                            JobPartyAddress = x.j.JobPartyAddress,
                             JobYearId = x.j.JobYearId,
                             JobDate = x.j.JobDate,
                             JobNo = x.j.JobNo,
@@ -91,7 +91,7 @@ namespace FreightBKShipping.Controllers
                             JobAgentAddress = x.j.JobAgentAddress,
                             JobHsnCode = x.j.JobHsnCode,
                             JobBrand = x.j.JobBrand,
-        JobActive = x.j.JobActive,
+                            JobActive = x.j.JobActive,
                             JobBookingNo = x.j.JobBookingNo,
                             JobCertiOrigin = x.j.JobCertiOrigin,
                             JobPlaceOfReceipt = x.j.JobPlaceOfReceipt,
@@ -159,9 +159,9 @@ namespace FreightBKShipping.Controllers
                             JobVchNo = x.j.JobVchNo,
                             JobPrefix = x.j.JobPrefix,
                             JobSufix = x.j.JobSufix,
-                           // JobState = x.j.JobState,
+                            // JobState = x.j.JobState,
                             JobTypeId = x.j.JobTypeId,
-                            
+
                             JobCust1 = x.j.JobCust1,
                             JobCust2 = x.j.JobCust2,
                             JobCust3 = x.j.JobCust3,
@@ -184,19 +184,19 @@ namespace FreightBKShipping.Controllers
                             JobEtd = x.j.JobEtd,
 
                             JobBranchId = x.j.JobBranchId,
-                            IsClearing=x.j.IsClearing,
-                            IsForwarding=x.j.IsForwarding,
-                            IsMiscService=x.j.IsMiscService,
-                            IsTransportaion=x.j.IsTransportaion,
+                            IsClearing = x.j.IsClearing,
+                            IsForwarding = x.j.IsForwarding,
+                            IsMiscService = x.j.IsMiscService,
+                            IsTransportaion = x.j.IsTransportaion,
                             JobIssuePlace = x.j.JobIssuePlace,
-                            JobShipmentType= x.j.JobShipmentType,
-                            JobSubType=x.j.JobSubType,
-                            
+                            JobShipmentType = x.j.JobShipmentType,
+                            JobSubType = x.j.JobSubType,
+
 
 
                             BranchName = branch != null ? branch.BranchName : null,
-                    VesselName = x.vessel != null ? x.vessel.VesselName : null,
-                    PolName = x.pol != null ? x.pol.LocationName : null,
+                            VesselName = x.vessel != null ? x.vessel.VesselName : null,
+                            PolName = x.pol != null ? x.pol.LocationName : null,
                             PodName = x.pod != null ? x.pod.LocationName : null
                         })
 
@@ -236,7 +236,7 @@ namespace FreightBKShipping.Controllers
         // POST: api/Job
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] JobCreateDto dto)
-        {   
+        {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             using var tx = await _context.Database.BeginTransactionAsync();
@@ -245,7 +245,7 @@ namespace FreightBKShipping.Controllers
             {
                 // 1️⃣ Voucher
                 var voucher = await _context.Vouchers
-                    .FirstOrDefaultAsync(v => v.VoucherGroup == dto.JobType && v.VoucherBranchId== dto.JobBranchId && v.VoucherCompanyId == GetCompanyId());
+                    .FirstOrDefaultAsync(v => v.VoucherGroup == dto.JobType && v.VoucherBranchId == dto.JobBranchId && v.VoucherCompanyId == GetCompanyId());
 
                 if (voucher == null)
                     return BadRequest(new { message = "Invalid voucher selected." });
@@ -273,17 +273,17 @@ namespace FreightBKShipping.Controllers
                     // 2️⃣ Check if this number already exists (manual entry conflict)
                     bool exists = await _context.Jobs.AnyAsync(j =>
                         j.JobVchNo == nextNo &&
-                        j.JobCompanyId == GetCompanyId().ToString() &&
+                        j.JobCompanyId == GetCompanyId() &&
                         j.JobBranchId == dto.JobBranchId &&
                           j.JobActive == true &&
-                           j.JobType == dto.JobType&&
+                           j.JobType == dto.JobType &&
                         j.JobYearId == dto.JobYearId);
 
                     if (exists)
                     {
                         // Only now, find the max JobVchNo in DB and continue from there
                         nextNo = (await _context.Jobs
-                            .Where(j => j.JobCompanyId == GetCompanyId().ToString() &&
+                            .Where(j => j.JobCompanyId == GetCompanyId() &&
                                         j.JobBranchId == dto.JobBranchId &&
                                          j.JobActive == true &&
                                          j.JobType == dto.JobType &&
@@ -304,7 +304,7 @@ namespace FreightBKShipping.Controllers
                     // 4️⃣ Manual number
                     bool exists = await _context.Jobs.AnyAsync(j =>
                         j.JobNo == dto.JobNo &&
-                        j.JobCompanyId == GetCompanyId().ToString() &&
+                        j.JobCompanyId == GetCompanyId() &&
                         j.JobBranchId == dto.JobBranchId &&
                          j.JobActive == true &&
                          j.JobType == dto.JobType &&
@@ -328,7 +328,7 @@ namespace FreightBKShipping.Controllers
                 job.JobActive = true;
                 job.JobAddedByUserId = GetUserId();
                 job.JobUpdatedByUserId = GetUserId();
-                job.JobCompanyId = GetCompanyId().ToString();
+                job.JobCompanyId = GetCompanyId();
                 job.JobCreated = DateTime.UtcNow;
                 job.JobUpdated = DateTime.UtcNow;
 
@@ -343,7 +343,7 @@ namespace FreightBKShipping.Controllers
                     VoucherType = job.JobType,
                     Amount = 0,
                     Operations = "INSERT",
-                    Remarks = job.JobType  + " Job No: " + job.JobNo,
+                    Remarks = job.JobType + " Job No: " + job.JobNo,
                     BranchId = job.JobBranchId,
                     YearId = int.Parse(job.JobYearId)
                 }, GetCompanyId());
@@ -387,7 +387,7 @@ namespace FreightBKShipping.Controllers
                     j.JobId != id &&                     // exclude current job
                     j.JobNo == dto.JobNo &&
                      j.JobActive == true &&
-                    j.JobCompanyId == GetCompanyId().ToString() &&
+                    j.JobCompanyId == GetCompanyId() &&
                     j.JobBranchId == dto.JobBranchId &&
                     j.JobYearId == dto.JobYearId
                 );
@@ -447,7 +447,7 @@ namespace FreightBKShipping.Controllers
 
                 // Check if job exists in BillJobNo
                 bool existsInBill = await _context.Bills
-                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus==true && b.BillCompanyId ==GetCompanyId()); 
+                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus == true && b.BillCompanyId == GetCompanyId());
 
                 if (existsInBill)
                 {
@@ -487,6 +487,121 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(new { error = "Error deleting job", details = ex.Message, stack = ex.StackTrace });
             }
         }
+
+        [HttpGet("getjobwithcontainer")]
+        public IActionResult GetJobsWithLrs(int jobid)
+        {   
+            var companyId = GetCompanyId();
+
+            var result =
+                (from j in _context.Jobs
+
+                 join c in _context.Notifies
+                     on j.JobConsigneeId equals c.NotifyId into cj
+                 from consignee in cj.DefaultIfEmpty()
+
+                 join pa in _context.Accounts
+                     on j.JobPartyId equals pa.AccountId into p1
+                 from partyAccount in p1.DefaultIfEmpty()
+
+                 join cg in _context.companies
+                     on j.JobCompanyId equals cg.CompanyId into c1
+                 from company in c1.DefaultIfEmpty()
+
+                 where j.JobId == jobid
+                    && j.JobCompanyId == companyId
+
+                 select new JobreportDto
+                 {
+                     JobId = j.JobId,
+                     JobCompanyId = j.JobCompanyId,
+                     JobAddedByUserId = j.JobAddedByUserId,
+                     JobUpdatedByUserId = j.JobUpdatedByUserId,
+                     JobPartyId = j.JobPartyId,
+                     JobYearId = j.JobYearId,
+                     JobDate = j.JobDate,
+                     JobNo = j.JobNo,
+                     JobType = j.JobType,
+                     JobPodId = j.JobPodId,
+                     JobPolId = j.JobPolId,
+                     JobVesselId = j.JobVesselId,
+                     JobLineId = j.JobLineId,
+                     JobCargoId = j.JobCargoId,
+                     JobConsigneeId = j.JobConsigneeId,
+                     JobShipperId = j.JobShipperId,
+                     JobSalesmanId = j.JobSalesmanId,
+                     JobSbNo = j.JobSbNo,
+                     JobSbDate = j.JobSbDate,
+                     JobBlNo = j.JobBlNo,
+                     JobBlDate = j.JobBlDate,
+                     JobShipperInvNo = j.JobShipperInvNo,
+                     JobShipperInvDate = j.JobShipperInvDate,
+                     JobGrossWt = j.JobGrossWt,
+                     JobNetWt = j.JobNetWt,
+                     JobQty = j.JobQty,
+                     JobExchRate = j.JobExchRate,
+                     Job20Ft = j.Job20Ft,
+                     Job40Ft = j.Job40Ft,
+                     JobContainer20Ft = j.JobContainer20Ft,
+                     JobContainer40Ft = j.JobContainer40Ft,
+                     JobDefCurrId = j.JobDefCurrId,
+                     JobRemarks = j.JobRemarks,
+                     JobVchNo = j.JobVchNo,
+                     JobPrefix = j.JobPrefix,
+                     JobSufix = j.JobSufix,
+                     JobActive = j.JobActive,
+                     JobTypeId = j.JobTypeId,
+
+                     JobSubType = j.JobSubType,
+                     IsTransportaion = j.IsTransportaion,
+                     IsClearing = j.IsClearing,
+                     IsForwarding = j.IsForwarding,
+                     IsMiscService = j.IsMiscService,
+                     JobShipmentType = j.JobShipmentType,
+
+                     // ✅ Consignee Name
+                     Consigneename = consignee != null ? consignee.NotifyName : null,
+
+                     // ✅ LRs
+                     lrs = _context.Lrs
+                         .Where(l => l.LrJobId == j.JobId)
+                         .ToList(),
+
+                     // ✅ Company Details
+                     Company = company == null ? null : new CompanyDto
+                     {
+                         Name = company.Name,
+                         PrintName = company.PrintName,
+                         Gstin = company.Gstin,
+                         Panno = company.Panno,
+               
+                         Email = company.Email,
+                         Mobile = company.Mobile,
+                     
+                         Website = company.Website,
+                         City = company.City,
+                         StateCode = company.StateCode,
+                         Country = company.Country,
+                         Pincode = company.Pincode,
+                         CurrencySymbol = company.CurrencySymbol,
+                         Tagline1 = company.Tagline1,
+                      
+                         FullAddress =
+                             ((company.Address1 ?? "") + " " +
+                              (company.Address2 ?? "") + " " +
+                              (company.Address3 ?? "")).Trim()
+                     }
+                 })
+                .FirstOrDefault();
+
+            if (result == null)
+                return NotFound("Job not found");
+
+            return Ok(result);
+        }
+
+
+
 
         #region Helper Methods
 
@@ -589,7 +704,7 @@ namespace FreightBKShipping.Controllers
             job.JobIgmDate = dto.JobIgmDate;
             job.JobDoType = dto.JobDoType;
             job.JobIcd = dto.JobIcd;
-            job.JobTerminal = dto.JobTerminal;  
+            job.JobTerminal = dto.JobTerminal;
             job.JobFreeDays = dto.JobFreeDays;
             job.JobEta = dto.JobEta;
             job.JobEtd = dto.JobEtd;
@@ -625,13 +740,8 @@ namespace FreightBKShipping.Controllers
             job.JobAgent = dto.JobAgent;
             job.JobPartyAddress = dto.JobPartyAddress;
             job.JobHighseas1Address = dto.JobHighseas1Address;
-         
-           
-           
-  
             job.JobShipmentType = dto.JobShipmentType;
-         
-            job.JobStatus = dto.JobStatus;  
+            job.JobStatus = dto.JobStatus;
             job.JobType = dto.JobType;
             job.JobLockedBy = dto.JobLockedBy;
             job.IsClearing = dto.IsClearing;
@@ -639,10 +749,103 @@ namespace FreightBKShipping.Controllers
             job.IsMiscService = dto.IsMiscService;
             job.IsTransportaion = dto.IsTransportaion;
             job.JobSubType = dto.JobSubType;
-            
+
             return job;
         }
 
         #endregion
+       
+        public class JobreportDto
+        {
+            public int JobId { get; set; }
+            public int? JobCompanyId { get; set; }
+            public string? JobAddedByUserId { get; set; }
+            public string? JobUpdatedByUserId { get; set; }
+            public int? JobPartyId { get; set; }
+            public string? JobYearId { get; set; }
+            public DateTime? JobDate { get; set; }
+            public string? JobNo { get; set; }
+            public string? JobType { get; set; }
+            public int? JobPodId { get; set; }
+            public int? JobPolId { get; set; }
+            public int? JobVesselId { get; set; }
+            public int? JobLineId { get; set; }
+            public int? JobCargoId { get; set; }
+            public int? JobConsigneeId { get; set; }
+            public int? JobShipperId { get; set; }
+            public int? JobSalesmanId { get; set; }
+            public string? JobSbNo { get; set; }
+            public DateTime? JobSbDate { get; set; }
+            public string? JobBlNo { get; set; }
+            public DateTime? JobBlDate { get; set; }
+            public string? JobShipperInvNo { get; set; }
+            public DateTime? JobShipperInvDate { get; set; }
+            public double? JobGrossWt { get; set; }
+            public double? JobNetWt { get; set; }
+            public double? JobQty { get; set; }
+            public double? JobExchRate { get; set; }
+            public string? Job20Ft { get; set; }
+            public string? Job40Ft { get; set; }
+            public string? JobContainer20Ft { get; set; }
+            public string? JobContainer40Ft { get; set; }
+            public int? JobDefCurrId { get; set; }
+            public string? JobRemarks { get; set; }
+            public int? JobVchNo { get; set; }
+            public string? JobPrefix { get; set; }
+            public string? JobSufix { get; set; }
+            public bool? JobActive { get; set; }
+            public int? JobTypeId { get; set; }
+            public string? JobCust1 { get; set; }
+            public string? JobCust2 { get; set; }
+            public string? JobCust3 { get; set; }
+            public string? JobCust4 { get; set; }
+            public string? JobCust5 { get; set; }
+            public string? JobCust6 { get; set; }
+            public string? JobCust7 { get; set; }
+            public string? JobCust8 { get; set; }
+            public string? JobCust9 { get; set; }
+
+            public int? JobChaId { get; set; }
+            public string? JobBeNo { get; set; }
+            public DateTime? JobBeDate { get; set; }
+            public int? JobSupplierId { get; set; }
+            public float? JobDoPer { get; set; }
+            public DateTime? JobDoDate { get; set; }
+            public string? JobDoNo { get; set; }
+            public int? JobApprovedBy { get; set; }
+            public string? JobForwarder { get; set; }
+            public string? JobBookingNo { get; set; }
+            public string? JobHsnCode { get; set; }
+            public string? JobHblNo { get; set; }
+            public string? JobBrand { get; set; }
+            public string? JobSealNo { get; set; }
+            public string? JobAgent { get; set; }
+            public string? JobPartyAddress { get; set; }
+            public string? JobHighseas1Address { get; set; }
+
+            // ✅ Joined / UI fields
+            public string? VesselName { get; set; }
+            public string? PolName { get; set; }
+            public string? PodName { get; set; }
+            public string? BranchName { get; set; }
+            public string? Partyname { get; set; }
+            public string? Consigneename { get; set; }
+
+            //-------------------------------------
+            public string? JobSubType { get; set; }
+
+            public bool? IsTransportaion { get; set; }
+            public bool? IsClearing { get; set; }
+
+            public bool? IsForwarding { get; set; }
+            public bool? IsMiscService { get; set; }
+            public string? JobShipmentType { get; set; }
+
+            public List<Lr> lrs { get; set; } = new List<Lr>();
+            public CompanyDto? Company { get; set; }
+
+          
+        }
+
     }
 }

@@ -12,7 +12,7 @@ namespace FreightBKShipping.Models
         public int JobId { get; set; }
 
         [Column("job_company_id")]
-        public string? JobCompanyId { get; set; }
+        public int? JobCompanyId { get; set; }
 
         [Column("job_addedby_user_id")]
         public string? JobAddedByUserId { get; set; }
@@ -435,6 +435,7 @@ namespace FreightBKShipping.Models
         [Column("job_shipment_type")]
         [StringLength(30)]
         public string? JobShipmentType { get; set; }
+
         //unMapped field in db
         [NotMapped]
         public string? VesselName { get; set; }
