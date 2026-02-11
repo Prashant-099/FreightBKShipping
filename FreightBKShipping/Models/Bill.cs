@@ -434,7 +434,7 @@ namespace FreightBKShipping.Models
         public int BillQuatationId { get; set; }
 
         [Column("bill_quotation_no")]
-        public string BillQuatationNo { get; set; }
+        public string? BillQuatationNo { get; set; }
 
 
         //NOT MAPPED IN DB    
