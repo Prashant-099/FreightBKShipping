@@ -182,6 +182,9 @@ namespace FreightBKShipping.Controllers
                 branchname = b.branch.BranchName,
                 Vouchname = b.Voucher.VoucherName,
                Bill_due_amt = b.Bill_due_amt,
+                BillQuatationNo = b.BillQuatationNo,
+                BillQuatationId = b.BillQuatationId,
+
                 BillDetails = b.BillDetails
                 .Where(d => d.BillDetailStatus == true)
                        .OrderBy(d => d.BillDetailSno)
@@ -193,6 +196,7 @@ namespace FreightBKShipping.Controllers
                            BillDetailProductId = d.BillDetailProductId,
                            BillDetailQty = d.BillDetailQty,
                            BillDetailRate = d.BillDetailRate,
+                           BillDetailActualRate = d.BillDetailActualRate,
                            BillDetailAmount = d.BillDetailAmount,
                            BillDetailExchRate = d.BillDetailExchRate,
                            BillDetailTotal = d.BillDetailTotal,
@@ -390,6 +394,9 @@ namespace FreightBKShipping.Controllers
                 posname = bill.posname,
                 Vouchname = bill.Vouchname,
                 Bill_due_amt = bill.Bill_due_amt,
+                BillQuatationNo = bill.BillQuatationNo,
+                BillQuatationId = bill.BillQuatationId,
+
                 BillDetails = bill.BillDetails.Select(d => new BillDetailDto
                 {
                     BillDetailId = d.BillDetailId,
@@ -398,6 +405,7 @@ namespace FreightBKShipping.Controllers
                     BillDetailHsnId = d.BillDetailHsnId,
                     BillDetailQty = d.BillDetailQty,
                     BillDetailRate = d.BillDetailRate,
+                    BillDetailActualRate = d.BillDetailActualRate,
                     BillDetailAmount = d.BillDetailAmount,
                     BillDetailRemarks = d.BillDetailRemarks,
                     BillDetailTotal = d.BillDetailTotal,
@@ -656,9 +664,12 @@ namespace FreightBKShipping.Controllers
                 BillShipPartyId = billDto.BillShipPartyId,
                 BillTcsPer = billDto.BillTcsPer,
                 BillTcsAmt = billDto.BillTcsAmt,
-                // Bill_due_amt = billDto.BillNetAmount,
+                    BillQuatationId = billDto.BillQuatationId,
 
-                Bill_due_amt =
+                    BillQuatationNo = billDto.BillQuatationNo,
+                    // Bill_due_amt = billDto.BillNetAmount,
+
+                    Bill_due_amt =
    (isCreditNote || isdebitNote) && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
         ? 0
         : billDto.BillNetAmount,
@@ -692,6 +703,7 @@ namespace FreightBKShipping.Controllers
                     BillDetailBillQty = d.BillDetailQty,
                     BillDetailQty = d.BillDetailQty,
                     BillDetailRate = d.BillDetailRate,
+                    BillDetailActualRate = d.BillDetailActualRate,
                     BillDetailAmount = d.BillDetailAmount,
                     BillDetailRemarks = d.BillDetailRemarks,
                     BillDetailTotal = d.BillDetailTotal,
@@ -1027,6 +1039,8 @@ namespace FreightBKShipping.Controllers
             bill.BillTcsPer = billDto.BillTcsPer;
             bill.BillTcsAmt = billDto.BillTcsAmt;
             bill.BillYearId = billDto.BillYearId;
+            bill.BillQuatationId = billDto.BillQuatationId;
+            bill.BillQuatationNo = billDto.BillQuatationNo;
             // bill.Bill_due_amt = billDto.BillNetAmount;
             if (isNewCreditNote || isNewDebitNote)
             {
@@ -1077,6 +1091,7 @@ namespace FreightBKShipping.Controllers
                     existingDetail.BillDetailQty = detailDto.BillDetailQty;
                     existingDetail.BillDetailBillQty = detailDto.BillDetailQty;
                     existingDetail.BillDetailRate = detailDto.BillDetailRate;
+                    existingDetail.BillDetailActualRate = detailDto.BillDetailActualRate;
                     existingDetail.BillDetailAmount = detailDto.BillDetailAmount;
                     existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
                     existingDetail.BillDetailTotal = detailDto.BillDetailTotal;
