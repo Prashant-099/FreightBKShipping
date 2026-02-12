@@ -1130,6 +1130,7 @@ namespace FreightBKShipping.Controllers
                         BillDetailHsnId = detailDto.BillDetailHsnId,
                         BillDetailQty = detailDto.BillDetailQty,
                         BillDetailRate = detailDto.BillDetailRate,
+                        BillDetailActualRate = detailDto.BillDetailActualRate,
                         BillDetailAmount = detailDto.BillDetailAmount,
                         BillDetailRemarks = detailDto.BillDetailRemarks,
                         BillDetailTotal = detailDto.BillDetailTotal,
