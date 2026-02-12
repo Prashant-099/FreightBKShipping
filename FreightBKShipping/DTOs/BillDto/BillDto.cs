@@ -130,6 +130,10 @@ namespace FreightBKShipping.DTOs.BillDto
         public double BillTcsAmt { get; set; }
 
         public double Bill_due_amt { get; set; }
+        public int BillQuatationId { get; set; }
+
+        public string? BillQuatationNo { get; set; }
+
         //NOT MAPPED IN DB    
         public string? partyname { get; set; }
         public string? posname { get; set; }

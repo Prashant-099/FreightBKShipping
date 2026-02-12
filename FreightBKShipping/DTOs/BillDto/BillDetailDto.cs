@@ -17,6 +17,7 @@ namespace FreightBKShipping.DTOs.BillDto
         public string? BillDetailSlabId { get; set; }
         public double BillDetailQty { get; set; }
         public double BillDetailRate { get; set; }
+        public double BillDetailActualRate { get; set; }
         public double BillDetailAmount { get; set; }
         public string? BillDetailRemarks { get; set; }
         public int? BillDetailSno { get; set; }
