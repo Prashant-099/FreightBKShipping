@@ -2,6 +2,8 @@
 {
     public class JobReadDto
     {
+        public int? JobReportId { get; set; }
+
         public int JobId { get; set; }
         public int? JobCompanyId { get; set; }
         public string? JobAddedByUserId { get; set; }

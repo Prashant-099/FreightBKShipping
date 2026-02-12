@@ -5,7 +5,9 @@ namespace FreightBKShipping.DTOs
 {
     public class JobCreateDto
     {
-        public string? JobCompanyId { get; set; }
+        public int? JobReportId { get; set; }
+
+        public int? JobCompanyId { get; set; }
         public string? JobAddedByUserId { get; set; }
         public string? JobUpdatedByUserId { get; set; }
         public int JobPartyId { get; set; }

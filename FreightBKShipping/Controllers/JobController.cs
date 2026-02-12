@@ -191,7 +191,7 @@ namespace FreightBKShipping.Controllers
                             JobIssuePlace = x.j.JobIssuePlace,
                             JobShipmentType = x.j.JobShipmentType,
                             JobSubType = x.j.JobSubType,
-
+                            JobReportId=x.j.JobReportId,
 
 
                             BranchName = branch != null ? branch.BranchName : null,
@@ -496,9 +496,13 @@ namespace FreightBKShipping.Controllers
             var result =
                 (from j in _context.Jobs
 
-                 join c in _context.Notifies
-                     on j.JobConsigneeId equals c.NotifyId into cj
+                 join c1 in _context.Notifies
+          on j.JobConsigneeId equals c1.NotifyId into cj
                  from consignee in cj.DefaultIfEmpty()
+
+                 join c2 in _context.Notifies
+                     on j.JobLineId equals c2.NotifyId into linee
+                 from line in linee.DefaultIfEmpty()
 
                  join pa in _context.Accounts
                      on j.JobPartyId equals pa.AccountId into p1
@@ -507,6 +511,16 @@ namespace FreightBKShipping.Controllers
                  join cg in _context.companies
                      on j.JobCompanyId equals cg.CompanyId into c1
                  from company in c1.DefaultIfEmpty()
+
+                     // ✅ POD Location
+                 join podLoc in _context.Locations
+                     on j.JobPodId equals podLoc.LocationId into podGroup
+                 from pod in podGroup.DefaultIfEmpty()
+
+                     // ✅ POL Location
+                 join polLoc in _context.Locations
+                     on j.JobPolId equals polLoc.LocationId into polGroup
+                 from pol in polGroup.DefaultIfEmpty()
 
                  where j.JobId == jobid
                     && j.JobCompanyId == companyId
@@ -551,23 +565,27 @@ namespace FreightBKShipping.Controllers
                      JobSufix = j.JobSufix,
                      JobActive = j.JobActive,
                      JobTypeId = j.JobTypeId,
-
+                    
                      JobSubType = j.JobSubType,
                      IsTransportaion = j.IsTransportaion,
                      IsClearing = j.IsClearing,
                      IsForwarding = j.IsForwarding,
                      IsMiscService = j.IsMiscService,
                      JobShipmentType = j.JobShipmentType,
+                     JobGoodsDesc =j.JobGoodsDesc,
+                     JobDoValid =j.JobDoValid,
 
-                     // ✅ Consignee Name
+
                      Consigneename = consignee != null ? consignee.NotifyName : null,
+                     Linename = line != null ? line.NotifyName : null,
+                     PodName = pod != null ? pod.LocationName : null,
+                     PolName = pol != null ? pol.LocationName : null,
 
-                     // ✅ LRs
                      lrs = _context.Lrs
                          .Where(l => l.LrJobId == j.JobId)
                          .ToList(),
 
-                     // ✅ Company Details
+                   
                      Company = company == null ? null : new CompanyDto
                      {
                          Name = company.Name,
@@ -749,6 +767,7 @@ namespace FreightBKShipping.Controllers
             job.IsMiscService = dto.IsMiscService;
             job.IsTransportaion = dto.IsTransportaion;
             job.JobSubType = dto.JobSubType;
+            job.JobReportId = dto.JobReportId;
 
             return job;
         }
@@ -804,6 +823,8 @@ namespace FreightBKShipping.Controllers
             public string? JobCust7 { get; set; }
             public string? JobCust8 { get; set; }
             public string? JobCust9 { get; set; }
+            public string? JobGoodsDesc { get; set; }
+
 
             public int? JobChaId { get; set; }
             public string? JobBeNo { get; set; }
@@ -822,6 +843,7 @@ namespace FreightBKShipping.Controllers
             public string? JobAgent { get; set; }
             public string? JobPartyAddress { get; set; }
             public string? JobHighseas1Address { get; set; }
+            public DateTime? JobDoValid { get; set; }
 
             // ✅ Joined / UI fields
             public string? VesselName { get; set; }
@@ -830,6 +852,7 @@ namespace FreightBKShipping.Controllers
             public string? BranchName { get; set; }
             public string? Partyname { get; set; }
             public string? Consigneename { get; set; }
+            public string? Linename { get; set; }
 
             //-------------------------------------
             public string? JobSubType { get; set; }
