@@ -435,6 +435,8 @@ namespace FreightBKShipping.Models
         [Column("job_shipment_type")]
         [StringLength(30)]
         public string? JobShipmentType { get; set; }
+        [Column("job_report_id")]
+        public int? JobReportId { get; set; }
 
         //unMapped field in db
         [NotMapped]

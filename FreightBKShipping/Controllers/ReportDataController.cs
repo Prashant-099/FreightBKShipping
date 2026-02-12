@@ -272,5 +272,33 @@ namespace FreightBKShipping.Controllers
         }
 
 
+        //added 
+        [HttpGet("report-id")]
+        public async Task<IActionResult> GetReportId(
+         [FromQuery] string docType,
+         [FromQuery] string? formatName)
+        {
+            var companyId = GetCompanyId();
+
+            var query = _context.Reportdata
+                .Where(r => r.DocType == docType
+                         && r.CompanyId == companyId
+                         && r.Status == true);
+
+            if (!string.IsNullOrWhiteSpace(formatName))
+                query = query.Where(r => r.FormatName == formatName);
+
+            var reportId = await query
+                .OrderByDescending(r => r.ReportDataId)
+                .Select(r => r.ReportDataId)
+                .FirstOrDefaultAsync();
+
+            if (reportId == 0)
+                return NotFound();
+
+            return Ok(reportId);
+        }
+
+
     }
 }
