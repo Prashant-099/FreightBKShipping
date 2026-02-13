@@ -96,6 +96,7 @@
         public string? bill_detail_exchunit { get; set; }
         public double bill_detail_qty { get; set; }
         public double bill_detail_rate { get; set; }
+        public double BillDetailActualRate { get; set; }
         public double bill_detail_amount { get; set; }
         public double bill_detail_exchrate { get; set; }
         public double bill_detail_sgst { get; set; }
