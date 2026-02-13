@@ -300,5 +300,29 @@ namespace FreightBKShipping.Controllers
         }
 
 
+        [HttpGet("default-report-id")]
+        public async Task<IActionResult> GetDefaultReportId(
+    [FromQuery] string docType)
+        {   
+            if (string.IsNullOrWhiteSpace(docType))
+                return BadRequest("DocType is required.");
+
+            var companyId = GetCompanyId();
+
+            var reportId = await _context.Reportdata
+                .Where(r => r.DocType == docType
+                         && r.CompanyId == companyId
+                         && r.Status == true)
+                .OrderByDescending(r => r.ReportDataId)
+                .Select(r => r.ReportDataId)
+                .FirstOrDefaultAsync();
+
+            if (reportId == 0)
+                return NotFound("Report format not found.");
+
+            return Ok(reportId);
+        }
+
+
     }
 }
