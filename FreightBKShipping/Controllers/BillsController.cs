@@ -1731,6 +1731,7 @@ namespace FreightBKShipping.Controllers
                         bill_detail_hsncode = detail.BillDetailHsnCode,
                         bill_detail_qty = detail.BillDetailQty,
                         bill_detail_rate = detail.BillDetailRate,
+                        BillDetailActualRate = detail.BillDetailActualRate,
                         bill_detail_exchunit = currency?.CurrencyName,
                         bill_detail_exchrate = detail.BillDetailExchRate,
                         bill_detail_amount = detail.BillDetailAmount,
