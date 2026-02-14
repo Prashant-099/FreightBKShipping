@@ -12,10 +12,10 @@ namespace FreightBKShipping.Models
         public long SessionId { get; set; }
 
         [Column("user_id")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         [Column("user_name")]
-        public string UserName { get; set; }
+        public string? UserName { get; set; }
 
         [Column("company_id")]
         public int CompanyId { get; set; }
@@ -24,19 +24,19 @@ namespace FreightBKShipping.Models
         public int? BranchId { get; set; } 
 
         [Column("login_time")]
-        public DateTime LoginTime { get; set; }
+        public DateTime? LoginTime { get; set; }
 
         [Column("logout_time")]
         public DateTime? LogoutTime { get; set; }
 
         [Column("login_status")]
-        public string LoginStatus { get; set; }
+        public string? LoginStatus { get; set; }
 
         [Column("login_type")]
-        public string LoginType { get; set; }
+        public string? LoginType { get; set; }
 
         [Column("ip_address")]
-        public string IpAddress { get; set; }
+        public string? IpAddress { get; set; }
 
         [Column("browser")]
         public string? Browser { get; set; }

@@ -44,7 +44,7 @@ namespace FreightBKShipping.Data
         public DbSet<Journal> Journals { get; set; }
         public DbSet<BillRefDetail> BillRefDetails { get; set; }
 
-
+        public DbSet<CompanySubscription> CompanySubscriptions { get; set; }
 
         //added by dhruv
         public DbSet<WpMailConfig> wpMailConfigs { get; set; }

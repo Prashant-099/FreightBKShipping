@@ -144,7 +144,10 @@ namespace FreightBKShipping.Models
         public ICollection<UserBranch> UserBranches { get; set; }
                  = new List<UserBranch>();
 
- 
+        [ForeignKey("UserCompanyId")]
+        public Company Company { get; set; }
+
+
     }
 
     public class PagedUserResponse
@@ -183,5 +186,7 @@ namespace FreightBKShipping.Models
 
         [ForeignKey("BranchId")]
         public Branch Branch { get; set; }
+
+
     }
 }

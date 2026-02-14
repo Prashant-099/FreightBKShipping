@@ -11,6 +11,8 @@
         public int? BranchId { get; set; }
         public int YearId { get; set; }
     }
+
+
     public class AuditLogReadDto
     {
         public int AuditLogsId { get; set; }

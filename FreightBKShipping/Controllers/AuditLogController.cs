@@ -38,15 +38,15 @@ namespace FreightBKShipping.Controllers
                         {
                             AuditLogsId = log.AuditLogsId,
                             TableName = log.TableName,
-                            RecordId = log.RecordId,
+                            RecordId = (int)log.RecordId,
                             VoucherType = log.VoucherType,
-                            Amount = log.Amount,
+                            Amount = (int)log.Amount,
                             Operations = log.Operations,
                             Remarks = log.Remarks,
-                            DateTime = log.DateTime,
+                            DateTime = (DateTime)log.DateTime,
                             CreatedBy = log.CreatedBy,
-                            CompanyId = log.CompanyId,
-                            YearId = log.YearId,
+                            CompanyId = (int)log.CompanyId,
+                            YearId = (int)log.YearId,
                             BranchId = log.BranchId,
                             BranchName = branch != null ? branch.BranchName : "All"
                         };

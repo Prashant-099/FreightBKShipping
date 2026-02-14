@@ -12,36 +12,36 @@ namespace FreightBKShipping.Models
         public int AuditLogsId { get; set; }
 
         [Column("table_name")]
-        public string TableName { get; set; }
+        public string? TableName { get; set; }
 
         [Column("record_id")]
-        public int RecordId { get; set; }
+        public int? RecordId { get; set; }
 
         [Column("voucher_type")]
-        public string VoucherType { get; set; }
+        public string? VoucherType { get; set; }
 
         [Column("amount")]
-        public int Amount { get; set; }
+        public int? Amount { get; set; }
 
         [Column("operations")]
-        public string Operations { get; set; }
+        public string? Operations { get; set; }
 
         [Column("remarks")]
-        public string Remarks { get; set; }
+        public string? Remarks { get; set; }
 
         [Column("date_time")]
-        public DateTime DateTime { get; set; }
+        public DateTime?  DateTime { get; set; }
 
         [Column("created_by")]
         public string CreatedBy { get; set; }
 
         [Column("company_id")]
-        public int CompanyId { get; set; }
+        public int? CompanyId { get; set; }
 
         [Column("branch_id")]
         public int? BranchId { get; set; }
 
         [Column("year_id")]
-        public int YearId { get; set; }
+        public int? YearId { get; set; }
     }
 }

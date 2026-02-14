@@ -29,34 +29,27 @@ namespace FreightBKShipping.Controllers
             _config = config;
         }
 
-        // ✅ Login Endpoint
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)        
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             try
             {
-                var user = await _context.Users
-                      .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
-
-                var userBranches = await _context.UserBranches
-                          .Where(ub => ub.UserId == user.UserId)
-                          .Include(ub => ub.Branch)
-                          .Select(ub => new UserBranchDto
-                          {
-                              BranchId = ub.BranchId,
-                              BranchName = ub.Branch.BranchName
-                          })
-                          .ToListAsync();
-
-                int? activeBranchId = null;
-                if (userBranches.Count == 1)
+                if (dto == null ||
+                    string.IsNullOrWhiteSpace(dto.UserEmail) ||
+                    string.IsNullOrWhiteSpace(dto.UserPassword))
                 {
-                    activeBranchId = userBranches.First().BranchId;
+                    return BadRequest(new
+                    {
+                        message = "Email and password are required."
+                    });
                 }
 
-                //if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
-                //    return Unauthorized("Invalid credentials");
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
+
+                // ================= INVALID USER / PASSWORD =================
                 if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
                 {
                     _context.UserLoginSessions.Add(new UserLoginSession
@@ -65,50 +58,112 @@ namespace FreightBKShipping.Controllers
                         LoginTime = DateTime.UtcNow,
                         LoginStatus = "FAILED",
                         LoginType = "website",
-                        IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                        IpAddress = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString()
                     });
 
                     await _context.SaveChangesAsync();
-                    return Unauthorized("Invalid credentials");
+
+                    return Unauthorized(new
+                    {
+                        message = "Invalid credentials."
+                    });
                 }
 
+                // ================= COMPANY VALIDATION =================
+                var isSuperAdmin = user.Role?.RoleName == "SuperAdmin";
+
+                if (!isSuperAdmin)
+                {
+                    if (user.Company == null)
+                    {
+                        return Unauthorized(new
+                        {
+                            message = "Company not found."
+                        });
+                    }
+
+                    if (!user.Company.Status)
+                    {
+                        return Unauthorized(new
+                        {
+                            message = "Company account is inactive. Contact Super Admin."
+                        });
+                    }
+
+                    if (user.Company.FssExpiry < DateTime.UtcNow)
+                    {
+                        return Unauthorized(new
+                        {
+                            message = "Company subscription expired. Please contact Super Admin."
+                        });
+                    }
+                }
+
+
+                // ================= USER BRANCHES =================
+                var userBranches = await _context.UserBranches
+                    .Where(ub => ub.UserId == user.UserId)
+                    .Include(ub => ub.Branch)
+                    .Select(ub => new UserBranchDto
+                    {
+                        BranchId = ub.BranchId,
+                        BranchName = ub.Branch.BranchName
+                    })
+                    .ToListAsync();
+
+                int? activeBranchId = null;
+                if (userBranches.Count == 1)
+                {
+                    activeBranchId = userBranches.First().BranchId;
+                }
+
+                // ================= TOKEN CREATION =================
                 var token = _tokenService.CreateToken(user);
-                //var tokenExpiry = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
-                var tokenExpiryMinutes = Convert.ToDouble(_config["Jwt:ExpireMinutes"] ?? "60");
-                var tokenExpiry = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes).ToUnixTimeSeconds();
+
+                var tokenExpiryMinutes =
+                    Convert.ToDouble(_config["Jwt:ExpireMinutes"] ?? "60");
+
+                var tokenExpiryUnix =
+                    DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes).ToUnixTimeSeconds();
+
                 var refreshToken = _tokenService.GenerateRefreshToken();
                 user.RefreshToken = refreshToken;
-                // Get refresh token expiry from config
-                var refreshExpiryDays = Convert.ToDouble(_config["Jwt:RefreshTokenExpiryDays"] ?? "1");
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshExpiryDays);
 
+                var refreshExpiryDays =
+                    Convert.ToDouble(_config["Jwt:RefreshTokenExpiryDays"] ?? "1");
 
+                user.RefreshTokenExpiryTime =
+                    DateTime.UtcNow.AddDays(refreshExpiryDays);
 
+                // ================= DEVICE INFO =================
                 var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
 
-                // Detect login_type
                 string loginType;
                 if (userAgent.Contains("Android")) loginType = "android";
-                else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad") || userAgent.Contains("iOS")) loginType = "ios";
+                else if (userAgent.Contains("iPhone") ||
+                         userAgent.Contains("iPad") ||
+                         userAgent.Contains("iOS"))
+                    loginType = "ios";
                 else loginType = "website";
 
-                // Detect IP
-                var ipAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                   ?? HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
+                var ipAddress =
+                    HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                    ?? HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
 
-                // Parse browser
                 var uaParser = UAParser.Parser.GetDefault();
                 var clientInfo = uaParser.Parse(userAgent);
-                var browserName = clientInfo.UA.Family;
-                var browserVersion = int.TryParse(clientInfo.UA.Major, out int v) ? v : 0;
 
+                var browserName = clientInfo.UA.Family;
+                var browserVersion =
+                    int.TryParse(clientInfo.UA.Major, out int v) ? v : 0;
+
+                // ================= LOGIN SESSION SUCCESS =================
                 var loginSession = new UserLoginSession
                 {
                     UserId = user.UserId,
                     UserName = user.UserName,
                     CompanyId = user.UserCompanyId,
                     BranchId = activeBranchId,
-                    //BranchId = user.UserBranchId,
                     LoginTime = DateTime.UtcNow,
                     LoginStatus = "SUCCESS",
                     LoginType = loginType,
@@ -118,7 +173,10 @@ namespace FreightBKShipping.Controllers
                 };
 
                 _context.UserLoginSessions.Add(loginSession);
+
                 await _context.SaveChangesAsync();
+
+                // ================= RESPONSE =================
                 return Ok(new AuthResponseDto
                 {
                     Token = token,
@@ -127,24 +185,25 @@ namespace FreightBKShipping.Controllers
                     UserName = user.UserName,
                     UserId = user.UserId,
                     Email = user.UserEmail,
-                    //tokenExp = 60 * 60 * 24// Default to 1 day expiration
-                    tokenExp = tokenExpiry,
+                    tokenExp = tokenExpiryUnix,
                     BranchId = user.UserBranchId,
                     Branches = userBranches,
-                    Rolename = user.Role.RoleName,
-
+                    Rolename = user.Role?.RoleName,
                     ActiveBranchId = activeBranchId
                 });
             }
             catch (Exception ex)
             {
-                // Optional: log the full exception stack trace to a logging service or file
                 Console.WriteLine(ex);
 
-                // Return a proper error response
-                return StatusCode(500, $"An unexpected error occurred while logging in -{ex}.");
+                return StatusCode(500, new
+                {
+                    message = "An unexpected error occurred while logging in.",
+                    details = ex.Message
+                });
             }
         }
+
 
 
 
@@ -184,16 +243,20 @@ namespace FreightBKShipping.Controllers
                 .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken );
 
             if (user == null)
+                return Unauthorized("Invalid Refresh Token");
+
+            // 🔴 Case 2: Token expired
+            if (user.RefreshTokenExpiryTime == null ||
+                user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
-                // Clear the expired token
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryTime = null;
                 await _context.SaveChangesAsync();
-                return Unauthorized("Invalid Refresh Token");
-            }
 
-            if (user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 return Unauthorized("Refresh token has expired");
+            }
+            //if (user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            //    return Unauthorized("Refresh token has expired");
 
             var newAccessToken = _tokenService.CreateToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();

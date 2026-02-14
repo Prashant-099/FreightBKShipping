@@ -121,7 +121,7 @@ namespace FreightBKShipping.Models
         public bool InOnline { get; set; }
 
         [Column("company_extend_days")]
-        public int ExtendDays { get; set; }
+        public int? ExtendDays { get; set; }
 
         [Column("company_ismulti_branch")]
         public bool IsMultiBranch { get; set; }
@@ -129,6 +129,8 @@ namespace FreightBKShipping.Models
         //added by dhruv
         [Column("company_haswpmsg")]
         public bool? HasWhatsapp { get; set; }
+        [Column("company_maxuser")]
+        public int? MaxUser { get; set; }
 
        
 

@@ -1,6 +1,7 @@
 ﻿using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
+using FreightBKShipping.Interfaces;
 
 
 namespace FreightBKShipping.Services

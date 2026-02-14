@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace FreightBKShipping.DTOs
 {
@@ -33,8 +34,10 @@ namespace FreightBKShipping.DTOs
 
         public string? ContactPerson { get; set; }
         public string AddedByUserId { get; set; } = string.Empty;
+        public DateTime? FssExpiry { get; set; }
 
         public int CompanyId { get; set; }
+
 
     }
     public class CompanyDto
@@ -66,12 +69,64 @@ namespace FreightBKShipping.DTOs
 
         public string? CurrencySymbol { get; set; }
         public string? Tagline1 { get; set; }
-        public int ExtendDays { get; set; }
+        public int? ExtendDays { get; set; }
         public bool? HasWhatsapp { get; set; }
 
         public string? ContactPerson { get; set; }
 
         public string AddedByUserId { get; set; } = string.Empty;
         public string FullAddress { get; set; }
+        public DateTime? FssExpiry { get; set; }
+
     }
+
+    public class CompanyUpdateDto
+        {
+            [Required(ErrorMessage = "Company ID is required.")]
+            public int CompanyId { get; set; }
+
+            [Required(ErrorMessage = "Company name is required.")]
+            public string? Name { get; set; }
+
+            public string? Code { get; set; }
+
+            public string? Address1 { get; set; }
+            public string? Address2 { get; set; }
+            public string? Address3 { get; set; }
+
+            public string? StateCode { get; set; }
+            public int StateId { get; set; }
+
+            public string? PrintName { get; set; }
+
+            public string? Email { get; set; }
+            public string? Mobile { get; set; }
+
+            public bool IsGstApplicable { get; set; }
+            public string? Gstin { get; set; }
+
+            public bool Status { get; set; }
+
+            public string? Remarks { get; set; }
+
+            public string? City { get; set; }
+            public string? Country { get; set; }
+
+            public string? Panno { get; set; }
+            public string? Website { get; set; }
+            public string? Pincode { get; set; }
+
+            public string? CurrencySymbol { get; set; }
+            public string? Tagline1 { get; set; }
+
+            public int ExtendDays { get; set; }
+
+            public bool? HasWhatsapp { get; set; }
+
+            public string? ContactPerson { get; set; }
+
+            public DateTime? FssExpiry { get; set; }
+        }
+    
+
 }

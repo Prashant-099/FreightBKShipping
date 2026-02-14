@@ -17,6 +17,7 @@ namespace FreightBKShipping.Controllers
         private readonly AppDbContext _context;
         private readonly ISieveProcessor _sieveProcessor;
         private readonly CompanySetupService _setupService;
+
         public CompanyController(AppDbContext context, ISieveProcessor sieveProcessor, CompanySetupService setupService)
         {
             _context = context;
@@ -80,7 +81,7 @@ namespace FreightBKShipping.Controllers
                 ExtendDays = c.company.ExtendDays,
 
                 HasWhatsapp = c.company.HasWhatsapp,
-
+                FssExpiry =c.company.FssExpiry,
                 ContactPerson = c.company.ContactPerson,
                 AddedByUserId = c.company.AddedByUserId
             })
@@ -126,9 +127,11 @@ namespace FreightBKShipping.Controllers
              City = cs.c.City,
              Country = cs.c.Country,
              StateId = cs.c.StateId,
-             StateName = cs.s.StateName,  // ✅ Include state name
+             StateName = cs.s.StateName,
+             FssExpiry = cs.c.FssExpiry,
              Panno = cs.c.Panno,
              Website= cs.c.Website,
+             ExtendDays =cs.c.ExtendDays ?? 0,
          })
          .FirstOrDefaultAsync();
 
@@ -181,36 +184,43 @@ namespace FreightBKShipping.Controllers
             return Ok(new { company.CompanyId });
         }
 
-        [HttpPut("{id}")]
-        //[Authorize(Policy = "CompanyManagementOnly")]
-        public async Task<IActionResult> Update(int id, CompanyDto dto)
+        [HttpPut("{id}/admin")]
+        [Authorize(Policy = "CompanyManagementOnly")]
+        public async Task<IActionResult> UpdateBySuperAdmin(int id, CompanyUpdateDto dto)
         {
-            var company = await _context.companies.FindAsync(id);
-            if (company == null) return NotFound();
+            if (id != dto.CompanyId)
+                return BadRequest("Company ID mismatch.");
 
-            company.Name = dto.Name;
-            company.Code = dto.Code;
-            company.Address1 = dto.Address1;
-            company.PrintName = dto.PrintName;
-            company.Email = dto.Email;
-            company.Mobile = dto.Mobile;
-            company.IsGstApplicable = dto.IsGstApplicable;
-            company.Gstin = dto.Gstin;
-            company.Status = dto.Status;
-            company.Remarks = dto.Remarks;
-            company.City = dto.City;
-            company.Country = dto.Country;
-            company.Updated = DateTime.UtcNow;
-            company.StateId = dto.StateId;
-            company.Panno = dto.Panno;
-            company.UpdatedByUserId = GetUserId().ToString(); // 👈 replace with logged-in user
-            company.Website = dto.Website;
-            company.HasWhatsapp = dto.HasWhatsapp;
-            company.StateCode = dto.StateCode;
-            
-            await _context.SaveChangesAsync();
-            return NoContent();
+            var userId = GetUserId();
+                
+            var result = await _setupService
+                .UpdateCompanyBySuperAdminAsync(dto, userId);
+
+            if (result == null)
+                return NotFound();
+
+            return Ok(new { result.CompanyId });
         }
+
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateByCompanyUser(int id, CompanyUpdateDto dto)
+        {
+            if (id != dto.CompanyId)
+                return BadRequest("Company ID mismatch.");
+
+            var userId = GetUserId();
+            var userCompanyId = GetCompanyId(); // from token
+
+            var result = await _setupService
+                .UpdateCompanyByUserAsync(dto, userId, userCompanyId);
+
+            if (result == null)
+                return Forbid();
+
+            return Ok(new { result.CompanyId });
+        }
+
 
         [HttpDelete("{id}")]
         [Authorize(Policy = "CompanyManagementOnly")]

@@ -1,4 +1,5 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.Interfaces;
 using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +53,10 @@ namespace FreightBKShipping
             builder.Services.AddScoped<AuditLogService>();
             builder.Services.AddScoped<CompanySetupService>();
             builder.Services.AddScoped<ISasUrlService, SasUrlService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
+            builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
+            builder.Services.AddScoped<ICompanySubscriptionService, CompanySubscriptionService>();
+
 
             builder.Services.AddHttpContextAccessor();
             // ✅ 4. Add JWT Authentication

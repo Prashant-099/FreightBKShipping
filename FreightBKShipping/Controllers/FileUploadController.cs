@@ -88,7 +88,7 @@ using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
-
+using FreightBKShipping.Interfaces;
 [Route("api/[controller]")]
 [ApiController]
 public class FileUploadController : BaseController

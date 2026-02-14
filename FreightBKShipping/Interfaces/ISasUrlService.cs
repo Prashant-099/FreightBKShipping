@@ -1,4 +1,4 @@
-﻿namespace FreightBKShipping.Services
+﻿namespace FreightBKShipping.Interfaces
 {
     public interface ISasUrlService
     {

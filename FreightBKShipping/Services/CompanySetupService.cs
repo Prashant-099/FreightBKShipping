@@ -12,13 +12,19 @@ public class CompanySetupService
         _context = context;
     }
 
-    public async Task<Company> CreateCompanyWithDefaultsAsync(CompanyAddDto dto, string createdByUserId)
+    #region ======================= CREATE COMPANY =======================
+
+    public async Task<Company> CreateCompanyWithDefaultsAsync(
+        CompanyAddDto dto,
+        string createdByUserId)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            // 🟡 1. Create Company
+            var now = DateTime.UtcNow;
+            int subscriptionDays = dto.ExtendDays > 0 ? dto.ExtendDays : 10;
+
             var company = new Company
             {
                 Name = dto.Name,
@@ -27,8 +33,8 @@ public class CompanySetupService
 
                 Email = dto.Email,
                 Mobile = string.IsNullOrWhiteSpace(dto.Mobile)
-                ? "9999999999"
-                : dto.Mobile,
+                    ? "9999999999"
+                    : dto.Mobile,
 
                 Address1 = dto.Address1,
                 Address2 = dto.Address2,
@@ -49,7 +55,6 @@ public class CompanySetupService
 
                 CurrencySymbol = dto.CurrencySymbol,
                 Tagline1 = dto.Tagline1,
-                ExtendDays = dto.ExtendDays,
 
                 Status = dto.Status,
                 Remarks = dto.Remarks,
@@ -57,28 +62,32 @@ public class CompanySetupService
                 HasWhatsapp = dto.HasWhatsapp,
                 ContactPerson = dto.ContactPerson,
 
-                AddedByUserId = createdByUserId
-            };
+                AddedByUserId = createdByUserId,
 
+                // 🔥 Temporary (Can remove later fully)
+                ExtendDays = subscriptionDays,
+                FssExpiry = now.AddDays(subscriptionDays)
+            };
 
             _context.companies.Add(company);
             await _context.SaveChangesAsync();
+
+            // 🔥 Create Subscription (SaaS logic)
+            await CreateSubscriptionAsync(company.CompanyId, subscriptionDays, createdByUserId);
+
+            // 🔥 Default Setup
             var yearId = await CreateFinancialYear(company);
             var branchId = await CreateDefaultBranch(company);
-            // 🟡 2. Create Default Master Data
-            await CreateDefaultUser(company,branchId);
-           
-            await CreateVoucherTypes(company,branchId);
+
+            await CreateDefaultUser(company, branchId);
+            await CreateVoucherTypes(company, branchId);
             await CreateServiceGroup(company);
             await CreateCurrencies(company);
             await CreateUnits(company);
             await CreateDefaultGstSlabs(company, yearId);
             await CreateDefaultStatuses(company);
-            await CreateDefaultAccounts(
-    company.CompanyId,
-    createdByUserId,
-    yearId
-);
+            await CreateDefaultAccounts(company.CompanyId, createdByUserId, yearId);
+
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -90,6 +99,140 @@ public class CompanySetupService
             throw;
         }
     }
+
+    #endregion
+
+    #region ======================= SUBSCRIPTION =======================
+
+    private async Task<DateTime> CreateSubscriptionAsync(int companyId, int days, string userId)
+    {
+        var now = DateTime.UtcNow;
+
+        var latestSub = await _context.CompanySubscriptions
+            .Where(x => x.CompanyId == companyId)
+            .OrderByDescending(x => x.EndDate)
+            .FirstOrDefaultAsync();
+
+        DateTime startDate = now;
+
+        if (latestSub != null && latestSub.EndDate > now)
+        {
+            startDate = latestSub.EndDate;
+            latestSub.IsActive = false;
+        }
+
+        var endDate = startDate.AddDays(days);
+
+        var newSub = new CompanySubscription
+        {
+            CompanyId = companyId,
+            StartDate = startDate,
+            EndDate = endDate,
+            Days = days,
+            IsActive = true,
+            CreatedAt = now,
+            CreatedBy = userId
+        };
+
+        _context.CompanySubscriptions.Add(newSub);
+
+        return endDate; // 🔥 return expiry date
+    }
+
+    #endregion
+
+    #region ======================= UPDATE (USER) =======================
+
+    public async Task<Company?> UpdateCompanyByUserAsync(
+        CompanyUpdateDto dto,
+        string userId,
+        int userCompanyId)
+    {
+        if (dto.CompanyId != userCompanyId)
+            return null;
+
+        var company = await _context.companies
+            .FirstOrDefaultAsync(x => x.CompanyId == dto.CompanyId);
+
+        if (company == null)
+            return null;
+
+        company.Name = dto.Name;
+        company.Address1 = dto.Address1;
+        company.Address2 = dto.Address2;
+        company.Address3 = dto.Address3;
+        company.Email = dto.Email;
+        company.Mobile = dto.Mobile;
+        company.Website = dto.Website;
+        company.ContactPerson = dto.ContactPerson;
+        company.Gstin = dto.Gstin;
+
+        company.Updated = DateTime.UtcNow;
+        company.UpdatedByUserId = userId;
+
+        await _context.SaveChangesAsync();
+        return company;
+    }
+
+    #endregion
+
+    #region ======================= UPDATE (SUPERADMIN) =======================
+
+    public async Task<Company?> UpdateCompanyBySuperAdminAsync(
+        CompanyUpdateDto dto,
+        string userId)
+    {
+        var company = await _context.companies
+            .FirstOrDefaultAsync(x => x.CompanyId == dto.CompanyId);
+
+        if (company == null)
+            return null;
+
+        company.Name = dto.Name;
+        company.Code = dto.Code;
+        company.Address1 = dto.Address1;
+        company.Address2 = dto.Address2;
+        company.Address3 = dto.Address3;
+        company.StateCode = dto.StateCode;
+        company.StateId = dto.StateId;
+        company.PrintName = dto.PrintName;
+        company.Email = dto.Email;
+        company.Mobile = dto.Mobile;
+        company.IsGstApplicable = dto.IsGstApplicable;
+        company.Gstin = dto.Gstin;
+        company.Status = dto.Status;
+        company.Remarks = dto.Remarks;
+        company.City = dto.City;
+        company.Country = dto.Country;
+        company.Panno = dto.Panno;
+        company.Website = dto.Website;
+        company.Pincode = dto.Pincode;
+        company.CurrencySymbol = dto.CurrencySymbol;
+        company.Tagline1 = dto.Tagline1;
+        company.HasWhatsapp = dto.HasWhatsapp;
+
+        // 🔥 Subscription Extend Logic
+        if (dto.ExtendDays > 0)
+        {
+
+            var newExpiryDate = await CreateSubscriptionAsync(
+                 company.CompanyId,
+                 dto.ExtendDays,
+                 userId);
+
+            company.FssExpiry = newExpiryDate;
+            company.ExtendDays = dto.ExtendDays;
+        }
+        
+        company.Updated = DateTime.UtcNow;
+        company.UpdatedByUserId = userId;
+
+        await _context.SaveChangesAsync();
+        return company;
+    }
+
+    #endregion
+
 
     private async Task CreateDefaultUser(Company company,int? branchId)
     {
