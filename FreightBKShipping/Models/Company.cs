@@ -130,7 +130,7 @@ namespace FreightBKShipping.Models
         [Column("company_haswpmsg")]
         public bool? HasWhatsapp { get; set; }
         [Column("company_maxuser")]
-        public int? MaxUser { get; set; }
+        public int? MaxUser { get; set; } = 2;
 
        
 

@@ -12,8 +12,6 @@ namespace FreightBKShipping.DTOs
         public string? Address2 { get; set; }
         public string? Address3 { get; set; }
         public string? StateCode { get; set; }
-
-
         public string? PrintName { get; set; }
         public string? Email { get; set; }
         public string? Mobile { get; set; }
@@ -31,12 +29,11 @@ namespace FreightBKShipping.DTOs
         public string? Tagline1 { get; set; }
         public int ExtendDays { get; set; }
         public bool? HasWhatsapp { get; set; }
-
         public string? ContactPerson { get; set; }
         public string AddedByUserId { get; set; } = string.Empty;
         public DateTime? FssExpiry { get; set; }
-
         public int CompanyId { get; set; }
+        public int? MaxUser { get; set; }
 
 
     }
@@ -120,6 +117,7 @@ namespace FreightBKShipping.DTOs
             public string? Tagline1 { get; set; }
 
             public int ExtendDays { get; set; }
+            public int? MaxUser { get; set; }
 
             public bool? HasWhatsapp { get; set; }
 
@@ -127,6 +125,4 @@ namespace FreightBKShipping.DTOs
 
             public DateTime? FssExpiry { get; set; }
         }
-    
-
 }

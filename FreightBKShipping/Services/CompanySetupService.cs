@@ -32,6 +32,7 @@ public class CompanySetupService
                 PrintName = dto.PrintName,
 
                 Email = dto.Email,
+
                 Mobile = string.IsNullOrWhiteSpace(dto.Mobile)
                     ? "9999999999"
                     : dto.Mobile,
@@ -66,7 +67,8 @@ public class CompanySetupService
 
                 // 🔥 Temporary (Can remove later fully)
                 ExtendDays = subscriptionDays,
-                FssExpiry = now.AddDays(subscriptionDays)
+                FssExpiry = now.AddDays(subscriptionDays),
+                MaxUser = dto.MaxUser ?? 2  // 🔥 default max users
             };
 
             _context.companies.Add(company);
@@ -110,7 +112,8 @@ public class CompanySetupService
 
         var latestSub = await _context.CompanySubscriptions
             .Where(x => x.CompanyId == companyId)
-            .OrderByDescending(x => x.EndDate)
+            .OrderByDescending(x => x.IsActive)
+            .ThenByDescending(x => x.EndDate)
             .FirstOrDefaultAsync();
 
         DateTime startDate = now;
@@ -210,7 +213,7 @@ public class CompanySetupService
         company.CurrencySymbol = dto.CurrencySymbol;
         company.Tagline1 = dto.Tagline1;
         company.HasWhatsapp = dto.HasWhatsapp;
-
+        company.MaxUser = dto.MaxUser;
         // 🔥 Subscription Extend Logic
         if (dto.ExtendDays > 0)
         {

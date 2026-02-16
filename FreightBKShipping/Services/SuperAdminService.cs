@@ -92,9 +92,7 @@ public class SuperAdminService : ISuperAdminService
 
         foreach (var c in companies)
         {
-            DateTime expiryBase = c.FssExpiry?.Date ?? today;
             int extendDays = c.ExtendDays ?? 0;
-            DateTime finalExpiry = expiryBase.AddDays(extendDays);
 
             loginStats.TryGetValue(c.CompanyId, out var stat);
             userCounts.TryGetValue(c.CompanyId, out var totalUsers);
@@ -106,17 +104,19 @@ public class SuperAdminService : ISuperAdminService
             int totalFailed = stat?.TotalFailed ?? 0;
             int monthlySuccess = stat?.MonthlySuccess ?? 0;
             int onlineUsers = stat?.OnlineUsers ?? 0;
-
+            var expiryDate = c.FssExpiry;
             // Expiry List
             expiryList.Add(new CompanyExpiryDto
             {
                 CompanyId = c.CompanyId,
                 CompanyName = c.Name ?? "",
-                ExpiryDate = expiryBase,
-                ExtendDays = extendDays,
-                FinalExpiryDate = finalExpiry,
-                DaysRemaining = (finalExpiry - today).Days,
-                IsExpired = finalExpiry.Date < today
+                ExpiryDate = expiryDate,
+                ExtendDays = c.ExtendDays ?? 0,
+                DaysRemaining = expiryDate.HasValue
+                ? (expiryDate.Value.Date - today.Date).Days
+                : 0,
+
+                IsExpired = !expiryDate.HasValue || expiryDate.Value.Date < today.Date
             });
 
             // Online Companies
