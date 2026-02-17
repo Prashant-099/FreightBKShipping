@@ -56,6 +56,7 @@ namespace FreightBKShipping
             builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
             builder.Services.AddScoped<ICompanySubscriptionService, CompanySubscriptionService>();
+            builder.Services.AddScoped<ILrService, LrService>();
 
 
             builder.Services.AddHttpContextAccessor();
