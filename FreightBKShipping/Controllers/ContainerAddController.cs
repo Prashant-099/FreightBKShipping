@@ -23,9 +23,8 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> GetAll()
         {
             var query = FilterByCompany(_context.Lrs, "LrCompanyId")
-    .Where(l => l.LrStatus == 1)
-    .OrderByDescending(l => l.LrId);
-
+            .Where(l => l.LrStatus == 1)
+            .OrderByDescending(l => l.LrId);
 
             return Ok(await query.ToListAsync());
         }
