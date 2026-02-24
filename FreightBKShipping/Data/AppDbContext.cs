@@ -53,6 +53,8 @@ namespace FreightBKShipping.Data
         public DbSet<Lr> Lrs { get; set; }
         public DbSet<DocumentsSaved> DocumentsSaved { get; set; }
 
+        public DbSet<LRDetail> LRDetails { get; set; } 
+        public DbSet<LRJournal> LRJournals { get; set; }
         //end dhruv
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

@@ -16,7 +16,7 @@ public class AccountsController : BaseController
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var query = FilterByCompany(_context.Accounts, "AccountCompanyId").OrderByDescending(b => b.AccountId);
+        var query = FilterByCompany(_context.Accounts, "AccountCompanyId").AsNoTracking().OrderByDescending(b => b.AccountId);
         return Ok(await query.ToListAsync());
     }
 
@@ -36,20 +36,20 @@ public class AccountsController : BaseController
         try
         {
             dto.AccountCompanyId = GetCompanyId();
-        dto.AccountAddedByUserId = GetUserId();
-        dto.AccountUpdatedByUserId = GetUserId();
-        dto.AccountCreated = DateTime.UtcNow;
-        dto.AccountUpdated = DateTime.UtcNow;
+            dto.AccountAddedByUserId = GetUserId();
+            dto.AccountUpdatedByUserId = GetUserId();
+            dto.AccountCreated = DateTime.UtcNow;
+            dto.AccountUpdated = DateTime.UtcNow;
             dto.AccountGroupId = dto.AccountGroupId;
             _context.Accounts.Add(dto);
         await _context.SaveChangesAsync();
         return Ok(dto);
     }
-catch (Exception ex)
-{
-    return BadRequest(new { error = ex.Message, stack = ex.StackTrace
-});
-}
+    catch (Exception ex)
+    {
+        return BadRequest(new { error = ex.Message, stack = ex.StackTrace
+    });
+    }
     }
 
     [HttpPut("{id}")]
@@ -142,34 +142,34 @@ catch (Exception ex)
 
         // 🔴 Check if Account used in GST Slab anywhere
         bool usedInGstSlab = await _context.GstSlabs.AnyAsync(g =>
-     (
-         g.GstSlabPurchaseAccountId == id ||
-         g.GstSlabSalesAccountId == id ||
-         g.GstSlabSgstAccountId == id ||
-         g.GstSlabCgstAccountId == id ||
-         g.GstSlabIgstAccountId == id ||
-         g.GstSlabPsgstAccountId == id ||
-         g.GstSlabPcgstAccountId == id ||
-         g.GstSlabPigstAccountId == id
-     )
-     && g.GstSlabStatus == true
- );
-        if (usedInGstSlab)
-        {
-            return BadRequest(new
+             (
+                 g.GstSlabPurchaseAccountId == id ||
+                 g.GstSlabSalesAccountId == id ||
+                 g.GstSlabSgstAccountId == id ||
+                 g.GstSlabCgstAccountId == id ||
+                 g.GstSlabIgstAccountId == id ||
+                 g.GstSlabPsgstAccountId == id ||
+                 g.GstSlabPcgstAccountId == id ||
+                 g.GstSlabPigstAccountId == id
+             )
+             && g.GstSlabStatus == true
+         );
+            if (usedInGstSlab)
             {
-                Message = "Account cannot be deleted. It is used in GST Tax Slab."
-            });
-        }
-
-        if (existsInBill || existsInJob)
-        {
-            return BadRequest(new
+                return BadRequest(new
+                {
+                    Message = "Account cannot be deleted. It is used in GST Tax Slab."
+                });
+            }
+                
+            if (existsInBill || existsInJob)
             {
+                return BadRequest(new
+                {
                
-                message = "It cannot be deleted because it is used in Bill or Job."
-            });
-        }
+                    message = "It cannot be deleted because it is used in Bill or Job."
+                });
+            }
 
         _context.Accounts.Remove(account);
         await _context.SaveChangesAsync();
