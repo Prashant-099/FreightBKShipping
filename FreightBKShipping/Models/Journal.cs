@@ -106,7 +106,7 @@ namespace FreightBKShipping.Models
         [ForeignKey("JournalAccountId")]
         public virtual Account? Account { get; set; }
 
-        [ForeignKey("JournalVoucherId")]
+        [ForeignKey("JournalVoucherId")] 
         public virtual Voucher? Voucher { get; set; }
 
         [ForeignKey("JournalYearId")]

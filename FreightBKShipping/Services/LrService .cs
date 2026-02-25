@@ -4,6 +4,7 @@ using FreightBKShipping.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 
+
 namespace FreightBKShipping.Services
 {
     public class LrService : ILrService
@@ -48,7 +49,28 @@ namespace FreightBKShipping.Services
             return await _context.Lrs
                 .FirstOrDefaultAsync(x => x.LrId == id && x.LrStatus != 2);
         }
+        public async Task<LrEntryDto?> GetEntryById(int id)
+        {
+            var lr = await _context.Lrs
+                .FirstOrDefaultAsync(x => x.LrId == id && x.LrStatus != 2);
 
+            if (lr == null) return null;
+
+            var details = await _context.LRDetails
+                .Where(x => x.LrDetailsLrId == id)
+                .ToListAsync();
+
+            var journals = await _context.LRJournals
+                .Where(x => x.LrId == id)
+                .ToListAsync();
+
+            return new LrEntryDto
+            {
+                Main = lr,
+                Details = details,
+                Journals = journals
+            };
+        }
         //public async Task<Lr> Create(Lr model)
         //{
         //    _context.Lrs.Add(model);
@@ -74,6 +96,11 @@ namespace FreightBKShipping.Services
 
             try
             {
+              
+
+                // 🔥 Calculate Before Saving
+                CalculateLrTotals(model, details, journals);
+
                 _context.Lrs.Add(model);
                 await _context.SaveChangesAsync();
 
@@ -92,6 +119,7 @@ namespace FreightBKShipping.Services
                     foreach (var j in journals)
                     {
                         j.LrId = lrId;
+                  
                         j.Created = DateTime.UtcNow;
                         j.Updated = DateTime.UtcNow;
                     }
@@ -107,10 +135,11 @@ namespace FreightBKShipping.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new Exception("Error saving LR: " + ex.Message);
+                throw new Exception(
+           ex.InnerException?.Message ?? ex.Message,
+           ex);
             }
         }
-
         public async Task<bool> Update(Lr model, List<LRDetail> details, List<LRJournal> journals)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -122,6 +151,9 @@ namespace FreightBKShipping.Services
                     return false;
 
                 _context.Entry(existing).CurrentValues.SetValues(model);
+
+                // 🔥 Calculate on existing object
+                CalculateLrTotals(existing, details, journals);
 
                 // Remove old child data
                 var oldDetails = _context.LRDetails.Where(x => x.LrDetailsLrId == model.LrId);
@@ -150,12 +182,94 @@ namespace FreightBKShipping.Services
 
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw;
+                throw new Exception(
+                    ex.InnerException?.Message ?? ex.Message,
+                    ex);
             }
         }
+
+        private void CalculateLrTotals(Lr model, List<LRDetail>? details, List<LRJournal>? journals)
+        {
+            // ================= KM Calculation =================
+            double startKm = 0;
+            double endKm = 0;
+
+            double.TryParse(model.LrStartKm, out startKm);
+            double.TryParse(model.LrEndKm, out endKm);
+
+            double totalKm = endKm - startKm;
+            if (totalKm < 0) totalKm = 0;
+
+            model.LrTotKm = totalKm.ToString();
+
+            // ================= Weight Calculation =================
+            if (model.LrGrossWt.HasValue && model.LrTareWt.HasValue)
+                model.LrLoadWt = model.LrGrossWt.Value - model.LrTareWt.Value;
+
+            model.LrShortWt = model.LrLoadWt - model.LrUnloadWt;
+
+            // ================= Bill Side =================
+            // Bill Type logic
+            switch (model.LrBillTypeBill)
+            {
+                case "Fixed Rate":
+                    model.LrGrossFreightBill = model.LrRateBill;
+                    break;
+
+                case "Rate X Weight":
+                    model.LrGrossFreightBill = model.LrRateBill * model.LrLoadWt;
+                    break;
+
+                case "Rate X KM":
+                    model.LrGrossFreightBill = model.LrRateBill * totalKm;
+                    break;
+
+                default:
+                    model.LrGrossFreightBill = 0;
+                    break;
+            }
+
+            // Short Amount Bill
+            model.LrShortAmtBill = model.LrShortRateBill * model.LrShortWt;
+
+            // Detention Bill
+            model.LrDetentionAmtBill = model.LrDetentionRateBill * model.LrDetentionDayBill;
+
+            // GST Bill
+            model.LrGstAmount = (float)((model.LrGrossFreightBill * model.LrGstPercentage) / 100);
+
+            // Net Freight Bill
+            model.LrNetFreightBill =
+                model.LrGrossFreightBill
+                + model.LrTripChargeBill
+                + model.LrDetentionAmtBill
+                + model.LrOtherChargeBill
+                - model.LrAdvanceBill
+                - model.LrShortAmtBill;
+
+            // ================= Truck Side =================
+            model.LrGrossFreightTruck = model.LrBillRateTruck * model.LrLoadWt;
+
+            model.LrShortAmtTruck = model.LrShortRateTruck * model.LrShortWt;
+
+            model.LrDetentionAmtTruck = model.LrDetentionRateTruck * model.LrDetentionDayTruck;
+
+            model.LrNetFreightTruck =
+                model.LrGrossFreightTruck
+                + model.LrTripChargeTruck
+                + model.LrDetentionAmtTruck
+                - model.LrTripAdvance
+                - model.LrShortAmtTruck;
+
+            // ================= Journal Total =================
+            if (journals != null && journals.Any())
+                model.LrJournalAmt = (float)journals.Sum(x => x.Amount);
+        }
+
+
         public async Task<bool> Delete(int id)
         {
             var lr = await _context.Lrs.FindAsync(id);
@@ -167,5 +281,79 @@ namespace FreightBKShipping.Services
 
             return true;
         }
+
+        public async Task<List<LrListVM>> GetAllForList()
+        {
+            var query =
+                from lr in _context.Lrs.AsNoTracking()
+
+                    // Party
+                join party in _context.Accounts
+                    on lr.LrPartyAccountId equals party.AccountId into partyJoin
+                from party in partyJoin.DefaultIfEmpty()
+
+                    // Supplier
+                join supplier in _context.Accounts
+                    on lr.LrSupplierAccountId equals supplier.AccountId into supplierJoin
+                from supplier in supplierJoin.DefaultIfEmpty()
+
+                    // Driver
+                join driver in _context.Accounts
+                    on lr.LrDriverId equals driver.AccountId into driverJoin
+                from driver in driverJoin.DefaultIfEmpty()
+
+                    // From Location
+                join fromLoc in _context.Locations
+                    on lr.LrFromLocationId equals fromLoc.LocationId into fromJoin
+                from fromLoc in fromJoin.DefaultIfEmpty()
+
+                    // To Location
+                join toLoc in _context.Locations
+                    on lr.LrToLocationId equals toLoc.LocationId into toJoin
+                from toLoc in toJoin.DefaultIfEmpty()
+
+                where lr.LrStatus != 2
+
+                orderby lr.LrId descending
+
+                select new LrListVM
+                {
+                    LrId = lr.LrId,
+                    LrNoStr = lr.LrNoStr,
+                    LrDate = lr.LrDate,
+                    LrTripNo = lr.LrTripNo.ToString(),
+
+                    PartyName = party != null ? party.AccountName : null,
+                    SupplierName = supplier != null ? supplier.AccountName : null,
+                    DriverName = driver != null ? driver.AccountName : null,
+
+                    //VehicleNo = lr.,
+
+                    FromLocationName = fromLoc != null ? fromLoc.LocationName : null,
+                    ToLocationName = toLoc != null ? toLoc.LocationName : null,
+
+                    LrLoadWt = lr.LrLoadWt,
+                    LrUnloadWt = lr.LrUnloadWt,
+                    LrShortWt = lr.LrShortWt,
+
+                    LrBillTypeBill = lr.LrBillTypeBill,
+                    LrRateBill = lr.LrRateBill,
+                    LrGrossFreightBill = lr.LrGrossFreightBill,
+                    LrNetFreightBill = lr.LrNetFreightBill,
+
+                    LrBillRateTruck = lr.LrBillRateTruck,
+                    LrNetFreightTruck = lr.LrNetFreightTruck,
+
+                    LrGstPercentage = lr.LrGstPercentage,
+                    LrGstAmount = lr.LrGstAmount,
+
+                    LrStatus = lr.LrStatus
+                };
+
+            return await query.ToListAsync();
+        }
     }
-}
+
+
+   
+    }

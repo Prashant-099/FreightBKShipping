@@ -1,6 +1,7 @@
 ﻿using FreightBKShipping.Controllers;
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
@@ -45,6 +46,13 @@ public class LrController : BaseController
         return Ok(lr);
     }
 
+    [HttpGet("entry/{id}")]
+    public async Task<IActionResult> GetEntry(int id)
+    {
+        var result = await _service.GetEntryById(id);
+        if (result == null) return NotFound();
+        return Ok(result);
+    }
     // 🔥 UPSERT (Insert / Update)
     //[HttpPost("save")]
     //public async Task<IActionResult> Save([FromBody] Lr model)
@@ -79,11 +87,20 @@ public class LrController : BaseController
     {
         if (dto == null)
             return BadRequest();
-
+        string userId = GetUserId();
         dto.Main.LrCompanyId = GetCompanyId();
         dto.Main.LrUpdatedByUserId = GetUserId();
         dto.Main.LrUpdated = DateTime.UtcNow;
 
+        if (dto.Journals != null && dto.Journals.Any())
+        {
+            foreach (var j in dto.Journals)
+            {
+                j.AddedByUserId = userId;   // ✅ FIX
+                j.Created = DateTime.UtcNow;
+                j.Updated = DateTime.UtcNow;
+            }
+        }
         if (dto.Main.LrId == 0)
         {
             dto.Main.LrAddedByUserId = GetUserId();
@@ -115,11 +132,12 @@ public class LrController : BaseController
 
         return Ok();
     }
-
-    public class LrEntryDto
+    // 📋 GET ALL (For Grid List - With Names)
+    [HttpGet("list")]
+    public async Task<IActionResult> GetAllForList()
     {
-        public Lr Main { get; set; } = new();
-        public List<LRDetail> Details { get; set; } = new();
-        public List<LRJournal> Journals { get; set; } = new();
+        var lrs = await _service.GetAllForList();
+        return Ok(lrs);
     }
+   
 }

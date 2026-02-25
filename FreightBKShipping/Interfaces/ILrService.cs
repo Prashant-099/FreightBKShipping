@@ -2,6 +2,7 @@
 
 using FreightBKShipping.Models;
 
+
 namespace FreightBKShipping.Interfaces
 {
     public interface ILrService
@@ -9,6 +10,7 @@ namespace FreightBKShipping.Interfaces
         Task<List<Lr>> SearchByPartyAndDate(int partyId, DateTime? fromDate, DateTime? toDate);
         Task<List<Lr>> GetAll();
         Task<Lr?> GetById(int id);
+        Task<LrEntryDto?> GetEntryById(int id);
 
         //Task<Lr> Create(Lr model);
         //Task<bool> Update(Lr model);
@@ -16,5 +18,7 @@ namespace FreightBKShipping.Interfaces
         Task<Lr> Create(Lr model, List<LRDetail> details, List<LRJournal> journals);
         Task<bool> Update(Lr model, List<LRDetail> details, List<LRJournal> journals);
         Task<bool> Delete(int id);
+
+        Task<List<LrListVM>> GetAllForList();
     }
 }

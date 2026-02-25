@@ -91,6 +91,18 @@ namespace FreightBKShipping.Data
                .HasForeignKey(b => b.BillBranchId)
                .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<LRJournal>()
+      .Property(e => e.JournalGroup)
+      .HasConversion<string>();
+
+            modelBuilder.Entity<LRJournal>()
+                .Property(e => e.VchType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<LRJournal>()
+                .Property(e => e.JournalType)
+                .HasConversion<string>();
+
             base.OnModelCreating(modelBuilder);
         }
 

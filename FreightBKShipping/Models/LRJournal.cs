@@ -11,10 +11,9 @@ namespace FreightBKShipping.Models
             [Column("lr_journal_id")]
             public int LrJournalId { get; set; }
 
-            [Required]
             [Column("lr_journal_addedby_user_id")]
             [StringLength(30)]
-            public string AddedByUserId { get; set; }
+            public string? AddedByUserId { get; set; }
 
             [Column("lr_journal_updatedby_user_id")]
             [StringLength(30)]
@@ -150,17 +149,17 @@ namespace FreightBKShipping.Models
         public Lr? Lr { get; set; }
     }
 
-        public enum LrJournalGroup
-        {
-            Advance,
-            Charges,
-            Deductions,
-            Payments,
-            AdvanceFuel,
-            Journal
-        }
+    public enum LrJournalGroup
+    {
+        Advance,
+        Charges,
+        Expense,
+        AdvanceReceived,
+        Diesel
+    }
 
-        public enum LrJournalVchType
+
+    public enum LrJournalVchType
         {
             Receipt,
             Payment,
