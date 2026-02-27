@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.Cargo;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +14,10 @@ namespace FreightBKShipping.Controllers
     public class CargoController : BaseController 
     {
         private readonly AppDbContext _context;
-        public CargoController(AppDbContext context) 
+        private readonly AuditLogService _auditLogService;
+        public CargoController(AppDbContext context, AuditLogService auditLogService) 
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -41,6 +45,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Cargoes.Add(cargo);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Cargo",
+                RecordId = cargo.CargoId,
+                VoucherType = "Cargo",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = cargo.CargoName + " || Cargo Type: " + cargo.CargoType,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(cargo);
         }
 
@@ -64,6 +79,17 @@ namespace FreightBKShipping.Controllers
             cargo.CargoUpdatedbyUserId = GetUserId();
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Cargo",
+                RecordId = cargo.CargoId,
+                VoucherType = "Cargo",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = cargo.CargoName + " ||  Cargo Type: " + cargo.CargoType,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(cargo);
         }
 
@@ -86,6 +112,17 @@ namespace FreightBKShipping.Controllers
             }
             _context.Cargoes.Remove(cargo);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Cargo",
+                RecordId = id,
+                VoucherType = "Cargo",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = cargo.CargoName + " || Cargo Type: " + cargo.CargoType,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
 
