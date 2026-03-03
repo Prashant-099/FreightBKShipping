@@ -397,7 +397,7 @@ namespace FreightBKShipping.Controllers
                     VoucherType = voucher.VoucherName,
                     Amount = (int)journal.JournalTotal,
                     Operations = "INSERT",
-                    Remarks = voucher.VoucherName + " Journal No: " + journal.JournalNoStr,
+                    Remarks = voucher.VoucherName + " No: " + journal.JournalNoStr,
                     YearId = journal.JournalYearId
                 }, GetCompanyId());
 
@@ -625,7 +625,7 @@ namespace FreightBKShipping.Controllers
                 VoucherType = journal.Voucher?.VoucherName,
                 Amount = (int)journal.JournalTotal,
                 Operations = "UPDATE",
-                Remarks = journal.Voucher?.VoucherName + " Journal No: " + journal.JournalNoStr,
+                Remarks = journal.Voucher?.VoucherName + " No: " + journal.JournalNoStr,
                 YearId = journal.JournalYearId
             }, GetCompanyId());
 
@@ -711,7 +711,7 @@ namespace FreightBKShipping.Controllers
                 VoucherType = journal.Voucher?.VoucherName,
                 Amount = (int)journal.JournalTotal,
                 Operations = "DELETE",
-                Remarks = $"{journal.Voucher?.VoucherName} Journal No: {journal.JournalNoStr}",
+                Remarks = $"{journal.Voucher?.VoucherName}  No: {journal.JournalNoStr}",
                 YearId = journal.JournalYearId
             }, GetCompanyId());
 

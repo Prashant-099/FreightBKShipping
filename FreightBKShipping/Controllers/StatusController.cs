@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +12,12 @@ namespace FreightBKShipping.Controllers
     public class StatusController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public StatusController(AppDbContext context)
+        public StatusController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
+
             _context = context;
         }
 
@@ -48,7 +53,17 @@ namespace FreightBKShipping.Controllers
             status.StatusCompanyId = GetCompanyId();
             _context.Status.Add(status);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Status",
+                RecordId = status.StatusId,
+                VoucherType = "Status",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = $"{status.StatusName} | {status.Status_code}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(status);
         }
 
@@ -67,7 +82,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Status.Update(status);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Status",
+                RecordId = status.StatusId,
+                VoucherType = "Status",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = $"{status.StatusName} | {status.Status_code}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(status);
         }
 
@@ -80,7 +105,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Status.Remove(status);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Status",
+                RecordId = id,
+                VoucherType = "Status",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = $"{status.StatusName} | {status.Status_code}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

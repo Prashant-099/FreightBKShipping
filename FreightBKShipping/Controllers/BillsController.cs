@@ -442,7 +442,7 @@ namespace FreightBKShipping.Controllers
                     .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId && v.VoucherBranchId== billDto.BillBranchId && v.VoucherCompanyId == GetCompanyId());
 
                 if (voucher == null)
-                    return BadRequest(new { message = "Invalid voucher selected." });
+                    return BadRequest(new { message = "Voucher not found! Please Create Voucher For Current Branch " });
 
                 bool isAutomatic = voucher.VoucherMethod == "Automatic";
 
@@ -785,7 +785,7 @@ namespace FreightBKShipping.Controllers
                     VoucherType = bill.Voucher.VoucherName,
                     Amount = (int)bill.BillNetAmount,
                     Operations = "INSERT",
-                    Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                    Remarks = bill.Voucher.VoucherName + " No: " + bill.BillNo,
                     BranchId = bill.BillBranchId,
                     YearId = bill.BillYearId
                 }, GetCompanyId());
@@ -1214,7 +1214,7 @@ namespace FreightBKShipping.Controllers
                 VoucherType = bill.Voucher.VoucherName,
                 Amount = (int)bill.BillNetAmount,
                 Operations = "UPDATE",
-                Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                Remarks = bill.Voucher.VoucherName + " No: " + bill.BillNo,
                 BranchId = bill.BillBranchId,
                 YearId = bill.BillYearId
             }, GetCompanyId());
@@ -1321,30 +1321,87 @@ namespace FreightBKShipping.Controllers
                 //return BadRequest("This bill’s e-invoice is already generated and cannot be deleted.");
                 return BadRequest(new  { Message = "E-Invoice generated" });
             }
-            // Remove nested collections first
-            //   _context.BillDetails.RemoveRange(bill.BillDetails);
-            //_context.BillRefDetails.RemoveRange(bill.BillRefDetails);
-
-            var hasCreditNotes = await _context.Bills.AnyAsync(b =>
-            b.BillAgainstBillId == id &&
-            b.BillStatus == true &&
-            b.BillCompanyId == GetCompanyId());
 
 
-            if (hasCreditNotes)
+            //var hasCreditNotes = await _context.Bills.AnyAsync(b =>
+            //b.BillAgainstBillId == id &&
+            //b.BillStatus == true &&
+            //b.BillCompanyId == GetCompanyId());
+
+
+            //if (hasCreditNotes)
+            //{
+            //    return BadRequest(new { Message = "Cannot delete bill. Credit/debit notes exist against this bill." });
+            //}
+            var relatedBills = await _context.Bills
+    .Where(b =>
+        b.BillAgainstBillId == id &&
+        b.BillStatus == true &&
+        b.BillCompanyId == GetCompanyId())
+    .Select(b => new
+    {
+        b.BillId,
+        b.BillNo,
+        VoucherName = b.Voucher.VoucherName
+    })
+    .ToListAsync();
+
+            if (relatedBills.Any())
             {
-                return BadRequest(new { Message = "Cannot delete bill. Credit/debit notes exist against this bill." });
-            }
+                var billInfo = string.Join(", ",
+                    relatedBills.Select(b =>
+                        $"{b.VoucherName} No: {b.BillNo}"));
+                var voucherGroup = bill.Voucher?.VoucherGroup;
+                // 🔹 If this bill is Sales or Purchase
+                if (string.Equals(voucherGroup, "Sales", StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(voucherGroup, "Purchase", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new
+                    {
+                        Message = $"Cannot delete bill.It is Used in: {billInfo}"
+                    });
+                }
 
+                // 🔹 If this bill is Quotation
+                if (string.Equals(voucherGroup, "Quotation", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new
+                    {
+                        Message = $"Cannot delete quotation. It is used in: {billInfo}"
+                    });
+                }
+            }
             // 🔹 CRITICAL: Check if bill has receipts against it
-            var hasReceipts = await _context.BillRefDetails.AnyAsync(r =>
-                r.BillRefVchId == id);
+            //var hasReceipts = await _context.BillRefDetails.AnyAsync(r =>
+            //    r.BillRefVchId == id);
 
-            if (hasReceipts)
+            //if (hasReceipts)
+            //{
+            //    return BadRequest(new { Message = "Cannot delete bill. Receipt/Payment entries exist against this bill." });
+            //}
+            // 🔹 Get Receipt / Payment references
+            var receiptPayments = await _context.BillRefDetails
+                .Where(r => r.BillRefVchId == id)
+                .Select(r => new
+                {
+                    VoucherName = r.Journal!.Voucher!.VoucherName,
+                    VoucherNo = r.Journal.JournalNoStr
+                })
+                .ToListAsync();
+
+            if (receiptPayments.Any())
             {
-                return BadRequest(new { Message = "Cannot delete bill. Receipt/Payment entries exist against this bill." });
-            }
+                var receiptInfo = string.Join(", ",
+                    receiptPayments.Select(r =>
+                        $"{r.VoucherName} No: {r.VoucherNo}"));
 
+                var currentVoucherName = bill.Voucher?.VoucherName ?? "Document";
+
+                return BadRequest(new
+                {
+                    Message = $"Cannot delete {currentVoucherName} No: {bill.BillNo}. It is used in: {receiptInfo}"
+                });
+            }
             // 🔹 If this is a Credit Note, restore the original bill's due amount
             if (bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0)
             {
@@ -1382,7 +1439,7 @@ namespace FreightBKShipping.Controllers
                 VoucherType = bill.Voucher.VoucherName,
                 Amount = (int)bill.BillNetAmount,
                 Operations = "DELETE",
-                Remarks = bill.Voucher.VoucherName + " Bill No: " + bill.BillNo,
+                Remarks = bill.Voucher.VoucherName + " No: " + bill.BillNo,
                 BranchId = bill.BillBranchId,
                 YearId = bill.BillYearId
             }, GetCompanyId());

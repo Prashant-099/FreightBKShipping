@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Controllers;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Models;
 using FreightBKShipping.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
@@ -9,9 +11,12 @@ using Microsoft.AspNetCore.Mvc;
 public class LrController : BaseController
 {
     private readonly ILrService _service;
+    private readonly AuditLogService _auditLogService;
 
-    public LrController(ILrService service)
+    public LrController(ILrService service, AuditLogService auditLogService)
     {
+        _auditLogService = auditLogService;
+
         _service = service;
     }
 
@@ -108,6 +113,17 @@ public class LrController : BaseController
             dto.Main.LrStatus = 1;
 
             var created = await _service.Create(dto.Main, dto.Details, dto.Journals);
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "LR Entry",
+                RecordId = created.LrId,
+                VoucherType = "LR Entry",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = created.LrNoStr,
+                BranchId = created.LrBranchId,
+                YearId = created.LrYearId
+            }, GetCompanyId());
             return Ok(created);
         }
         else
@@ -126,10 +142,20 @@ public class LrController : BaseController
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await _service.Delete(id);
-
+        var record = await _service.GetById(id);
         if (!deleted)
             return NotFound();
-
+        await _auditLogService.AddAsync(new AuditLogCreateDto
+        {
+            TableName = "LR Entry",
+            RecordId = id,
+            VoucherType = "LR Entry",
+            Amount = 0,
+            Operations = "INSERT",
+            Remarks = record.LrNoStr,
+            BranchId = record.LrBranchId,
+            YearId = record.LrYearId
+        }, GetCompanyId());
         return Ok();
     }
     // 📋 GET ALL (For Grid List - With Names)

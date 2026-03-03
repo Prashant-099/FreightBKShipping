@@ -1,11 +1,14 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sieve.Models;
 using Sieve.Services;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace FreightBKShipping.Controllers
 {
@@ -17,12 +20,14 @@ namespace FreightBKShipping.Controllers
         private readonly AppDbContext _context;
         private readonly ISieveProcessor _sieveProcessor;
         private readonly CompanySetupService _setupService;
+        private readonly AuditLogService _auditLogService;
 
-        public CompanyController(AppDbContext context, ISieveProcessor sieveProcessor, CompanySetupService setupService)
+        public CompanyController(AppDbContext context, ISieveProcessor sieveProcessor, CompanySetupService setupService, AuditLogService auditLogService)
         {
             _context = context;
             _sieveProcessor = sieveProcessor;
             _setupService = setupService;
+            _auditLogService = auditLogService;
         }
 
         [HttpGet]
@@ -181,6 +186,18 @@ namespace FreightBKShipping.Controllers
         {
             var userId = GetUserId(); // from token
             var company = await _setupService.CreateCompanyWithDefaultsAsync(dto, userId);
+
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Company",
+                RecordId = company.CompanyId,
+                VoucherType = "Company",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = company.Name,
+                BranchId = 0,
+                YearId = 0
+            }, company.CompanyId);
             return Ok(new { company.CompanyId });
         }
 
@@ -198,7 +215,17 @@ namespace FreightBKShipping.Controllers
 
             if (result == null)
                 return NotFound();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Company",
+                RecordId = result.CompanyId,
+                VoucherType = "Company",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = result.Name,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(new { result.CompanyId });
         }
 
@@ -217,7 +244,17 @@ namespace FreightBKShipping.Controllers
 
             if (result == null)
                 return Forbid();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Company",
+                RecordId = result.CompanyId,
+                VoucherType = "Company",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = result.Name,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(new { result.CompanyId });
         }
 
@@ -231,6 +268,17 @@ namespace FreightBKShipping.Controllers
 
             _context.companies.Remove(company);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Company",
+                RecordId = id,
+                VoucherType = "Company",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = company.Name,
+                BranchId = 0,
+                YearId = 0
+            }, id);
             return NoContent();
         }
     }

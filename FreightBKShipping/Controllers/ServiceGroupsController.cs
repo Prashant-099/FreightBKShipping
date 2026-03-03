@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.ServiceGroup;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +14,11 @@ namespace FreightBKShipping.Controllers
     public class ServiceGroupsController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public ServiceGroupsController(AppDbContext context)
+        public ServiceGroupsController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -74,7 +78,17 @@ namespace FreightBKShipping.Controllers
 
             _context.ServiceGroups.Add(group);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "ServiceGroup",
+                RecordId = group.ServiceGroupsId,
+                VoucherType = "ServiceGroup",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = group.ServiceGroupsName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(group.ServiceGroupsId);
         }
 
@@ -95,6 +109,18 @@ namespace FreightBKShipping.Controllers
             group.ServiceGroupsCompanyId = GetCompanyId();
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "ServiceGroup",
+                RecordId = group.ServiceGroupsId,
+                VoucherType = "ServiceGroup",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = group.ServiceGroupsName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
+
             return NoContent();
         }
 
@@ -109,6 +135,17 @@ namespace FreightBKShipping.Controllers
 
             _context.ServiceGroups.Remove(group);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "ServiceGroup",
+                RecordId = id,
+                VoucherType = "ServiceGroup",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = group.ServiceGroupsName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

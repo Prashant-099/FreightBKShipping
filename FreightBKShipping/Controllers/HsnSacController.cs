@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +12,11 @@ namespace FreightBKShipping.Controllers
     public class HsnSacController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public HsnSacController(AppDbContext context)
+        public HsnSacController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -52,6 +56,18 @@ namespace FreightBKShipping.Controllers
             _context.HsnSacs.Add(hsnSac);
             await _context.SaveChangesAsync();
 
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "HSN/SAC",
+                RecordId = hsnSac.HsnId,
+                VoucherType = "HSN/SAC",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = hsnSac.HsnName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
+
             return CreatedAtAction(nameof(GetHsnSac), new { id = hsnSac.HsnId }, hsnSac);
         }
 
@@ -83,7 +99,17 @@ namespace FreightBKShipping.Controllers
                 else
                     throw;
             }
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "HSN/SAC",
+                RecordId = hsnSac.HsnId,
+                VoucherType = "HSN/SAC",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = hsnSac.HsnName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
 
@@ -97,7 +123,17 @@ namespace FreightBKShipping.Controllers
 
             _context.HsnSacs.Remove(hsnSac);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "HSN/SAC",
+                RecordId = id,
+                VoucherType = "HSN/SAC",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = hsnSac.HsnName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

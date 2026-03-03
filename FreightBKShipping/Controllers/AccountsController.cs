@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Controllers;
 using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Principal;
@@ -11,7 +13,11 @@ using System.Security.Principal;
 public class AccountsController : BaseController
 {
     private readonly AppDbContext _context;
-    public AccountsController(AppDbContext context) => _context = context;
+    private readonly AuditLogService _auditLogService;
+    public AccountsController(AppDbContext context, AuditLogService auditLogService)
+    {
+        _auditLogService = auditLogService;
+        _context = context; }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -43,7 +49,18 @@ public class AccountsController : BaseController
             dto.AccountGroupId = dto.AccountGroupId;
             _context.Accounts.Add(dto);
         await _context.SaveChangesAsync();
-        return Ok(dto);
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Account",
+                RecordId = dto.AccountId,
+                VoucherType = "Account",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = dto.AccountName,
+                BranchId = 0,
+                YearId = dto?.AccountYearId??0
+            }, GetCompanyId());
+            return Ok(dto);
     }
     catch (Exception ex)
     {
@@ -121,6 +138,17 @@ public class AccountsController : BaseController
 
         _context.Accounts.Update(account);
         await _context.SaveChangesAsync();
+        await _auditLogService.AddAsync(new AuditLogCreateDto
+        {
+            TableName = "Account",
+            RecordId = id,
+            VoucherType = "Account",
+            Amount = 0,
+            Operations = "UPDATE",
+            Remarks = dto.AccountName,
+            BranchId = 0,
+            YearId = dto?.AccountYearId ?? 0
+        }, GetCompanyId());
         return Ok(account);
     }
 
@@ -134,7 +162,10 @@ public class AccountsController : BaseController
             b.BillPartyId == id && b.BillStatus == true  // change column name if different
             && b.BillCompanyId == GetCompanyId()
         );
-
+        bool existsInjournal = await _context.Journals.AnyAsync(b =>
+           b.JournalPartyId == id && b.JournalStatus == true  // change column name if different
+           && b.JournalCompanyId == GetCompanyId()
+       );
         // 🔍 Check reference in Jobs
         bool existsInJob = await _context.Jobs.AnyAsync(j =>
             j.JobPartyId == id && j.JobActive ==true
@@ -161,8 +192,15 @@ public class AccountsController : BaseController
                     Message = "Account cannot be deleted. It is used in GST Tax Slab."
                 });
             }
-                
-            if (existsInBill || existsInJob)
+
+        if (existsInjournal)
+        {
+            return BadRequest(new
+            {
+                Message = "Account cannot be deleted. It is used in Receipt/Payment."
+            });
+        }
+        if (existsInBill || existsInJob)
             {
                 return BadRequest(new
                 {
@@ -173,6 +211,18 @@ public class AccountsController : BaseController
 
         _context.Accounts.Remove(account);
         await _context.SaveChangesAsync();
+        await _auditLogService.AddAsync(new AuditLogCreateDto
+        {
+            TableName = "Account",
+            RecordId = id,
+            VoucherType = "Account",
+            Amount = 0,
+            Operations = "DELETE",
+            Remarks = account.AccountName,
+            BranchId = 0,
+            YearId = account?.AccountYearId ?? 0
+        }, GetCompanyId());
+
         return Ok(true);
     }
 }

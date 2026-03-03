@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,9 +14,12 @@ namespace FreightBKShipping.Controllers
     public class UnitsController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public UnitsController(AppDbContext context)
+        public UnitsController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
+
             _context = context;
         }
 
@@ -50,7 +55,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Units.Add(unit);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Unit",
+                RecordId = unit.UnitId,
+                VoucherType = "Unit",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = $"{unit.UnitName}({unit.UnitFormalName})",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return CreatedAtAction(nameof(GetUnit), new { id = unit.UnitId }, unit);
         }
 
@@ -75,6 +90,17 @@ namespace FreightBKShipping.Controllers
             existing.UnitCompanyId = GetCompanyId();
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Unit",
+                RecordId = unit.UnitId,
+                VoucherType = "Unit",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = $"{unit.UnitName}({unit.UnitFormalName})",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return NoContent();
         }
 
@@ -89,6 +115,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Units.Remove(unit);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Unit",
+                RecordId = id,
+                VoucherType = "Unit",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = $"{unit.UnitName}({unit.UnitFormalName})",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

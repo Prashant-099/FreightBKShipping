@@ -106,8 +106,7 @@ namespace FreightBKShipping.Controllers
             {
                 return BadRequest(new
                 {
-                    error = "Cannot delete Cargo",
-                    details = "This Cargo is referenced in Job and cannot be deleted."
+                        Message = "This Cargo is referenced in Job and It cannot be deleted."
                 });
             }
             _context.Cargoes.Remove(cargo);

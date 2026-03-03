@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.VesselDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +14,12 @@ namespace FreightBKShipping.Controllers
     public class VesselsController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public VesselsController(AppDbContext context)
+        public VesselsController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
+
             _context = context;
         }
 
@@ -67,6 +72,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Vessels.Add(vessel);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vessel",
+                RecordId = vessel.VesselId,
+                VoucherType = "Vessel",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = vessel.VesselName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(vessel);
         }
 
@@ -98,6 +114,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Vessels.Update(vessel);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vessel",
+                RecordId = vessel.VesselId,
+                VoucherType = "Vessel",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = vessel.VesselName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(vessel);
         }
 
@@ -111,6 +138,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Vessels.Remove(vessel);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vessel",
+                RecordId = vessel.VesselId,
+                VoucherType = "Vessel",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = vessel.VesselName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,10 +13,11 @@ namespace FreightBKShipping.Controllers
         public class YearsController : BaseController
     {
             private readonly AppDbContext _context;
-
-            public YearsController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public YearsController(AppDbContext context, AuditLogService auditLogService)
             {
-                _context = context;
+            _auditLogService = auditLogService;
+            _context = context;
             }
 
             [HttpGet]
@@ -57,8 +60,18 @@ namespace FreightBKShipping.Controllers
             }
             _context.Years.Add(year);
                 await _context.SaveChangesAsync();
-
-                return CreatedAtAction(nameof(GetYear), new { id = year.YearId }, year);
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Year",
+                RecordId = year.YearId,
+                VoucherType = "Year",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = year.YearName,
+                BranchId = 0,
+                YearId = year.YearId
+            }, GetCompanyId());
+            return CreatedAtAction(nameof(GetYear), new { id = year.YearId }, year);
             }
 
             [HttpPut("{id}")]
@@ -94,8 +107,18 @@ namespace FreightBKShipping.Controllers
                         return NotFound();
                     throw;
                 }
-
-                return NoContent();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Year",
+                RecordId = year.YearId,
+                VoucherType = "Year",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = year.YearName,
+                BranchId = 0,
+                YearId = year.YearId
+            }, GetCompanyId());
+            return NoContent();
             }   
 
             [HttpDelete("{id}")]
@@ -107,8 +130,18 @@ namespace FreightBKShipping.Controllers
 
                 _context.Years.Remove(year);
                 await _context.SaveChangesAsync();
-
-                return Ok(true);
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Year",
+                RecordId = id,
+                VoucherType = "Year",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = year.YearName,
+                BranchId = 0,
+                YearId = id
+            }, GetCompanyId());
+            return Ok(true);
             }
         }
     }

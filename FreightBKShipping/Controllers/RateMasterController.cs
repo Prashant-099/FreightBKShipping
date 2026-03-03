@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Controllers;
 using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,8 +12,14 @@ using Microsoft.EntityFrameworkCore;
 public class RateMasterController : BaseController
 {
     private readonly AppDbContext _context;
-    public RateMasterController(AppDbContext context) => _context = context;
+    private readonly AuditLogService _auditLogService;
 
+    public RateMasterController(AppDbContext context, AuditLogService auditLogService)
+    {
+        _auditLogService = auditLogService;
+
+        _context = context;
+           }
     // 🔹 GET ALL (COMPANY FILTERED)
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -82,7 +90,19 @@ public class RateMasterController : BaseController
 
             _context.RateMasters.Add(rateMaster);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Rate",
+                RecordId = rateMaster.RateMasterId,
+                VoucherType = "Rate",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = $"{rateMaster?.PartyName ?? ""} | {rateMaster?.ServiceName ?? ""} | " +
+          $"Purchase: {rateMaster?.RateMasterPurchaseRate ?? 0} | " +
+          $"Sale: {rateMaster?.RateMasterSaleRate ?? 0}", 
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(rateMaster);
         }
         catch (Exception ex)
@@ -115,6 +135,19 @@ public class RateMasterController : BaseController
         rate.RateMasterUpdated = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _auditLogService.AddAsync(new AuditLogCreateDto
+        {
+            TableName = "Rate",
+            RecordId = rate.RateMasterId,
+            VoucherType = "Rate",
+            Amount = 0,
+            Operations = "UPDATE",
+            Remarks = $"{rate?.PartyName ?? ""} | {rate?.ServiceName ?? ""} | " +
+         $"Purchase: {rate?.RateMasterPurchaseRate ?? 0} | " +
+         $"Sale: {rate?.RateMasterSaleRate ?? 0}",
+            BranchId = 0,
+            YearId = 0
+        }, GetCompanyId());
         return Ok(rate);
     }
 
@@ -134,7 +167,19 @@ public class RateMasterController : BaseController
 
         _context.RateMasters.Remove(rate);
         await _context.SaveChangesAsync();
-
+        await _auditLogService.AddAsync(new AuditLogCreateDto
+        {
+            TableName = "Rate",
+            RecordId = id,
+            VoucherType = "Rate",
+            Amount = 0,
+            Operations = "DELETE",
+            Remarks = $"{rate?.PartyName ?? ""} | {rate?.ServiceName ?? ""} | " +
+        $"Purchase: {rate?.RateMasterPurchaseRate ?? 0} | " +
+        $"Sale: {rate?.RateMasterSaleRate ?? 0}",
+            BranchId = 0,
+            YearId = 0
+        }, GetCompanyId());
         return Ok(true);
     }
 }
