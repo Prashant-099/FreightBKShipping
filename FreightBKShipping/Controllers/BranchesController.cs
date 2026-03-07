@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.Design;
@@ -12,8 +14,10 @@ namespace FreightBKShipping.Controllers
     public class BranchesController : BaseController
     {
         private readonly AppDbContext _context;
-        public BranchesController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public BranchesController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -110,6 +114,17 @@ public async Task<IActionResult> GetUserBranches(string userId)
 
             _context.Branches.Add(branch);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Branch",
+                RecordId = branch.BranchId,
+                VoucherType = "Branch",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = branch.BranchName ,
+                BranchId = branch.BranchId,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(branch);
         }
 
@@ -154,6 +169,17 @@ public async Task<IActionResult> GetUserBranches(string userId)
 
             _context.Branches.Update(branch);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Branch",
+                RecordId = branch.BranchId,
+                VoucherType = "Branch",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = branch.BranchName,
+                BranchId = branch.BranchId,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(branch);
         }
 
@@ -166,6 +192,17 @@ public async Task<IActionResult> GetUserBranches(string userId)
 
             _context.Branches.Remove(branch);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Branch",
+                RecordId = id,
+                VoucherType = "Branch",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = branch.BranchName,
+                BranchId = id,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

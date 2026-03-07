@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.CurrencyDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +14,12 @@ namespace FreightBKShipping.Controllers
     public class CurrencyController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public CurrencyController(AppDbContext context)
+        public CurrencyController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
+
             _context = context;
         }
 
@@ -74,7 +79,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Currencies.Add(currency);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Currency",
+                RecordId = currency.CurrencyId,
+                VoucherType = "Currency",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = currency.CurrencyName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return CreatedAtAction(nameof(GetById), new { id = currency.CurrencyId }, new CurrencyReadDto
             {
                 CurrencyId = currency.CurrencyId,
@@ -102,6 +117,17 @@ namespace FreightBKShipping.Controllers
             currency.CurrencyUpdated = DateTime.UtcNow;
          
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Currency",
+                RecordId = currency.CurrencyId,
+                VoucherType = "Currency",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = currency.CurrencyName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return NoContent();
         }
 
@@ -113,7 +139,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Currencies.Remove(currency);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Currency",
+                RecordId = id,
+                VoucherType = "Currency",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = currency.CurrencyName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

@@ -1,8 +1,10 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.VoucherDetailsDto;
 using FreightBKShipping.DTOs.VoucherDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,9 +15,11 @@ namespace FreightBKShipping.Controllers
     public class VouchersController : BaseController
     {
         private readonly AppDbContext _context;
-
-        public VouchersController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public VouchersController(AppDbContext context, AuditLogService auditLogService)
         {
+
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -173,7 +177,23 @@ namespace FreightBKShipping.Controllers
 
             _context.Vouchers.Add(voucher);
             await _context.SaveChangesAsync();
-
+            var branchName = await _context.Branches
+    .Where(b => b.BranchId == voucher.VoucherBranchId)
+    .Select(b => b.BranchName)
+    .FirstOrDefaultAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Voucher",
+                RecordId = voucher.VoucherId,
+                VoucherType = "Voucher",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = $"{voucher.VoucherName} || {branchName}",
+                BranchId = voucher.VoucherBranchId,
+                YearId = voucher.VoucherDetails
+                .Select(x => x.VoucherDetailYearId)
+                .FirstOrDefault()
+            }, GetCompanyId());
             return CreatedAtAction(nameof(GetVoucher), new { id = voucher.VoucherId }, dto);
         }
 
@@ -256,6 +276,23 @@ namespace FreightBKShipping.Controllers
             }
 
             await _context.SaveChangesAsync();
+            var branchName = await _context.Branches
+   .Where(b => b.BranchId == voucher.VoucherBranchId)
+   .Select(b => b.BranchName)
+   .FirstOrDefaultAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Voucher",
+                RecordId = voucher.VoucherId,
+                VoucherType = "Voucher",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = $"{voucher.VoucherName} || {branchName}",
+                BranchId = voucher.VoucherBranchId,
+                YearId = voucher.VoucherDetails
+                .Select(x => x.VoucherDetailYearId)
+                .FirstOrDefault()
+            }, GetCompanyId());
             return NoContent();
         }
 
@@ -273,7 +310,23 @@ namespace FreightBKShipping.Controllers
             _context.VoucherDetails.RemoveRange(voucher.VoucherDetails);
             _context.Vouchers.Remove(voucher);
             await _context.SaveChangesAsync();
-
+            var branchName = await _context.Branches
+  .Where(b => b.BranchId == voucher.VoucherBranchId)
+  .Select(b => b.BranchName)
+  .FirstOrDefaultAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Voucher",
+                RecordId = id,
+                VoucherType = "Voucher",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = $"{voucher.VoucherName} || {branchName}",
+                BranchId = voucher.VoucherBranchId,
+                YearId = voucher.VoucherDetails
+               .Select(x => x.VoucherDetailYearId)
+               .FirstOrDefault()
+            }, GetCompanyId());
             return Ok(true);
         }
     }

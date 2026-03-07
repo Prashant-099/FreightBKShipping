@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography.X509Certificates;
@@ -12,9 +14,12 @@ namespace FreightBKShipping.Controllers
     public class NotifiesController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public NotifiesController(AppDbContext context)
+        public NotifiesController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
+
             _context = context;
         }
 
@@ -107,6 +112,17 @@ namespace FreightBKShipping.Controllers
 
                 _context.Notifies.Add(notify);
                 await _context.SaveChangesAsync();
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Miscellaneous",
+                    RecordId = notify.NotifyId,
+                    VoucherType = "Miscellaneous",
+                    Amount = 0,
+                    Operations = "INSERT",
+                    Remarks = notify.NotifyName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
                 return Ok(notify);
             }
             catch (Exception ex)
@@ -166,7 +182,17 @@ namespace FreightBKShipping.Controllers
 
                 _context.Notifies.Update(notify);
                 await _context.SaveChangesAsync();
-
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Miscellaneous",
+                    RecordId = notify.NotifyId,
+                    VoucherType = "Miscellaneous",
+                    Amount = 0,
+                    Operations = "UPDATE",
+                    Remarks = notify.NotifyName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
                 return Ok(notify);
             }
             catch (Exception ex)
@@ -188,7 +214,17 @@ namespace FreightBKShipping.Controllers
 
                 _context.Notifies.Remove(notify);
                 await _context.SaveChangesAsync();
-
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Miscellaneous",
+                    RecordId = id,
+                    VoucherType = "Miscellaneous",
+                    Amount = 0,
+                    Operations = "DELETE",
+                    Remarks = notify.NotifyName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
                 return Ok(true);
             }
             catch (Exception ex)

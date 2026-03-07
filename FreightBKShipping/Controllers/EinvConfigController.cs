@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +12,10 @@ namespace FreightBKShipping.Controllers
     public class EinvConfigController : BaseController
     {
         private readonly AppDbContext _context;
-
-        public EinvConfigController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public EinvConfigController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -54,7 +57,17 @@ namespace FreightBKShipping.Controllers
 
             _context.EinvConfigs.Add(model);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "EinvoiceConfig",
+                RecordId = int.Parse(model?.AspUserId??"0"),
+                VoucherType = "EinvoiceConfig",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = model.Username,
+                BranchId = model.BranchId,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(model);
         }
 
@@ -90,7 +103,17 @@ namespace FreightBKShipping.Controllers
 
             _context.EinvConfigs.Update(existing);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "EinvoiceConfig",
+                RecordId = int.Parse(model?.AspUserId ?? "0"),
+                VoucherType = "EinvoiceConfig",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = model.Username,
+                BranchId = model.BranchId,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(existing);
         }
 
@@ -103,7 +126,17 @@ namespace FreightBKShipping.Controllers
 
             if (record == null)
                 return NotFound();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "EinvoiceConfig",
+                RecordId = int.Parse(record?.AspUserId ?? "0"),
+                VoucherType = "EinvoiceConfig",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = record.Username,
+                BranchId = record.BranchId,
+                YearId = 0
+            }, GetCompanyId());
             _context.EinvConfigs.Remove(record);
             await _context.SaveChangesAsync();
             return Ok(true);

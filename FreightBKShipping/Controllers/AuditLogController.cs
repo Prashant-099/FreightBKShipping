@@ -27,31 +27,58 @@ namespace FreightBKShipping.Controllers
         //}
 
         [HttpGet("latest")]
-        public async Task<IActionResult> GetLatest()
+        public async Task<IActionResult> GetLatest(
+      DateTime? fromDate,
+      DateTime? toDate)
         {
+            // ✅ Default: Last 1 Months
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                toDate = DateTime.Today;
+                fromDate = toDate.Value.AddMonths(-1);
+
+            }
             var query = from log in FilterByCompany(_context.AuditLogs, "CompanyId")
                         join branch in _context.Branches
                             on log.BranchId equals branch.BranchId into branchJoin
                         from branch in branchJoin.DefaultIfEmpty()
-                        orderby log.DateTime descending
-                        select new AuditLogReadDto
+                        select new
                         {
-                            AuditLogsId = log.AuditLogsId,
-                            TableName = log.TableName,
-                            RecordId = (int)log.RecordId,
-                            VoucherType = log.VoucherType,
-                            Amount = (int)log.Amount,
-                            Operations = log.Operations,
-                            Remarks = log.Remarks,
-                            DateTime = (DateTime)log.DateTime,
-                            CreatedBy = log.CreatedBy,
-                            CompanyId = (int)log.CompanyId,
-                            YearId = (int)log.YearId,
-                            BranchId = log.BranchId,
+                            log,
                             BranchName = branch != null ? branch.BranchName : "All"
                         };
 
-            var list = await query.ToListAsync();
+            // ✅ From Date Filter
+            if (fromDate.HasValue)
+                query = query.Where(x => x.log.DateTime >= fromDate.Value.Date);
+
+            // ✅ To Date Filter (inclusive)
+            if (toDate.HasValue)
+            {   
+                var endDate = toDate.Value.Date.AddDays(1);
+                query = query.Where(x => x.log.DateTime < endDate);
+            }
+
+            var list = await query
+                .OrderByDescending(x => x.log.DateTime)
+                .Select(x => new AuditLogReadDto
+                {
+                    AuditLogsId = x.log.AuditLogsId,
+                    TableName = x.log.TableName,
+                    RecordId = (int)x.log.RecordId,
+                    VoucherType = x.log.VoucherType,
+                    Amount = (int)x.log.Amount,
+                    Operations = x.log.Operations,
+                    Remarks = x.log.Remarks,
+                    DateTime = (DateTime)x.log.DateTime,
+                    CreatedBy = x.log.CreatedBy,
+                    CompanyId = (int)x.log.CompanyId,
+                    YearId = (int)x.log.YearId,
+                    BranchId = x.log.BranchId,
+                    BranchName = x.BranchName
+                })
+                .ToListAsync();
+
             return Ok(list);
         }
     }

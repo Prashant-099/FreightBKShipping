@@ -397,7 +397,7 @@ namespace FreightBKShipping.Controllers
                     VoucherType = voucher.VoucherName,
                     Amount = (int)journal.JournalTotal,
                     Operations = "INSERT",
-                    Remarks = voucher.VoucherName + " Journal No: " + journal.JournalNoStr,
+                    Remarks = voucher.VoucherName + " No: " + journal.JournalNoStr,
                     YearId = journal.JournalYearId
                 }, GetCompanyId());
 
@@ -420,8 +420,6 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(new { error = "Error creating journal", details = ex.Message, stack = ex.StackTrace });
             }
         }
-
-        // PUT: api/Journals/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJournal(int id, JournalDto journalDto)
         {
@@ -450,11 +448,8 @@ namespace FreightBKShipping.Controllers
                     return Conflict(new { message = "Journal number already exists." });
             }
 
-            // Check if locked
             if (!string.IsNullOrEmpty(journal.JournalLockedBy) && journal.JournalLockedBy != GetUserId())
-            {
                 return BadRequest("This journal is locked by another user and cannot be edited.");
-            }
 
             // Update main journal fields
             journal.JournalUpdatedByUserId = GetUserId();
@@ -483,51 +478,63 @@ namespace FreightBKShipping.Controllers
             journal.JournalApprovedBy = journalDto.JournalApprovedBy;
             journal.JournalBillId = journalDto.JournalBillId;
 
-            // Handle BillRefDetails - soft delete
-            var refsToRemove = journal.BillRefDetails
-                .Where(r => journalDto.BillRefDetails == null ||
-                           !journalDto.BillRefDetails.Any(x => x.BillRefDetailId == r.BillRefDetailId))
-                .ToList();
-            _context.BillRefDetails.RemoveRange(refsToRemove);
 
-            // Add or update BillRefDetails
+
+            var oldSettlements = new Dictionary<int, decimal>(); // billId → oldSettlement
             if (journalDto.BillRefDetails != null)
             {
-                foreach (var refDto in journalDto.BillRefDetails)
+                foreach (var refDetail in journalDto.BillRefDetails)
                 {
-                    var existingRef = journal.BillRefDetails?.FirstOrDefault(r => r.BillRefDetailId == refDto.BillRefDetailId);
-                    if (existingRef != null)
-                    {
-                        existingRef.BillRefAgainstId = refDto.BillRefAgainstId;
-                        existingRef.BillRefVchType = refDto.BillRefVchType;
-                        existingRef.BillRefVchNo = refDto.BillRefVchNo;
-                        existingRef.BillRefVchId = refDto.BillRefVchId;
-                        existingRef.BillRefVchDate = refDto.BillRefVchDate;
-                        existingRef.BillRefVchAmount = refDto.BillRefVchAmount;
-                        existingRef.BillRefVchDis = refDto.BillRefVchDis;
-                        existingRef.BillRefVchTds = refDto.BillRefVchTds;
-                        existingRef.BillRefVchShort = refDto.BillRefVchShort;
-                        existingRef.BillRefVchBalance = refDto.BillRefVchBalance;
-                        existingRef.BillRefAccountId = refDto.BillRefAccountId;
-                    }
-                    else
-                    {
-                        journal.BillRefDetails.Add(new BillRefDetail
-                        {
-                            BillRefAgainstId = refDto.BillRefAgainstId,
-                            BillRefVchType = refDto.BillRefVchType,
-                            BillRefVchNo = refDto.BillRefVchNo,
-                            BillRefVchId = refDto.BillRefVchId,
-                            BillRefVchDate = refDto.BillRefVchDate,
-                            BillRefVchAmount = refDto.BillRefVchAmount,
-                            BillRefVchDis = refDto.BillRefVchDis,
-                            BillRefVchTds = refDto.BillRefVchTds,
-                            BillRefVchShort = refDto.BillRefVchShort,
-                            BillRefVchBalance = refDto.BillRefVchBalance,
-                            BillRefAccountId = refDto.BillRefAccountId
-                        });
-                    }
+                    var bill = await _context.Bills
+                        .FirstOrDefaultAsync(b =>
+                            b.BillId == refDetail.BillRefVchId &&
+                            b.BillStatus == true &&
+                            b.BillCompanyId == GetCompanyId());
+                    if (bill == null) continue;
+
+                    // Read from DB BEFORE we delete the old refs
+                    decimal old = await _context.BillRefDetails
+                        .Where(r => r.BillRefVchId == bill.BillId &&
+                                    r.BillRefAgainstId == id)
+                        .SumAsync(r =>
+                            (decimal)r.BillRefVchAmount +
+                            (decimal)r.BillRefVchDis +
+                            (decimal)r.BillRefVchTds +
+                            (decimal)r.BillRefVchShort);
+
+                    oldSettlements[bill.BillId] = old;
                 }
+            }
+
+
+
+            // ✅ STEP 1: Delete ALL existing BillRefDetails for this journal only
+            // Safe: scoped by BillRefAgainstId = id, won't touch Receipt/Payment/Contra rows
+            var existingRefs = await _context.BillRefDetails
+                .Where(r => r.BillRefAgainstId == id)
+                .ToListAsync();
+            _context.BillRefDetails.RemoveRange(existingRefs);
+            await _context.SaveChangesAsync(); // flush deletes before re-inserting
+
+            // ✅ STEP 2: Re-insert all lines fresh — no ID matching needed
+            if (journalDto.BillRefDetails != null && journalDto.BillRefDetails.Any())
+            {
+                var newRefs = journalDto.BillRefDetails.Select(r => new BillRefDetail
+                {
+                    BillRefAgainstId = id,            // ← always forced to current journal ID
+                    BillRefVchType = r.BillRefVchType,
+                    BillRefVchNo = r.BillRefVchNo,
+                    BillRefVchId = r.BillRefVchId,
+                    BillRefVchDate = r.BillRefVchDate,
+                    BillRefVchAmount = r.BillRefVchAmount,
+                    BillRefVchDis = r.BillRefVchDis,
+                    BillRefVchTds = r.BillRefVchTds,
+                    BillRefVchShort = r.BillRefVchShort,
+                    BillRefVchBalance = r.BillRefVchBalance,
+                    BillRefAccountId = r.BillRefAccountId
+                }).ToList();
+
+                _context.BillRefDetails.AddRange(newRefs);
             }
             if (journalDto.BillRefDetails != null && journalDto.BillRefDetails.Any())
             {
@@ -538,81 +545,24 @@ namespace FreightBKShipping.Controllers
                             b.BillId == refDetail.BillRefVchId &&
                             b.BillStatus == true &&
                             b.BillCompanyId == GetCompanyId());
+                    if (bill == null) continue;
 
-                    if (bill == null)
-                        continue;
+                    decimal old = oldSettlements.ContainsKey(bill.BillId)
+                        ? oldSettlements[bill.BillId] : 0;
 
-                    // 🔹 Already settled from DB (OLD receipts)
-                    //              var dbSettled = await _context.BillRefDetails
-                    //.Where(r =>
-                    //    r.BillRefVchId == bill.BillId &&
-                    //    r.BillRefAgainstId != journalDto.JournalId) // 👈 IMPORTANT
-                    //.SumAsync(r =>
-                    //    r.BillRefVchAmount +
-                    //    r.BillRefVchDis +
-                    //    r.BillRefVchTds +
-                    //    r.BillRefVchShort);
-
-
-                    // 🔹 Current receipt settlement (NOT yet in DB)
-                    //var currentSettlement =
-                    //    refDetail.BillRefVchAmount +
-                    //    refDetail.BillRefVchDis +
-                    //    refDetail.BillRefVchTds +
-                    //    refDetail.BillRefVchShort;
-
-                    //var totalSettled = dbSettled + currentSettlement;
-
-
-                    //    var receivedAmount =
-                    //refDetail.BillRefVchAmount +
-                    //refDetail.BillRefVchDis +
-                    //refDetail.BillRefVchTds +
-                    //refDetail.BillRefVchShort;
-                    //    bill.Bill_due_amt = Math.Round(
-                    //        Math.Max( receivedAmount, 0),
-                    //        2
-                    //    );
-
-                    //    bill.BillUpdated = DateTime.UtcNow;
-                    //    bill.BillUpdatedByUserId = GetUserId();
-                    decimal oldSettlement = await _context.BillRefDetails
-     .Where(r =>
-         r.BillRefVchId == bill.BillId &&
-         r.BillRefAgainstId == journal.JournalId)
-     .SumAsync(r =>
-         (decimal)r.BillRefVchAmount +
-         (decimal)r.BillRefVchDis +
-         (decimal)r.BillRefVchTds +
-         (decimal)r.BillRefVchShort
-     );
-
-
-                    decimal billDue = Convert.ToDecimal(bill.Bill_due_amt);
-
-                    // Re-open bill
-                    decimal reopenedDue = billDue + oldSettlement;
-
-                    // New receipt amount
                     decimal newSettlement =
-      (decimal)refDetail.BillRefVchAmount +
-      (decimal)refDetail.BillRefVchDis +
-      (decimal)refDetail.BillRefVchTds +
-      (decimal)refDetail.BillRefVchShort;
+                        (decimal)refDetail.BillRefVchAmount +
+                        (decimal)refDetail.BillRefVchDis +
+                        (decimal)refDetail.BillRefVchTds +
+                        (decimal)refDetail.BillRefVchShort;
 
-
-                    // Apply new settlement
+                    // Reopen by old amount, then apply new settlement
                     decimal finalDue = Math.Round(
-     Math.Max(reopenedDue - newSettlement, 0),
-     2
- );
+                        Math.Max(Convert.ToDecimal(bill.Bill_due_amt) + old - newSettlement, 0), 2);
 
-                    // assign back as double ONLY here
                     bill.Bill_due_amt = (double)finalDue;
-
                     bill.BillUpdated = DateTime.UtcNow;
                     bill.BillUpdatedByUserId = GetUserId();
-
                 }
             }
 
@@ -622,15 +572,225 @@ namespace FreightBKShipping.Controllers
             {
                 TableName = "Journals",
                 RecordId = journal.JournalId,
-                VoucherType = journal.Voucher?.VoucherName,
+                VoucherType = voucher?.VoucherName,
                 Amount = (int)journal.JournalTotal,
                 Operations = "UPDATE",
-                Remarks = journal.Voucher?.VoucherName + " Journal No: " + journal.JournalNoStr,
+                Remarks = voucher?.VoucherName + " No: " + journal.JournalNoStr,
                 YearId = journal.JournalYearId
             }, GetCompanyId());
 
             return NoContent();
         }
+        // PUT: api/Journals/5
+        //       [HttpPut("{id}")]
+        //       public async Task<IActionResult> UpdateJournal(int id, JournalDto journalDto)
+        //       {
+        //           if (id != journalDto.JournalId)
+        //               return BadRequest("Journal ID mismatch.");
+
+        //           var journal = await _context.Journals
+        //               .Include(j => j.BillRefDetails)
+        //               .FirstOrDefaultAsync(j => j.JournalId == id);
+
+        //           if (journal == null) return NotFound();
+
+        //           var voucher = await _context.Vouchers
+        //               .FirstOrDefaultAsync(v => v.VoucherId == journalDto.JournalVoucherId);
+
+        //           if (voucher != null && voucher.VoucherMethod == "Manual")
+        //           {
+        //               bool exists = await _context.Journals.AnyAsync(j =>
+        //                   j.JournalNoStr == journalDto.JournalNoStr &&
+        //                   j.JournalStatus == true &&
+        //                   j.JournalCompanyId == GetCompanyId() &&
+        //                   j.JournalYearId == journalDto.JournalYearId &&
+        //                   j.JournalId != id);
+
+        //               if (exists)
+        //                   return Conflict(new { message = "Journal number already exists." });
+        //           }
+
+        //           // Check if locked
+        //           if (!string.IsNullOrEmpty(journal.JournalLockedBy) && journal.JournalLockedBy != GetUserId())
+        //           {
+        //               return BadRequest("This journal is locked by another user and cannot be edited.");
+        //           }
+
+        //           // Update main journal fields
+        //           journal.JournalUpdatedByUserId = GetUserId();
+        //           journal.JournalUpdated = DateTime.UtcNow;
+        //           journal.JournalVoucherId = journalDto.JournalVoucherId;
+        //           journal.JournalYearId = journalDto.JournalYearId;
+        //           journal.JournalPartyId = journalDto.JournalPartyId;
+        //           journal.JournalAccountId = journalDto.JournalAccountId;
+        //           journal.JournalNo = journalDto.JournalNo;
+        //           journal.JournalNoStr = journalDto.JournalNoStr;
+        //           journal.JournalMasterType = journalDto.JournalMasterType;
+        //           journal.JournalDate = journalDto.JournalDate;
+        //           journal.JournalAmount = journalDto.JournalAmount;
+        //           journal.JournalChqNo = journalDto.JournalChqNo;
+        //           journal.JournalChqDate = journalDto.JournalChqDate;
+        //           journal.JournalRemarks = journalDto.JournalRemarks;
+        //           journal.JournalPrefix = journalDto.JournalPrefix;
+        //           journal.JournalPostfix = journalDto.JournalPostfix;
+        //           journal.JournalRefType = journalDto.JournalRefType;
+        //           journal.JournalStatus = journalDto.JournalStatus;
+        //           journal.JournalTotalDiscount = journalDto.JournalTotalDiscount;
+        //           journal.JournalTotalShort = journalDto.JournalTotalShort;
+        //           journal.JournalTotalTds = journalDto.JournalTotalTds;
+        //           journal.JournalTotal = journalDto.JournalTotal;
+        //           journal.JournalOnAccount = journalDto.JournalOnAccount;
+        //           journal.JournalApprovedBy = journalDto.JournalApprovedBy;
+        //           journal.JournalBillId = journalDto.JournalBillId;
+
+        //           // Handle BillRefDetails - soft delete
+        //           var refsToRemove = journal.BillRefDetails
+        //               .Where(r => journalDto.BillRefDetails == null ||
+        //                          !journalDto.BillRefDetails.Any(x => x.BillRefDetailId == r.BillRefDetailId))
+        //               .ToList();
+        //           _context.BillRefDetails.RemoveRange(refsToRemove);
+
+        //           // Add or update BillRefDetails
+        //           if (journalDto.BillRefDetails != null)
+        //           {
+        //               foreach (var refDto in journalDto.BillRefDetails)
+        //               {
+        //                   var existingRef = journal.BillRefDetails?.FirstOrDefault(r => r.BillRefDetailId == refDto.BillRefDetailId);
+        //                   if (existingRef != null)
+        //                   {
+        //                       existingRef.BillRefAgainstId = refDto.BillRefAgainstId;
+        //                       existingRef.BillRefVchType = refDto.BillRefVchType;
+        //                       existingRef.BillRefVchNo = refDto.BillRefVchNo;
+        //                       existingRef.BillRefVchId = refDto.BillRefVchId;
+        //                       existingRef.BillRefVchDate = refDto.BillRefVchDate;
+        //                       existingRef.BillRefVchAmount = refDto.BillRefVchAmount;
+        //                       existingRef.BillRefVchDis = refDto.BillRefVchDis;
+        //                       existingRef.BillRefVchTds = refDto.BillRefVchTds;
+        //                       existingRef.BillRefVchShort = refDto.BillRefVchShort;
+        //                       existingRef.BillRefVchBalance = refDto.BillRefVchBalance;
+        //                       existingRef.BillRefAccountId = refDto.BillRefAccountId;
+        //                   }
+        //                   else
+        //                   {
+        //                       journal.BillRefDetails.Add(new BillRefDetail
+        //                       {
+        //                           BillRefAgainstId = refDto.BillRefAgainstId,
+        //                           BillRefVchType = refDto.BillRefVchType,
+        //                           BillRefVchNo = refDto.BillRefVchNo,
+        //                           BillRefVchId = refDto.BillRefVchId,
+        //                           BillRefVchDate = refDto.BillRefVchDate,
+        //                           BillRefVchAmount = refDto.BillRefVchAmount,
+        //                           BillRefVchDis = refDto.BillRefVchDis,
+        //                           BillRefVchTds = refDto.BillRefVchTds,
+        //                           BillRefVchShort = refDto.BillRefVchShort,
+        //                           BillRefVchBalance = refDto.BillRefVchBalance,
+        //                           BillRefAccountId = refDto.BillRefAccountId
+        //                       });
+        //                   }
+        //               }
+        //           }
+        //           if (journalDto.BillRefDetails != null && journalDto.BillRefDetails.Any())
+        //           {
+        //               foreach (var refDetail in journalDto.BillRefDetails)
+        //               {
+        //                   var bill = await _context.Bills
+        //                       .FirstOrDefaultAsync(b =>
+        //                           b.BillId == refDetail.BillRefVchId &&
+        //                           b.BillStatus == true &&
+        //                           b.BillCompanyId == GetCompanyId());
+
+        //                   if (bill == null)
+        //                       continue;
+
+        //                   // 🔹 Already settled from DB (OLD receipts)
+        //                   //              var dbSettled = await _context.BillRefDetails
+        //                   //.Where(r =>
+        //                   //    r.BillRefVchId == bill.BillId &&
+        //                   //    r.BillRefAgainstId != journalDto.JournalId) // 👈 IMPORTANT
+        //                   //.SumAsync(r =>
+        //                   //    r.BillRefVchAmount +
+        //                   //    r.BillRefVchDis +
+        //                   //    r.BillRefVchTds +
+        //                   //    r.BillRefVchShort);
+
+
+        //                   // 🔹 Current receipt settlement (NOT yet in DB)
+        //                   //var currentSettlement =
+        //                   //    refDetail.BillRefVchAmount +
+        //                   //    refDetail.BillRefVchDis +
+        //                   //    refDetail.BillRefVchTds +
+        //                   //    refDetail.BillRefVchShort;
+
+        //                   //var totalSettled = dbSettled + currentSettlement;
+
+
+        //                   //    var receivedAmount =
+        //                   //refDetail.BillRefVchAmount +
+        //                   //refDetail.BillRefVchDis +
+        //                   //refDetail.BillRefVchTds +
+        //                   //refDetail.BillRefVchShort;
+        //                   //    bill.Bill_due_amt = Math.Round(
+        //                   //        Math.Max( receivedAmount, 0),
+        //                   //        2
+        //                   //    );
+
+        //                   //    bill.BillUpdated = DateTime.UtcNow;
+        //                   //    bill.BillUpdatedByUserId = GetUserId();
+        //                   decimal oldSettlement = await _context.BillRefDetails
+        //    .Where(r =>
+        //        r.BillRefVchId == bill.BillId &&
+        //        r.BillRefAgainstId == journal.JournalId)
+        //    .SumAsync(r =>
+        //        (decimal)r.BillRefVchAmount +
+        //        (decimal)r.BillRefVchDis +
+        //        (decimal)r.BillRefVchTds +
+        //        (decimal)r.BillRefVchShort
+        //    );
+
+
+        //                   decimal billDue = Convert.ToDecimal(bill.Bill_due_amt);
+
+        //                   // Re-open bill
+        //                   decimal reopenedDue = billDue + oldSettlement;
+
+        //                   // New receipt amount
+        //                   decimal newSettlement =
+        //     (decimal)refDetail.BillRefVchAmount +
+        //     (decimal)refDetail.BillRefVchDis +
+        //     (decimal)refDetail.BillRefVchTds +
+        //     (decimal)refDetail.BillRefVchShort;
+
+
+        //                   // Apply new settlement
+        //                   decimal finalDue = Math.Round(
+        //    Math.Max(reopenedDue - newSettlement, 0),
+        //    2
+        //);
+
+        //                   // assign back as double ONLY here
+        //                   bill.Bill_due_amt = (double)finalDue;
+
+        //                   bill.BillUpdated = DateTime.UtcNow;
+        //                   bill.BillUpdatedByUserId = GetUserId();
+
+        //               }
+        //           }
+
+        //           await _context.SaveChangesAsync();
+
+        //           await _auditLogService.AddAsync(new AuditLogCreateDto
+        //           {
+        //               TableName = "Journals",
+        //               RecordId = journal.JournalId,
+        //               VoucherType = journal.Voucher?.VoucherName,
+        //               Amount = (int)journal.JournalTotal,
+        //               Operations = "UPDATE",
+        //               Remarks = journal.Voucher?.VoucherName + " No: " + journal.JournalNoStr,
+        //               YearId = journal.JournalYearId
+        //           }, GetCompanyId());
+
+        //           return NoContent();
+        //       }
 
         // DELETE: api/Journals/5
         [HttpDelete("{id}")]
@@ -711,7 +871,7 @@ namespace FreightBKShipping.Controllers
                 VoucherType = journal.Voucher?.VoucherName,
                 Amount = (int)journal.JournalTotal,
                 Operations = "DELETE",
-                Remarks = $"{journal.Voucher?.VoucherName} Journal No: {journal.JournalNoStr}",
+                Remarks = $"{journal.Voucher?.VoucherName}  No: {journal.JournalNoStr}",
                 YearId = journal.JournalYearId
             }, GetCompanyId());
 

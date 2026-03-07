@@ -1,7 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.LocationDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,9 +17,11 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ILogger<LocationsController> _logger;
+        private readonly AuditLogService _auditLogService;
 
-        public LocationsController(AppDbContext context, ILogger<LocationsController> logger)
+        public LocationsController(AppDbContext context, ILogger<LocationsController> logger, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
             _logger = logger;
         }
@@ -113,6 +117,18 @@ namespace FreightBKShipping.Controllers
                 _context.Locations.Add(location);
                 await _context.SaveChangesAsync();
 
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Station/Port",
+                    RecordId = location.LocationId,
+                    VoucherType = "Station/Port",
+                    Amount = 0,
+                    Operations = "INSERT",
+                    Remarks = location.LocationName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
+
                 return Ok(location.LocationId);
             }
             catch (Exception ex)
@@ -146,6 +162,19 @@ namespace FreightBKShipping.Controllers
                 location.LocationCompanyId = GetCompanyId();
 
                 await _context.SaveChangesAsync();
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Station/Port",
+                    RecordId = location.LocationId,
+                    VoucherType = "Station/Port",
+                    Amount = 0,
+                    Operations = "UPDATE",
+                    Remarks = location.LocationName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
+
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -168,6 +197,19 @@ namespace FreightBKShipping.Controllers
 
                 _context.Locations.Remove(location);
                 await _context.SaveChangesAsync();
+                await _auditLogService.AddAsync(new AuditLogCreateDto
+                {
+                    TableName = "Station/Port",
+                    RecordId = id,
+                    VoucherType = "Station/Port",
+                    Amount = 0,
+                    Operations = "DELETE",
+                    Remarks = location.LocationName,
+                    BranchId = 0,
+                    YearId = 0
+                }, GetCompanyId());
+
+
                 return Ok(true);
             }
             catch (Exception ex)

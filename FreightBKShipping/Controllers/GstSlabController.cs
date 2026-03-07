@@ -1,5 +1,7 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +12,10 @@ namespace FreightBKShipping.Controllers
     public class GstSlabController : BaseController
     {
         private readonly AppDbContext _context;
-
-        public GstSlabController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;
+        public GstSlabController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -47,6 +50,18 @@ namespace FreightBKShipping.Controllers
             _context.GstSlabs.Add(slab);
             await _context.SaveChangesAsync();
 
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "GSTslab",
+                RecordId = slab.GstSlabId,
+                VoucherType = "GSTslab",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = slab.GstSlabName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
+
             return CreatedAtAction(nameof(GetGstSlab), new { id = slab.GstSlabId }, slab);
         }
 
@@ -73,7 +88,17 @@ namespace FreightBKShipping.Controllers
                 else
                     throw;
             }
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "GSTslab",
+                RecordId = slab.GstSlabId,
+                VoucherType = "GSTslab",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = slab.GstSlabName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return NoContent();
         }
 
@@ -86,6 +111,17 @@ namespace FreightBKShipping.Controllers
                 return NotFound();
 
             _context.GstSlabs.Remove(slab);
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "GSTslab",
+                RecordId = id,
+                VoucherType = "GSTslab",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = slab.GstSlabName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             await _context.SaveChangesAsync();
 
             return Ok(true);

@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FreightBKShipping.Data;
-using FreightBKShipping.Models;
+﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.User;
+using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Authorization;
-using Sieve.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sieve.Models;
+using Sieve.Services;
 
 namespace FreightBKShipping.Controllers
 {
@@ -16,9 +18,11 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ISieveProcessor _sieveProcessor;
+        private readonly AuditLogService _auditLogService;
 
-        public UsersController(AppDbContext context, ISieveProcessor sieveProcessor)
+        public UsersController(AppDbContext context, ISieveProcessor sieveProcessor, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
             _sieveProcessor = sieveProcessor;
         }
@@ -173,6 +177,17 @@ namespace FreightBKShipping.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "User",
+                RecordId = 0,
+                VoucherType = "User",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = user.UserName,
+                BranchId = dto.AssignedBranchIds?.FirstOrDefault() ?? 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
 
@@ -217,6 +232,17 @@ namespace FreightBKShipping.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "User",
+                RecordId = 0, 
+                VoucherType = "User",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = user.UserName,
+                BranchId = dto.AssignedBranchIds?.FirstOrDefault() ?? 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
 
@@ -224,6 +250,8 @@ namespace FreightBKShipping.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
+
+
             var user = await FilterByCompany(
                 _context.Users,
                 "UserCompanyId"
@@ -231,8 +259,24 @@ namespace FreightBKShipping.Controllers
 
             if (user == null) return NotFound();
 
+            var firstBranchId = user.UserBranches
+     .Select(ub => ub.BranchId)
+     .FirstOrDefault();
+
+
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "User",
+                RecordId = 0, 
+                VoucherType = "User",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = user.UserName,
+                BranchId = firstBranchId ,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.DTOs.ServiceDto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,9 +13,11 @@ namespace FreightBKShipping.Controllers
     public class ServicesController : BaseController
     {
         private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public ServicesController(AppDbContext context)
+        public ServicesController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -174,6 +178,19 @@ namespace FreightBKShipping.Controllers
             _context.Services.Add(service);
             await _context.SaveChangesAsync();
 
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Service",
+                RecordId = service.ServiceId,
+                VoucherType = "Service",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = service.ServiceName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
+
+
             return Ok(new { service.ServiceId });
         }
 
@@ -207,6 +224,18 @@ namespace FreightBKShipping.Controllers
             service.ServiceUpdated = DateTime.UtcNow;
             service.ServiceHsnId = dto.ServiceHsnId;
             await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Service",
+                RecordId = service.ServiceId,
+                VoucherType = "Service",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = service.ServiceName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
+
             return NoContent();
         }
 
@@ -233,13 +262,23 @@ namespace FreightBKShipping.Controllers
             {
                 return BadRequest(new
                 {
-                    error = "Cannot delete Sevice",
-                    details = "This Sevice is referenced in Bill and cannot be deleted."
+
+                    Message = "This Sevice is referenced in Bill and It cannot be deleted."
                 });
             }
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Service",
+                RecordId = id,
+                VoucherType = "Service",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = service.ServiceName,
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

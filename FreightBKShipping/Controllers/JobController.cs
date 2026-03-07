@@ -446,15 +446,39 @@ namespace FreightBKShipping.Controllers
                 if (job == null) return NotFound(new { error = "Job not found" });
 
                 // Check if job exists in BillJobNo
-                bool existsInBill = await _context.Bills
-                    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus == true && b.BillCompanyId == GetCompanyId());
+                //bool existsInBill = await _context.Bills
+                //    .AnyAsync(b => b.BillJobNo == job.JobNo && b.BillStatus == true && b.BillCompanyId == GetCompanyId());
 
-                if (existsInBill)
+                //if (existsInBill)
+                //{
+                //    return BadRequest(new
+                //    {
+                //        error = "Cannot delete job",
+                //        details = "This job is referenced in Bill and cannot be deleted."
+                //    });
+                //}
+                var relatedBills = await _context.Bills
+    .Where(b =>
+        b.BillJobNo == job.JobNo &&
+        b.BillStatus == true &&
+        b.BillCompanyId == GetCompanyId())
+    .Select(b => new
+    {
+        b.BillId,
+        b.BillNo,
+        VoucherName = b.Voucher.VoucherName
+    })
+    .ToListAsync();
+
+                if (relatedBills.Any())
                 {
+                    var billInfo = string.Join(", ",
+                        relatedBills.Select(b =>
+                            $"{b.VoucherName} No: {b.BillNo}"));
+
                     return BadRequest(new
                     {
-                        error = "Cannot delete job",
-                        details = "This job is referenced in Bill and cannot be deleted."
+                              Message = $"Cannot delete Job No: {job.JobNo} is used in: {billInfo}"
                     });
                 }
                 job.JobActive = false;
