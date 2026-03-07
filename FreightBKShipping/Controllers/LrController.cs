@@ -53,6 +53,7 @@ public class LrController : BaseController
         if (result == null) return NotFound();
         return Ok(result);
     }
+
     // 🔥 UPSERT (Insert / Update)
     //[HttpPost("save")]
     //public async Task<IActionResult> Save([FromBody] Lr model)
@@ -82,6 +83,7 @@ public class LrController : BaseController
     //        return Ok(model);
     //    }
     //}
+
     [HttpPost("save")]
     public async Task<IActionResult> Save([FromBody] LrEntryDto dto)
     {

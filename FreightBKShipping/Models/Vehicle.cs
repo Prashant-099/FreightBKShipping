@@ -14,10 +14,10 @@ namespace FreightBKShipping.Models
         public int VehicleCompanyId { get; set; }
 
         [Column("vehicle_addby_user_id")]
-        public int VehicleAddedByUserId { get; set; }
+        public string VehicleAddedByUserId { get; set; }
 
         [Column("vehicle_updatedby_user_id")]
-        public int? VehicleUpdatedByUserId { get; set; }
+        public string? VehicleUpdatedByUserId { get; set; }
 
         [Column("vehicle_no")]
         public string VehicleNo { get; set; } = string.Empty;
@@ -104,4 +104,38 @@ namespace FreightBKShipping.Models
         [Column("vehicle_driver_id")]
         public int? VehicleDriverId { get; set; }
     }
+
+    public class VehicleCreateDto
+    {
+        public string VehicleNo { get; set; } = string.Empty;
+        public string? VehicleOwnerType { get; set; }
+        public int VehicleAccountId { get; set; }
+        public int? VehicleTypeId { get; set; }
+        public int? VehicleGroupId { get; set; }
+        public int? VehicleAverage { get; set; }
+        public string? VehicleRTO { get; set; }
+        public string? VehicleEngineNo { get; set; }
+        public string? VehicleChassisNo { get; set; }
+        public int? VehicleLoadCapacity { get; set; }
+        public string? VehicleMake { get; set; }
+        public string? VehicleModel { get; set; }
+        public string? VehicleRemarks { get; set; }
+        public int VehicleStatus { get; set; } = 1;
+        public string? VehicleFastage { get; set; }
+        public string? VehicleGpsno { get; set; }
+
+        public DateTime? VehicleTax { get; set; }
+        public DateTime? VehicleFitness { get; set; }
+        public DateTime? VehicleStatepermit { get; set; }
+        public DateTime? VehicleNational { get; set; }
+        public DateTime? VehicleInsurance { get; set; }
+        public DateTime? VehiclePuc { get; set; }
+        public DateTime? VehicleForm9 { get; set; }
+        public DateTime? VehicleCalibration { get; set; }
+        public DateTime? VehicleEmi { get; set; }
+
+        public int? VehicleDriverId { get; set; }
+    }
+
+
 }

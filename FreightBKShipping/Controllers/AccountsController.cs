@@ -44,12 +44,12 @@ public class AccountsController : BaseController
             _context.Accounts.Add(dto);
         await _context.SaveChangesAsync();
         return Ok(dto);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(new { error = ex.Message, stack = ex.StackTrace
-    });
-    }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message, stack = ex.StackTrace
+        });
+        }
     }
 
     [HttpPut("{id}")]

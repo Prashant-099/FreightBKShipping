@@ -7,8 +7,6 @@ using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using UAParser;
 namespace FreightBKShipping.Controllers
 {
 
@@ -47,8 +45,7 @@ namespace FreightBKShipping.Controllers
                 var user = await _context.Users
                     .Include(u => u.Role)
                     .Include(u => u.Company)
-                    .FirstOrDefaultAsync(u => u.UserEmail == dto.UserEmail);
-
+                    .FirstOrDefaultAsync(u => u.UserEmail.ToLower() == dto.UserEmail.ToLower());
                 // ================= INVALID USER / PASSWORD =================
                 if (user == null || !BCrypt.Net.BCrypt.Verify(dto.UserPassword, user.UserPassword))
                 {

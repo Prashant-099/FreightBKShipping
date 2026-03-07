@@ -55,6 +55,7 @@ namespace FreightBKShipping.Data
 
         public DbSet<LRDetail> LRDetails { get; set; } 
         public DbSet<LRJournal> LRJournals { get; set; }
+        public DbSet<Vehicle> Vehicles { get; set; }
         //end dhruv
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
