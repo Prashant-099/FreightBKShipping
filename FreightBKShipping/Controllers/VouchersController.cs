@@ -128,6 +128,21 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<VoucherReadDto>> CreateVoucher(VoucherCreateDto dto)
         {
+            var yearId = dto.VoucherDetails.Select(x => x.VoucherDetailYearId).FirstOrDefault();
+
+            var isDuplicate = await _context.Vouchers
+                .Include(v => v.VoucherDetails)
+                .AnyAsync(v =>
+                    v.VoucherCompanyId == GetCompanyId() &&
+                    v.VoucherBranchId == dto.VoucherBranchId &&
+                    v.VoucherGroup == dto.VoucherGroup &&
+                    v.VoucherName == dto.VoucherName &&
+                    v.VoucherDetails.Any(d => d.VoucherDetailYearId == yearId)
+                );
+
+            if (isDuplicate)
+                return BadRequest(new { message = "Voucher name already exists." });
+
             var voucher = new Voucher
             {
                 VoucherCompanyId = GetCompanyId(),
@@ -194,7 +209,7 @@ namespace FreightBKShipping.Controllers
                 .Select(x => x.VoucherDetailYearId)
                 .FirstOrDefault()
             }, GetCompanyId());
-            return CreatedAtAction(nameof(GetVoucher), new { id = voucher.VoucherId }, dto);
+            return NoContent();
         }
 
 
@@ -202,11 +217,34 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVoucher(int id, VoucherUpdateDto dto)
         {
+
             var voucher = await _context.Vouchers
                 .Include(v => v.VoucherDetails)
                 .FirstOrDefaultAsync(v => v.VoucherId == id);
 
+            
             if (voucher == null) return NotFound();
+
+            var yearId = dto.VoucherDetails
+    .Select(x => x.VoucherDetailYearId)
+    .FirstOrDefault();
+
+            var isDuplicate = await _context.Vouchers
+                .Include(v => v.VoucherDetails)
+                .AnyAsync(v =>
+                    v.VoucherId != id &&
+                    v.VoucherCompanyId == GetCompanyId() &&
+                    v.VoucherBranchId == dto.VoucherBranchId &&
+                    v.VoucherGroup == dto.VoucherGroup &&
+                    v.VoucherName == dto.VoucherName &&
+                    v.VoucherDetails.Any(d => d.VoucherDetailYearId == yearId)
+                );
+
+            if (isDuplicate)
+            {
+                return BadRequest(new { message = "Voucher name already exists." });
+            }
+
 
             // Update all fields
             voucher.VoucherUpdatedByUserId = dto.VoucherUpdatedByUserId ?? GetUserId();

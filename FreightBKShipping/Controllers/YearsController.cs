@@ -40,6 +40,19 @@ namespace FreightBKShipping.Controllers
             [HttpPost]
             public async Task<ActionResult<Year>> CreateYear(Year year)
         {
+
+            var isDuplicate = await _context.Years
+    .AnyAsync(y =>
+        y.YearCompanyId == GetCompanyId() &&
+         y.YearDateFrom == year.YearDateFrom.Value.Date &&
+        y.YearDateTo == year.YearDateTo.Value.Date
+    );
+
+            if (isDuplicate)
+            {
+                return BadRequest(new { message = "Financial year already exists." });
+            }
+
             year.YearCompanyId =GetCompanyId();
             year.YearCreated = DateTime.UtcNow;
                 year.YearUpdated = DateTime.UtcNow;
@@ -79,6 +92,19 @@ namespace FreightBKShipping.Controllers
             {
                 if (id != year.YearId)
                     return BadRequest();
+            var isDuplicate = await _context.Years
+.AnyAsync(y =>
+    y.YearId != id &&
+    y.YearCompanyId == GetCompanyId() &&
+                y.YearDateFrom == year.YearDateFrom.Value.Date &&
+    y.YearDateTo == year.YearDateTo.Value.Date
+);
+
+            if (isDuplicate)
+            {
+                return BadRequest(new { message = "Financial year already exists." });
+            }
+
             year.YearCompanyId = GetCompanyId();
                 year.YearUpdated = DateTime.UtcNow;
             year.YearUpdatedByUserId = GetUserId();

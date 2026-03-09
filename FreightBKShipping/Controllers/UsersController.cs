@@ -140,7 +140,9 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateUser(UserAddDto dto)
         {
-            var userId = Guid.NewGuid().ToString();
+            try
+            {
+                var userId = Guid.NewGuid().ToString();
 
             var user = new User
             {
@@ -189,6 +191,23 @@ namespace FreightBKShipping.Controllers
                 YearId = 0
             }, GetCompanyId());
             return Ok(true);
+        }
+            catch (DbUpdateException dbEx)
+{
+                var message = dbEx.InnerException?.Message ?? dbEx.Message;
+
+                return BadRequest(new
+                {
+                    message = message
+                });
+            }
+catch (Exception ex)
+{
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
         }
 
         // ✅ PUT: api/users/{id} (MULTI BRANCH UPDATE)

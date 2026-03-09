@@ -74,6 +74,16 @@ public async Task<IActionResult> GetUserBranches(string userId)
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] BranchCreateDto dto)
         {
+            var isDuplicate = await _context.Branches
+        .AnyAsync(b =>
+            b.BranchCompanyId == GetCompanyId() &&
+            b.BranchName.ToLower() == dto.BranchName.ToLower()
+        );
+
+            if (isDuplicate)
+            {
+                return BadRequest(new { message = "Branch name already exists." });
+            }
 
             if (dto.Branchisdefault)
             {
@@ -134,6 +144,18 @@ public async Task<IActionResult> GetUserBranches(string userId)
         {
             var branch = await _context.Branches.FindAsync(id);
             if (branch == null) return NotFound();
+
+            var isDuplicate = await _context.Branches
+        .AnyAsync(b =>
+            b.BranchId != id &&
+            b.BranchCompanyId == GetCompanyId() &&
+            b.BranchName.ToLower() == dto.BranchName.ToLower()
+        );
+
+            if (isDuplicate)
+            {
+                return BadRequest(new { message = "Branch name already exists." });
+            }
 
             if (dto.Branchisdefault)
             {
