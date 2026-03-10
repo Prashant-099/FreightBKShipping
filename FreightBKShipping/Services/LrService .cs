@@ -327,7 +327,7 @@ namespace FreightBKShipping.Services
                     SupplierName = supplier != null ? supplier.AccountName : null,
                     DriverName = driver != null ? driver.AccountName : null,
 
-                    //VehicleNo = lr.,
+                    VehicleNo = lr.LrNtVehicleNo,
 
                     FromLocationName = fromLoc != null ? fromLoc.LocationName : null,
                     ToLocationName = toLoc != null ? toLoc.LocationName : null,

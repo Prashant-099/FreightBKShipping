@@ -582,6 +582,8 @@ namespace FreightBKShipping.Models
         public string? PartyName { get; set; }
         public string? SupplierName { get; set; }
         public string? VehicleNo { get; set; }
+        public int? LrVehicleId { get; set; }
+
         public string? DriverName { get; set; }
 
         // Location (Names only)

@@ -143,23 +143,26 @@ public class LrController : BaseController
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _service.Delete(id);
         var record = await _service.GetById(id);
+        var deleted = await _service.Delete(id);
+      
         if (!deleted)
             return NotFound();
+
         await _auditLogService.AddAsync(new AuditLogCreateDto
         {
             TableName = "LR Entry",
             RecordId = id,
             VoucherType = "LR Entry",
             Amount = 0,
-            Operations = "INSERT",
+            Operations = "DELETE",
             Remarks = record.LrNoStr,
             BranchId = record.LrBranchId,
             YearId = record.LrYearId
         }, GetCompanyId());
-        return Ok();
+        return Ok(true);
     }
+
     // 📋 GET ALL (For Grid List - With Names)
     [HttpGet("list")]
     public async Task<IActionResult> GetAllForList()
