@@ -2,8 +2,7 @@
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-
+using System.Linq;
 
 namespace FreightBKShipping.Services
 {
@@ -49,6 +48,7 @@ namespace FreightBKShipping.Services
             return await _context.Lrs
                 .FirstOrDefaultAsync(x => x.LrId == id && x.LrStatus != 2);
         }
+
         public async Task<LrEntryDto?> GetEntryById(int id)
         {
             var lr = await _context.Lrs
@@ -71,34 +71,13 @@ namespace FreightBKShipping.Services
                 Journals = journals
             };
         }
-        //public async Task<Lr> Create(Lr model)
-        //{
-        //    _context.Lrs.Add(model);
 
-        //    await _context.SaveChangesAsync();
-        //    return model;
-        //}
-
-        //public async Task<bool> Update(Lr model)
-        //{
-        //    var existing = await _context.Lrs.FindAsync(model.LrId);
-        //    if (existing == null)
-        //        return false;
-
-        //    _context.Entry(existing).CurrentValues.SetValues(model);
-        //    await _context.SaveChangesAsync();
-
-        //    return true;
-        //}
         public async Task<Lr> Create(Lr model, List<LRDetail>? details, List<LRJournal>? journals)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-              
-
-                // 🔥 Calculate Before Saving
                 CalculateLrTotals(model, details, journals);
 
                 _context.Lrs.Add(model);
@@ -119,7 +98,6 @@ namespace FreightBKShipping.Services
                     foreach (var j in journals)
                     {
                         j.LrId = lrId;
-                  
                         j.Created = DateTime.UtcNow;
                         j.Updated = DateTime.UtcNow;
                     }
@@ -135,11 +113,10 @@ namespace FreightBKShipping.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new Exception(
-           ex.InnerException?.Message ?? ex.Message,
-           ex);
+                throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
             }
         }
+
         public async Task<bool> Update(Lr model, List<LRDetail> details, List<LRJournal> journals)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -152,10 +129,8 @@ namespace FreightBKShipping.Services
 
                 _context.Entry(existing).CurrentValues.SetValues(model);
 
-                // 🔥 Calculate on existing object
                 CalculateLrTotals(existing, details, journals);
 
-                // Remove old child data
                 var oldDetails = _context.LRDetails.Where(x => x.LrDetailsLrId == model.LrId);
                 var oldJournals = _context.LRJournals.Where(x => x.LrId == model.LrId);
 
@@ -164,7 +139,6 @@ namespace FreightBKShipping.Services
 
                 await _context.SaveChangesAsync();
 
-                // Insert new child data
                 foreach (var d in details)
                     d.LrDetailsLrId = model.LrId;
 
@@ -185,63 +159,39 @@ namespace FreightBKShipping.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new Exception(
-                    ex.InnerException?.Message ?? ex.Message,
-                    ex);
+                throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
             }
         }
 
         private void CalculateLrTotals(Lr model, List<LRDetail>? details, List<LRJournal>? journals)
         {
-            // ================= KM Calculation =================
-            double startKm = 0;
-            double endKm = 0;
-
-            double.TryParse(model.LrStartKm, out startKm);
-            double.TryParse(model.LrEndKm, out endKm);
-
-            double totalKm = endKm - startKm;
-            if (totalKm < 0) totalKm = 0;
-
+            // ── KM ────────────────────────────────────────────────────
+            double.TryParse(model.LrStartKm, out double startKm);
+            double.TryParse(model.LrEndKm, out double endKm);
+            double totalKm = Math.Max(0, endKm - startKm);
             model.LrTotKm = totalKm.ToString();
 
-            // ================= Weight Calculation =================
+            // ── Weight ────────────────────────────────────────────────
             if (model.LrGrossWt.HasValue && model.LrTareWt.HasValue)
                 model.LrLoadWt = model.LrGrossWt.Value - model.LrTareWt.Value;
 
             model.LrShortWt = model.LrLoadWt - model.LrUnloadWt;
 
-            // ================= Bill Side =================
-            // Bill Type logic
-            switch (model.LrBillTypeBill)
+            var filledDetails = details?
+                .Where(d => (d.LrDetailProductId ?? 0) > 0 || (d.LrDetailGrossFreight ?? 0) > 0)
+                .ToList();
+
+            if (filledDetails != null && filledDetails.Count > 0)
             {
-                case "Fixed Rate":
-                    model.LrGrossFreightBill = model.LrRateBill;
-                    break;
-
-                case "Rate X Weight":
-                    model.LrGrossFreightBill = model.LrRateBill * model.LrLoadWt;
-                    break;
-
-                case "Rate X KM":
-                    model.LrGrossFreightBill = model.LrRateBill * totalKm;
-                    break;
-
-                default:
-                    model.LrGrossFreightBill = 0;
-                    break;
+                model.LrGrossFreightBill = filledDetails
+                    .Sum(d => (double)(d.LrDetailGrossFreight ?? 0));
             }
 
-            // Short Amount Bill
+            // ── Bill Side ─────────────────────────────────────────────
             model.LrShortAmtBill = model.LrShortRateBill * model.LrShortWt;
-
-            // Detention Bill
             model.LrDetentionAmtBill = model.LrDetentionRateBill * model.LrDetentionDayBill;
-
-            // GST Bill
             model.LrGstAmount = (float)((model.LrGrossFreightBill * model.LrGstPercentage) / 100);
 
-            // Net Freight Bill
             model.LrNetFreightBill =
                 model.LrGrossFreightBill
                 + model.LrTripChargeBill
@@ -250,11 +200,9 @@ namespace FreightBKShipping.Services
                 - model.LrAdvanceBill
                 - model.LrShortAmtBill;
 
-            // ================= Truck Side =================
+            // ── Truck Side ────────────────────────────────────────────
             model.LrGrossFreightTruck = model.LrBillRateTruck * model.LrLoadWt;
-
             model.LrShortAmtTruck = model.LrShortRateTruck * model.LrShortWt;
-
             model.LrDetentionAmtTruck = model.LrDetentionRateTruck * model.LrDetentionDayTruck;
 
             model.LrNetFreightTruck =
@@ -264,11 +212,49 @@ namespace FreightBKShipping.Services
                 - model.LrTripAdvance
                 - model.LrShortAmtTruck;
 
-            // ================= Journal Total =================
+            // ── Journal Group Totals ──────────────────────────────────
             if (journals != null && journals.Any())
-                model.LrJournalAmt = (float)journals.Sum(x => x.Amount);
-        }
+            {
+                model.LrAdvanceTotal = journals
+                    .Where(j => j.JournalGroup == LrJournalGroup.Advance)
+                    .Sum(j => (double)j.Amount);
 
+                model.LrDieselTotal = journals
+                    .Where(j => j.JournalGroup == LrJournalGroup.Diesel)
+                    .Sum(j => j.UreaAmount ?? 0);
+
+                model.LrChargesTotal = journals
+                    .Where(j => j.JournalGroup == LrJournalGroup.Charges)
+                    .Sum(j => (double)j.Amount);
+
+                model.LrExpenseTotal = journals
+                    .Where(j => j.JournalGroup == LrJournalGroup.Expense)
+                    .Sum(j => (double)j.Amount);
+
+                model.LrAdvRecTotal = journals
+                    .Where(j => j.JournalGroup == LrJournalGroup.AdvanceReceived)
+                    .Sum(j => (double)j.Amount);
+
+                model.LrJournalAmt = (float)journals.Sum(x => x.Amount);
+            }
+            else
+            {
+                model.LrAdvanceTotal = 0;
+                model.LrDieselTotal = 0;
+                model.LrChargesTotal = 0;
+                model.LrExpenseTotal = 0;
+                model.LrAdvRecTotal = 0;
+                model.LrJournalAmt = 0;
+            }
+
+            // ── Net Freight Calc ──────────────────────────────────────
+            model.LrNetFreightCalc =
+                model.LrGrossFreightBill
+                + model.LrChargesTotal
+                - model.LrAdvanceTotal
+                - model.LrDieselTotal
+                - model.LrExpenseTotal;
+        }
 
         public async Task<bool> Delete(int id)
         {
@@ -282,38 +268,41 @@ namespace FreightBKShipping.Services
             return true;
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // GetAllForList — AccountName fix: pehle AccountId se join,
+        // phir Remarks fallback, phir "—"
+        // ═══════════════════════════════════════════════════════════════════
         public async Task<List<LrListVM>> GetAllForList()
         {
-            var query =
+            // ── Step 1: Main LR rows ─────────────────────────────────────
+            var lrRows = await (
                 from lr in _context.Lrs.AsNoTracking()
 
-                    // Party
                 join party in _context.Accounts
                     on lr.LrPartyAccountId equals party.AccountId into partyJoin
                 from party in partyJoin.DefaultIfEmpty()
 
-                    // Supplier
                 join supplier in _context.Accounts
                     on lr.LrSupplierAccountId equals supplier.AccountId into supplierJoin
                 from supplier in supplierJoin.DefaultIfEmpty()
 
-                    // Driver
                 join driver in _context.Accounts
                     on lr.LrDriverId equals driver.AccountId into driverJoin
                 from driver in driverJoin.DefaultIfEmpty()
 
-                    // From Location
+                join vehicle in _context.Vehicles
+                    on lr.LrVehicleId equals vehicle.VehicleId into vehicleJoin
+                from vehicle in vehicleJoin.DefaultIfEmpty()
+
                 join fromLoc in _context.Locations
                     on lr.LrFromLocationId equals fromLoc.LocationId into fromJoin
                 from fromLoc in fromJoin.DefaultIfEmpty()
 
-                    // To Location
                 join toLoc in _context.Locations
                     on lr.LrToLocationId equals toLoc.LocationId into toJoin
                 from toLoc in toJoin.DefaultIfEmpty()
 
                 where lr.LrStatus != 2
-
                 orderby lr.LrId descending
 
                 select new LrListVM
@@ -322,12 +311,12 @@ namespace FreightBKShipping.Services
                     LrNoStr = lr.LrNoStr,
                     LrDate = lr.LrDate,
                     LrTripNo = lr.LrTripNo.ToString(),
+                    LrVehicleId = lr.LrVehicleId,
 
                     PartyName = party != null ? party.AccountName : null,
                     SupplierName = supplier != null ? supplier.AccountName : null,
                     DriverName = driver != null ? driver.AccountName : null,
-
-                    VehicleNo = lr.LrNtVehicleNo,
+                    VehicleNo = vehicle != null ? vehicle.VehicleNo : lr.LrNtVehicleNo,
 
                     FromLocationName = fromLoc != null ? fromLoc.LocationName : null,
                     ToLocationName = toLoc != null ? toLoc.LocationName : null,
@@ -347,13 +336,159 @@ namespace FreightBKShipping.Services
                     LrGstPercentage = lr.LrGstPercentage,
                     LrGstAmount = lr.LrGstAmount,
 
-                    LrStatus = lr.LrStatus
-                };
+                    LrAdvanceTotal = lr.LrAdvanceTotal,
+                    LrDieselTotal = lr.LrDieselTotal,
+                    LrChargesTotal = lr.LrChargesTotal,
+                    LrExpenseTotal = lr.LrExpenseTotal,
+                    LrAdvRecTotal = lr.LrAdvRecTotal,
+                    LrNetFreightCalc = lr.LrNetFreightCalc,
 
-            return await query.ToListAsync();
+                    LrStatus = lr.LrStatus,
+                }
+            ).ToListAsync();
+
+            if (!lrRows.Any()) return lrRows;
+
+            var lrIds = lrRows.Select(x => x.LrId).ToList();
+
+            // ── Step 2: Product details ──────────────────────────────────
+            var productRows = await _context.LRDetails.AsNoTracking()
+                .Where(d => lrIds.Contains(d.LrDetailsLrId)
+                         && ((d.LrDetailProductId ?? 0) > 0 || (d.LrDetailGrossFreight ?? 0) > 0))
+                .Select(d => new
+                {
+                    LrId = d.LrDetailsLrId,
+                    ProductName = d.LrDetailCargoName ?? "—",
+                    BillType = d.LrDetailBillType ?? "—",
+                    Rate = (double)(d.LrDetailBillRate ?? 0),
+                    GrossFreight = (double)(d.LrDetailGrossFreight ?? 0),
+                })
+                .ToListAsync();
+
+            // ── Step 3: Journal details ──────────────────────────────────
+            //
+            // ✅ FIX: Diesel journal mein AccountId NULL hota hai.
+            //         Pump ka AccountId, PumpBillId column mein store hota hai.
+            //         Isliye do alag LEFT JOIN lagate hain:
+            //           - normalAcc  → AccountId   se (Advance/Charges/Expense/AdvRec)
+            //           - pumpAcc    → PumpBillId   se (Diesel)
+            //         Priority: normalAcc → pumpAcc → Remarks → "—"
+            //
+            var journalRows = await (
+                from j in _context.LRJournals.AsNoTracking()
+
+                    // JOIN 1: Normal accounts (Advance, Charges, Expense, AdvRec)
+                join normalAcc in _context.Accounts
+                    on j.AccountId equals normalAcc.AccountId into normalJoin
+                from normalAcc in normalJoin.DefaultIfEmpty()
+
+                    // JOIN 2: Pump account (Diesel — PumpBillId mein AccountId stored hai)
+                join pumpAcc in _context.Accounts
+                    on j.PumpBillId equals pumpAcc.AccountId into pumpJoin
+                from pumpAcc in pumpJoin.DefaultIfEmpty()
+
+                where j.LrId != null && lrIds.Contains(j.LrId.Value)
+
+                select new
+                {
+                    LrId = j.LrId.Value,
+                    j.JournalGroup,
+
+                    // ✅ AccountName priority:
+                    // 1. normalAcc  — Advance/Charges/Expense/AdvRec ke liye
+                    // 2. pumpAcc    — Diesel ke liye (PumpBillId → AccountId)
+                    // 3. Remarks    — fallback
+                    // 4. "—"        — last resort
+                    AccountName =
+                        (normalAcc != null && normalAcc.AccountName != null && normalAcc.AccountName != "")
+                            ? normalAcc.AccountName
+                        : (pumpAcc != null && pumpAcc.AccountName != null && pumpAcc.AccountName != "")
+                            ? pumpAcc.AccountName
+                        : (j.Remarks != null && j.Remarks != "")
+                            ? j.Remarks
+                        : "—",
+
+                    Amount = (double)(j.Amount ?? 0),
+                    UreaAmount = j.UreaAmount ?? 0,
+                    Remarks = j.Remarks,
+                }
+            ).ToListAsync();
+
+            // ── Step 4: Map karo ─────────────────────────────────────────
+            var productMap = productRows
+                .GroupBy(x => x.LrId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var journalMap = journalRows
+                .GroupBy(x => x.LrId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var lr in lrRows)
+            {
+                // Products
+                if (productMap.TryGetValue(lr.LrId, out var prods))
+                {
+                    lr.Products = prods.Select(p => new LrListProductVM
+                    {
+                        ProductName = p.ProductName,
+                        BillType = p.BillType,
+                        Rate = p.Rate,
+                        GrossFreight = p.GrossFreight,
+                    }).ToList();
+                }
+
+                // Journals
+                if (journalMap.TryGetValue(lr.LrId, out var jrnls))
+                {
+                    lr.AdvanceRows = jrnls
+                        .Where(j => j.JournalGroup == LrJournalGroup.Advance && j.Amount > 0)
+                        .Select(j => new LrListJournalVM
+                        {
+                            AccountName = j.AccountName,
+                            Amount = j.Amount,
+                            Remarks = j.Remarks,
+                        }).ToList();
+
+                    // Diesel: UreaAmount = diesel amount, AccountName = pump name
+                    lr.DieselRows = jrnls
+                        .Where(j => j.JournalGroup == LrJournalGroup.Diesel && j.UreaAmount > 0)
+                        .Select(j => new LrListJournalVM
+                        {
+                            AccountName = j.AccountName,
+                            Amount = j.UreaAmount,
+                            Remarks = j.Remarks,
+                        }).ToList();
+
+                    lr.ChargesRows = jrnls
+                        .Where(j => j.JournalGroup == LrJournalGroup.Charges && j.Amount > 0)
+                        .Select(j => new LrListJournalVM
+                        {
+                            AccountName = j.AccountName,
+                            Amount = j.Amount,
+                            Remarks = j.Remarks,
+                        }).ToList();
+
+                    lr.ExpenseRows = jrnls
+                        .Where(j => j.JournalGroup == LrJournalGroup.Expense && j.Amount > 0)
+                        .Select(j => new LrListJournalVM
+                        {
+                            AccountName = j.AccountName,
+                            Amount = j.Amount,
+                            Remarks = j.Remarks,
+                        }).ToList();
+
+                    lr.AdvRecRows = jrnls
+                        .Where(j => j.JournalGroup == LrJournalGroup.AdvanceReceived && j.Amount > 0)
+                        .Select(j => new LrListJournalVM
+                        {
+                            AccountName = j.AccountName,
+                            Amount = j.Amount,
+                            Remarks = j.Remarks,
+                        }).ToList();
+                }
+            }
+
+            return lrRows;
         }
     }
-
-
-   
-    }
+}
