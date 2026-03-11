@@ -299,7 +299,6 @@ catch (Exception ex)
         public async Task<IActionResult> DeleteUser(string id)
         {
 
-
             var user = await FilterByCompany(
                 _context.Users,
                 "UserCompanyId"

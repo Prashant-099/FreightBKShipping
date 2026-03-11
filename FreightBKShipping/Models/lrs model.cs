@@ -566,49 +566,100 @@ namespace FreightBKShipping.Models
         [Column("lr_advance_rec_id")]
         public int LrAdvanceRecId { get; set; }
 
+        [Column("lr_advance_total")]
+        public double LrAdvanceTotal { get; set; } = 0;
 
+        [Column("lr_diesel_total")]
+        public double LrDieselTotal { get; set; } = 0;
+
+        [Column("lr_charges_total")]
+        public double LrChargesTotal { get; set; } = 0;
+
+        [Column("lr_expense_total")]
+        public double LrExpenseTotal { get; set; } = 0;
+
+        [Column("lr_advrec_total")]
+        public double LrAdvRecTotal { get; set; } = 0;
+
+        [Column("lr_net_freight_calc")]
+        public double LrNetFreightCalc { get; set; } = 0;
 
     }
+
+
+    public class LrListProductVM
+    {
+        public string? ProductName { get; set; }
+        public string? BillType { get; set; }
+        public double Rate { get; set; }
+        public double GrossFreight { get; set; }
+    }
+
+    // Journal row — for Advance/Diesel/Charges/Expense/AdvRec tooltip breakdown
+    public class LrListJournalVM
+    {
+        public string? AccountName { get; set; }
+        public double Amount { get; set; }
+        public string? Remarks { get; set; }
+    }
+
     public class LrListVM
     {
         public int LrId { get; set; }
 
-        // Basic
+        // ── Basic ─────────────────────────────────────────────────────
         public string? LrNoStr { get; set; }
         public DateTime? LrDate { get; set; }
         public string? LrTripNo { get; set; }
 
-        // Party Info (Names only)
+        // ── Party Info ────────────────────────────────────────────────
         public string? PartyName { get; set; }
         public string? SupplierName { get; set; }
+        public int? LrVehicleId { get; set; }
         public string? VehicleNo { get; set; }
         public string? DriverName { get; set; }
 
-        // Location (Names only)
+        // ── Location ──────────────────────────────────────────────────
         public string? FromLocationName { get; set; }
         public string? ToLocationName { get; set; }
 
-        // Weight
+        // ── Weight ────────────────────────────────────────────────────
         public double LrLoadWt { get; set; }
         public double LrUnloadWt { get; set; }
         public double LrShortWt { get; set; }
 
-        // Billing
+        // ── Billing ───────────────────────────────────────────────────
         public string? LrBillTypeBill { get; set; }
         public double LrRateBill { get; set; }
         public double LrGrossFreightBill { get; set; }
         public double LrNetFreightBill { get; set; }
 
-        // Truck
+        // ── Truck ─────────────────────────────────────────────────────
         public double LrBillRateTruck { get; set; }
         public double LrNetFreightTruck { get; set; }
 
-        // GST
+        // ── GST ───────────────────────────────────────────────────────
         public double LrGstPercentage { get; set; }
         public double LrGstAmount { get; set; }
 
-        // Status
+        // ── Journal Totals (direct from lrs table columns) ────────────
+        public double LrAdvanceTotal { get; set; }
+        public double LrDieselTotal { get; set; }
+        public double LrChargesTotal { get; set; }
+        public double LrExpenseTotal { get; set; }
+        public double LrAdvRecTotal { get; set; }
+        public double LrNetFreightCalc { get; set; }
+
+        // ── Status ────────────────────────────────────────────────────
         public int LrStatus { get; set; }
+
+        // ── Tooltip Breakdown (populated in GetAllForList) ─────────────
+        public List<LrListProductVM> Products { get; set; } = new();
+        public List<LrListJournalVM> AdvanceRows { get; set; } = new();
+        public List<LrListJournalVM> DieselRows { get; set; } = new();
+        public List<LrListJournalVM> ChargesRows { get; set; } = new();
+        public List<LrListJournalVM> ExpenseRows { get; set; } = new();
+        public List<LrListJournalVM> AdvRecRows { get; set; } = new();
     }
     public class LrEntryDto
     {
