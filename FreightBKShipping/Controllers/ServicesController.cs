@@ -144,11 +144,15 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Create(ServiceCreateDto dto)
         {
             // Optional: prevent duplicate service name within company
-            bool exists = await _context.Services
-                .AnyAsync(s => s.ServiceCompanyId == GetCompanyId() && s.ServiceName == dto.ServiceName);
-            if (exists)
-                return Conflict($"Service '{dto.ServiceName}' already exists for this company.");
+            bool exists = await _context.Services.AnyAsync(s =>
+    s.ServiceCompanyId == GetCompanyId() &&
+    s.ServiceName.ToLower() == dto.ServiceName.ToLower()
+);
 
+            if (exists)
+            {
+                return BadRequest(new { message = $"Service '{dto.ServiceName}' already exists." });
+            }
             var service = new Service
             {
                 ServiceCompanyId = GetCompanyId(),
@@ -204,6 +208,16 @@ namespace FreightBKShipping.Controllers
             if (service == null)
                 return NotFound("Service not found");
 
+            bool exists = await _context.Services.AnyAsync(s =>
+    s.ServiceCompanyId == GetCompanyId() &&
+    s.ServiceId != id &&
+    s.ServiceName.ToLower() == dto.ServiceName.ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Service '{dto.ServiceName}' already exists." });
+            }
             service.ServiceName = dto.ServiceName;
             service.ServicePrintName = dto.ServicePrintName;
                 service.ServiceChargeType = dto.ServiceChargeType;
@@ -263,7 +277,7 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(new
                 {
 
-                    Message = "This Sevice is referenced in Bill and It cannot be deleted."
+                    Message = "This Sevice is Used in Bill."
                 });
             }
             _context.Services.Remove(service);

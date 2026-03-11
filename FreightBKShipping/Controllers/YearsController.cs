@@ -40,8 +40,10 @@ namespace FreightBKShipping.Controllers
             [HttpPost]
             public async Task<ActionResult<Year>> CreateYear(Year year)
         {
+            try
+            {
 
-            var isDuplicate = await _context.Years
+                var isDuplicate = await _context.Years
     .AnyAsync(y =>
         y.YearCompanyId == GetCompanyId() &&
          y.YearDateFrom == year.YearDateFrom.Value.Date &&
@@ -86,9 +88,28 @@ namespace FreightBKShipping.Controllers
             }, GetCompanyId());
             return CreatedAtAction(nameof(GetYear), new { id = year.YearId }, year);
             }
+            catch (DbUpdateException dbEx)
+            {
+                var message = dbEx.InnerException?.Message ?? dbEx.Message;
+
+                return BadRequest(new
+                {
+                    message = message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
 
             [HttpPut("{id}")]
             public async Task<IActionResult> UpdateYear(int id, Year year)
+            {
+            try
             {
                 if (id != year.YearId)
                     return BadRequest();
@@ -145,7 +166,24 @@ namespace FreightBKShipping.Controllers
                 YearId = year.YearId
             }, GetCompanyId());
             return NoContent();
-            }   
+            }
+            catch (DbUpdateException dbEx)
+            {
+                var message = dbEx.InnerException?.Message ?? dbEx.Message;
+
+                return BadRequest(new
+                {
+                    message = message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }   
 
             [HttpDelete("{id}")]
             public async Task<IActionResult> DeleteYear(int id)

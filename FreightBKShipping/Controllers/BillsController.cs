@@ -817,6 +817,9 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBill(int id, BillDto billDto)
         {
+            try
+            {
+
                 if (id != billDto.BillId)
                 return BadRequest("Bill ID mismatch.");
 
@@ -1220,6 +1223,23 @@ namespace FreightBKShipping.Controllers
             }, GetCompanyId());
 
             return NoContent();
+        }
+            catch (DbUpdateException dbEx)
+{
+                var message = dbEx.InnerException?.Message ?? dbEx.Message;
+
+                return BadRequest(new
+                {
+                    message = message
+    });
+            }
+catch (Exception ex)
+{
+                return BadRequest(new
+                                  {
+                                      message = ex.Message
+                                  });
+            }
         }
 
         private async Task RecalculateSalesBillDueAsync(int? salesBillId)

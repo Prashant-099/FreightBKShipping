@@ -141,6 +141,8 @@ namespace FreightBKShipping
 
             app.UseAuthorization();
 
+            app.UseMiddleware<GlobalExceptionMiddleware>();
+
             app.MapControllers();
 
             app.Run();

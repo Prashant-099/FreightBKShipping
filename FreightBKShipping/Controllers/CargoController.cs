@@ -24,6 +24,18 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(CargoCreateDto dto)
         {
+
+            var exists = await _context.Cargoes.AnyAsync(c =>
+        c.CargoCompanyId == GetCompanyId() &&
+        c.CargoName.ToLower() == dto.CargoName.ToLower()
+    );
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Cargo  already exists." });
+            }
+
+
             // Fetch selected HSN record
             var hsn = await _context.HsnSacs.FirstOrDefaultAsync(h => h.HsnId == dto.CargoHsn);
 
@@ -64,6 +76,18 @@ namespace FreightBKShipping.Controllers
         {
             var cargo = await _context.Cargoes.FindAsync(id);
             if (cargo == null) return NotFound();
+
+            var exists = await _context.Cargoes.AnyAsync(c =>
+        c.CargoCompanyId == GetCompanyId() &&
+        c.CargoId != id &&
+        c.CargoName.ToLower() == dto.CargoName.ToLower()
+    );
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Cargo  already exists." });
+            }
+
             // Fetch new HSN record
             var hsn = await _context.HsnSacs.FirstOrDefaultAsync(h => h.HsnId == dto.CargoHsn);
 
@@ -106,7 +130,7 @@ namespace FreightBKShipping.Controllers
             {
                 return BadRequest(new
                 {
-                        Message = "This Cargo is referenced in Job and It cannot be deleted."
+                        Message = "This Cargo is Used in Job"
                 });
             }
             _context.Cargoes.Remove(cargo);

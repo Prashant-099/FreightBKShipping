@@ -43,6 +43,17 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<HsnSac>> PostHsnSac(HsnSac hsnSac)
         {
+
+            var exists = await _context.HsnSacs.AnyAsync(h =>
+        h.HsnCompanyId == GetCompanyId() &&
+        h.HsnName.ToLower() == hsnSac.HsnName.ToLower()
+    );
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"HSN/SAC  already exists." });
+
+            }
             var gstSlab = await _context.GstSlabs
         .FirstOrDefaultAsync(x => x.GstSlabId == hsnSac.HsnGstSlabId);
 
@@ -77,6 +88,17 @@ namespace FreightBKShipping.Controllers
         {
             if (id != hsnSac.HsnId)
                 return BadRequest();
+            var exists = await _context.HsnSacs.AnyAsync(h =>
+    h.HsnCompanyId == GetCompanyId() &&
+    h.HsnId != id &&
+    h.HsnName.ToLower() == hsnSac.HsnName.ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"HSN/SAC already exists." });
+            }
+
             // ✅ Recalculate GST percentage if slab changed
             var gstSlab = await _context.GstSlabs
                 .FirstOrDefaultAsync(x => x.GstSlabId == hsnSac.HsnGstSlabId);
@@ -120,7 +142,33 @@ namespace FreightBKShipping.Controllers
             var hsnSac = await FilterByCompany(_context.HsnSacs, "HsnCompanyId").FirstOrDefaultAsync(b => b.HsnId == id);
             if (hsnSac == null)
                 return NotFound();
+            bool existsInService = await _context.Services.AnyAsync(s =>
+        s.ServiceHsnId == id &&
+        s.ServiceCompanyId == GetCompanyId() &&
+        s.ServiceStatus == true
+    );
 
+            if (existsInService)
+            {
+                return BadRequest(new
+                {
+                    message = $"This HSN/SAC  is used in Services."
+                });
+            }
+
+            bool existsInCargo= await _context.Cargoes.AnyAsync(s =>
+       s.CargoHsn == id &&
+       s.CargoCompanyId == GetCompanyId() &&
+       s.CargoStatus == true
+   );
+
+            if (existsInCargo)
+            {
+                return BadRequest(new
+                {
+                    message = $"This HSN/SAC  is used in Cargo."
+                });
+            }
             _context.HsnSacs.Remove(hsnSac);
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto
