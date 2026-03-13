@@ -45,6 +45,14 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] VesselCreateDto dto)
         {
+            var exists = await _context.Vessels.AnyAsync(v =>
+    v.VesselCompanyId == GetCompanyId() &&
+    v.VesselName.Trim().ToLower() == dto.VesselName.Trim().ToLower());
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Vessel Name  already exists." });
+            }
             var vessel = new Vessel
             {
                 VesselUuid = Guid.NewGuid().ToString("N").Substring(0, 30),
@@ -93,6 +101,17 @@ namespace FreightBKShipping.Controllers
             var vessel = await _context.Vessels.FindAsync(id);
             if (vessel == null) return NotFound();
 
+            var exists = await _context.Vessels.AnyAsync(v =>
+    v.VesselCompanyId == GetCompanyId() &&
+    v.VesselId != id &&
+    v.VesselName.Trim().ToLower() == dto.VesselName.Trim().ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Vessel Name already exists." });
+            }
+
             vessel.VesselUpdatedByUserId = GetUserId();
             vessel.VesselName = dto.VesselName;
             vessel.VesselStatus = dto.VesselStatus;
@@ -135,7 +154,34 @@ namespace FreightBKShipping.Controllers
             var vessel = await FilterByCompany(_context.Vessels, "VesselCompanyId")
                 .FirstOrDefaultAsync(v => v.VesselId == id);
             if (vessel == null) return NotFound();
+            // 🔎 Check used in Jobs
+            bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+               j.JobVesselId == id  &&
+                j.JobCompanyId == GetCompanyId() &&
+                j.JobActive == true
+            );
 
+            if (usedInJobs)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Vesesl Name  is used in Jobs."
+                });
+            }
+            // 🔎 Check used in Bills
+            bool usedInBills = await _context.Bills.AnyAsync(b =>
+                b.BillVesselId == id  &&
+                b.BillCompanyId == GetCompanyId() &&
+                b.BillStatus == true
+            );
+
+            if (usedInBills)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Vessel Name  is used in Bills."
+                });
+            }
             _context.Vessels.Remove(vessel);
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto

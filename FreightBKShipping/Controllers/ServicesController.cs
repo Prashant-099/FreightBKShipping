@@ -146,7 +146,7 @@ namespace FreightBKShipping.Controllers
             // Optional: prevent duplicate service name within company
             bool exists = await _context.Services.AnyAsync(s =>
     s.ServiceCompanyId == GetCompanyId() &&
-    s.ServiceName.ToLower() == dto.ServiceName.ToLower()
+    s.ServiceName.Trim().ToLower() == dto.ServiceName.Trim().ToLower()
 );
 
             if (exists)
@@ -211,7 +211,7 @@ namespace FreightBKShipping.Controllers
             bool exists = await _context.Services.AnyAsync(s =>
     s.ServiceCompanyId == GetCompanyId() &&
     s.ServiceId != id &&
-    s.ServiceName.ToLower() == dto.ServiceName.ToLower()
+    s.ServiceName.Trim().ToLower() == dto.ServiceName.Trim().ToLower()
 );
 
             if (exists)

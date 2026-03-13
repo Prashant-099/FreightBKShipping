@@ -61,16 +61,15 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] NotifyCreateDto dto)
         {
-            try
-            {
+            
                 // Check duplicate
                 var exists = await _context.Notifies
                     .AnyAsync(n => n.NotifyCompanyId == GetCompanyId() &&
-                                   n.NotifyType == dto.NotifyType &&
-                                   n.NotifyName == dto.NotifyName);
+                                   n.NotifyType.Trim().ToLower() == dto.NotifyType.Trim().ToLower() &&
+                                   n.NotifyName.Trim().ToLower() == dto.NotifyName.Trim().ToLower());
 
                 if (exists)
-                    return BadRequest("A notify with the same name and type already exists.");
+                    return BadRequest(new { Message = $"This Name Already Eixt in '{dto.NotifyType}' Type." });
 
                 string? stateName = " ";
                 string? stateCode = " ";
@@ -124,31 +123,25 @@ namespace FreightBKShipping.Controllers
                     YearId = 0
                 }, GetCompanyId());
                 return Ok(notify);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal error: {ex.Message}");
-            }
+           
         }
 
         // PUT: api/Notifies/5
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] NotifyUpdateDto dto)
         {
-            try
-            {
-                var notify = await _context.Notifies.FindAsync(id);
+               var notify = await _context.Notifies.FindAsync(id);
                 if (notify == null) return NotFound();
 
                 // Check duplicate for other records
                 var exists = await _context.Notifies
                     .AnyAsync(n => n.NotifyCompanyId == GetCompanyId() &&
-                                   n.NotifyType == dto.NotifyType &&
-                                   n.NotifyName == dto.NotifyName &&
+                                   n.NotifyType.Trim().ToLower() == dto.NotifyType.Trim().ToLower() &&
+                                   n.NotifyName.Trim().ToLower() == dto.NotifyName.Trim().ToLower() &&
                                    n.NotifyId != id);
 
                 if (exists)
-                    return BadRequest("A notify with the same name and type already exists.");
+                    return BadRequest(new { Message = $"This Name Already Eist in '{dto.NotifyType}' Type." });
                 string? stateName = " ";
                 string? stateCode = " ";
                 var state = await _context.States.FindAsync(dto.NotifyStateId);
@@ -194,25 +187,49 @@ namespace FreightBKShipping.Controllers
                     YearId = 0
                 }, GetCompanyId());
                 return Ok(notify);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal error: {ex.Message}");
-            }
+            
         }
 
         // DELETE: api/Notifies/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
+            
                 var notify = await FilterByCompany(_context.Notifies, "NotifyCompanyId")
                                     .FirstOrDefaultAsync(n => n.NotifyId == id);
 
                 if (notify == null) return NotFound();
 
-                _context.Notifies.Remove(notify);
+            // 🔎 Check used in Jobs
+            bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+               (j.JobLineId == id || j.JobConsigneeId == id || j.JobShipperId == id || j.JobSupplierId == id || j.JobChaId == id) &&
+                j.JobCompanyId == GetCompanyId() &&
+                j.JobActive == true
+            );
+
+            if (usedInJobs)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Name  is used in Jobs."
+                });
+            }
+            // 🔎 Check used in Bills
+            bool usedInBills = await _context.Bills.AnyAsync(b =>
+                (b.BillShipperId == id || b.BillConsigneeId == id) &&
+                b.BillCompanyId == GetCompanyId() &&
+                b.BillStatus == true
+            );
+
+            if (usedInBills)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Name  is used in Bills."
+                });
+            }
+
+            _context.Notifies.Remove(notify);
                 await _context.SaveChangesAsync();
                 await _auditLogService.AddAsync(new AuditLogCreateDto
                 {
@@ -226,11 +243,7 @@ namespace FreightBKShipping.Controllers
                     YearId = 0
                 }, GetCompanyId());
                 return Ok(true);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal error: {ex.Message}");
-            }
+            
         }
     }
 }

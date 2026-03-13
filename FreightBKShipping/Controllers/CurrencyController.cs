@@ -64,6 +64,16 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<CurrencyReadDto>> Create(CurrencyCreateDto dto)
         {
+            var exists = await _context.Currencies.AnyAsync(c =>
+    c.CurrencyCompanyId == GetCompanyId() &&
+    c.CurrencyName.Trim().ToLower() == dto.CurrencyName.Trim().ToLower()
+
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Currency Name already exists." });
+            }
             var currency = new Currency
             {
                 CurrencyCompanyId = GetCompanyId(),
@@ -109,6 +119,18 @@ namespace FreightBKShipping.Controllers
             var currency = await _context.Currencies.FindAsync(id);
             if (currency == null) return NotFound();
 
+            var exists = await _context.Currencies.AnyAsync(c =>
+    c.CurrencyCompanyId == GetCompanyId() &&
+    c.CurrencyId != id &&
+    c.CurrencyName.Trim().ToLower() == dto.CurrencyName.Trim().ToLower() 
+ 
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Currency Name already exists." });
+
+            }
             currency.CurrencyName = dto.CurrencyName;
             currency.CurrencySymbol = dto.CurrencySymbol;
             currency.CurrencyStatus = dto.CurrencyStatus;
@@ -136,7 +158,34 @@ namespace FreightBKShipping.Controllers
         {
             var currency = await FilterByCompany(_context.Currencies, "CurrencyCompanyId").FirstOrDefaultAsync(b => b.CurrencyId == id);
             if (currency == null) return NotFound();
+            // 🔎 Check used in Jobs
+            bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+               j.JobDefCurrId == id &&
+                j.JobCompanyId == GetCompanyId() &&
+                j.JobActive == true
+            );
 
+            if (usedInJobs)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Currency  is used in Jobs."
+                });
+            }
+            // 🔎 Check used in Bills
+            bool usedInBills = await _context.Bills.AnyAsync(b =>
+                b.BillDefaultCurrencyId == id &&
+                b.BillCompanyId == GetCompanyId() &&
+                b.BillStatus == true
+            );
+
+            if (usedInBills)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Currency  is used in Bills."
+                });
+            }
             _context.Currencies.Remove(currency);
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto

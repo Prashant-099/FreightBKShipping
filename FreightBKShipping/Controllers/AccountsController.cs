@@ -44,7 +44,7 @@ public class AccountsController : BaseController
             var duplicate = await _context.Accounts.AnyAsync(a =>
     a.AccountCompanyId == GetCompanyId() &&
     a.AccountYearId == dto.AccountYearId &&
-    a.AccountName.ToLower() == dto.AccountName.ToLower()
+    a.AccountName.Trim().ToLower() == dto.AccountName.Trim().ToLower()
 );
 
             if (duplicate)
@@ -91,7 +91,7 @@ public class AccountsController : BaseController
      a.AccountCompanyId == GetCompanyId() &&
      a.AccountYearId == dto.AccountYearId &&
      a.AccountId != id &&
-     a.AccountName.ToLower() == dto.AccountName.ToLower()
+     a.AccountName.Trim().ToLower() == dto.AccountName.Trim().ToLower()
  );
 
         if (duplicate)

@@ -67,7 +67,7 @@ namespace FreightBKShipping.Controllers
         {
             bool exists = await _context.ServiceGroups.AnyAsync(g =>
     g.ServiceGroupsCompanyId == GetCompanyId() &&
-    g.ServiceGroupsName.ToLower() == dto.ServiceGroupsName.ToLower()
+    g.ServiceGroupsName.Trim().ToLower() == dto.ServiceGroupsName.Trim().ToLower()
 );
 
             if (exists)
@@ -114,7 +114,7 @@ namespace FreightBKShipping.Controllers
             bool exists = await _context.ServiceGroups.AnyAsync(g =>
         g.ServiceGroupsCompanyId == GetCompanyId() &&
         g.ServiceGroupsId != id &&
-        g.ServiceGroupsName.ToLower() == dto.ServiceGroupsName.ToLower()
+        g.ServiceGroupsName.Trim().ToLower() == dto.ServiceGroupsName.Trim().ToLower()
     );
 
             if (exists)
