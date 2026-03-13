@@ -57,7 +57,7 @@ namespace FreightBKShipping
             builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
             builder.Services.AddScoped<ICompanySubscriptionService, CompanySubscriptionService>();
             builder.Services.AddScoped<ILrService, LrService>();
-
+            builder.Services.AddScoped<ITicketService, TicketService>();
 
             builder.Services.AddHttpContextAccessor();
             // ✅ 4. Add JWT Authentication
