@@ -140,9 +140,20 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateUser(UserAddDto dto)
         {
-            try
+             try
             {
-                var userId = Guid.NewGuid().ToString();
+                if (await _context.Users.AnyAsync(u =>
+    u.UserCompanyId == GetCompanyId() && u.UserEmail == dto.UserEmail))
+                {
+                    return BadRequest(new { message = "Email already exists." });
+                }
+
+                if (await _context.Users.AnyAsync(u =>
+                    u.UserCompanyId == GetCompanyId() && u.UserMobile == dto.UserMobile))
+                {
+                    return BadRequest(new { message = "Mobile number already exists." });
+                }
+                    var userId = Guid.NewGuid().ToString();
 
             var user = new User
             {
@@ -214,6 +225,22 @@ catch (Exception ex)
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, UserUpdateDto dto)
         {
+            if (await _context.Users.AnyAsync(u =>
+         u.UserCompanyId == GetCompanyId() &&
+         u.UserId != dto.UserId &&
+         u.UserEmail == dto.UserEmail))
+            {
+                return BadRequest(new { message = "Email already exists." });
+            }
+
+            if (await _context.Users.AnyAsync(u =>
+                u.UserCompanyId == GetCompanyId() &&
+                u.UserId != dto.UserId &&
+                u.UserMobile == dto.UserMobile))
+            {
+                return BadRequest(new { message = "Mobile number already exists." });
+            }
+
             if (id != dto.UserId)
                 return BadRequest("ID mismatch");
 
@@ -263,7 +290,9 @@ catch (Exception ex)
                 YearId = 0
             }, GetCompanyId());
             return Ok(true);
-        }
+            }
+           
+        
 
         // ✅ DELETE: api/users/{id}
         [HttpDelete("{id}")]

@@ -41,6 +41,17 @@ public class AccountsController : BaseController
     {
         try
         {
+            var duplicate = await _context.Accounts.AnyAsync(a =>
+    a.AccountCompanyId == GetCompanyId() &&
+    a.AccountYearId == dto.AccountYearId &&
+    a.AccountName.ToLower() == dto.AccountName.ToLower()
+);
+
+            if (duplicate)
+            {
+                return BadRequest(new { message = "Account name already exists." });
+            }
+
             dto.AccountCompanyId = GetCompanyId();
             dto.AccountAddedByUserId = GetUserId();
             dto.AccountUpdatedByUserId = GetUserId();
@@ -75,6 +86,18 @@ public class AccountsController : BaseController
         var account = await _context.Accounts.FindAsync(id);
         if (account == null) return NotFound();
 
+
+        var duplicate = await _context.Accounts.AnyAsync(a =>
+     a.AccountCompanyId == GetCompanyId() &&
+     a.AccountYearId == dto.AccountYearId &&
+     a.AccountId != id &&
+     a.AccountName.ToLower() == dto.AccountName.ToLower()
+ );
+
+        if (duplicate)
+        {
+            return BadRequest(new { message = "Account name already exists." });
+        }
         // Validate AccountBalanceType
         //if (dto.AccountBalanceType != "Dr" && dto.AccountBalanceType != "Cr")
         //    return BadRequest("Invalid AccountBalanceType. Allowed values: 'Dr', 'Cr'.");

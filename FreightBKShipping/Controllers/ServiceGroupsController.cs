@@ -65,6 +65,16 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(ServiceGroupCreateDto dto)
         {
+            bool exists = await _context.ServiceGroups.AnyAsync(g =>
+    g.ServiceGroupsCompanyId == GetCompanyId() &&
+    g.ServiceGroupsName.ToLower() == dto.ServiceGroupsName.ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Service group  already exists." });
+            }
+
             var group = new ServiceGroup
             {
                 ServiceGroupsName = dto.ServiceGroupsName,
@@ -101,6 +111,18 @@ namespace FreightBKShipping.Controllers
 
             if (group == null) return NotFound("Service group not found");
 
+            bool exists = await _context.ServiceGroups.AnyAsync(g =>
+        g.ServiceGroupsCompanyId == GetCompanyId() &&
+        g.ServiceGroupsId != id &&
+        g.ServiceGroupsName.ToLower() == dto.ServiceGroupsName.ToLower()
+    );
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Service group  already exists." });
+            }
+
+
             group.ServiceGroupsName = dto.ServiceGroupsName;
             group.ServiceGroupsStatus = dto.ServiceGroupsStatus;
             group.ServiceGroupsRemarks = dto.ServiceGroupsRemarks;
@@ -132,6 +154,20 @@ namespace FreightBKShipping.Controllers
                               .FirstOrDefaultAsync(g => g.ServiceGroupsId == id);
 
             if (group == null) return NotFound("Service group not found");
+
+            bool existsInService = await _context.Services.AnyAsync(s =>
+        s.ServiceGroupId == id &&
+        s.ServiceCompanyId == GetCompanyId() &&
+        s.ServiceStatus == true
+    );
+
+            if (existsInService)
+            {
+                return BadRequest(new
+                {
+                    message = $"This ServiceGroup  is used in Services."
+                });
+            }
 
             _context.ServiceGroups.Remove(group);
             await _context.SaveChangesAsync();

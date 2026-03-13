@@ -97,6 +97,20 @@ namespace FreightBKShipping.Controllers
         {
             try
             {
+                var exists = await _context.Locations.AnyAsync(l =>
+            l.LocationCompanyId == GetCompanyId() &&
+            l.LocationType == dto.LocationType &&
+            l.LocationName.ToLower() == dto.LocationName.ToLower()
+        );
+
+                if (exists)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"Location  already exists in this '{dto.LocationType}'."
+                    });
+                }
+
                 var location = new Location
                 {
                     LocationName = dto.LocationName,
@@ -149,6 +163,20 @@ namespace FreightBKShipping.Controllers
 
                 if (location == null) return NotFound(new { message = "Location not found" });
 
+                var exists = await _context.Locations.AnyAsync(l =>
+            l.LocationCompanyId == GetCompanyId() &&
+            l.LocationType == dto.LocationType &&
+            l.LocationId != id &&
+            l.LocationName.ToLower() == dto.LocationName.ToLower()
+        );
+
+                if (exists)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"Location  already exists in this '{dto.LocationType}'."
+                    });
+                }
                 location.LocationName = dto.LocationName;
                 location.LocationPincode = dto.LocationPincode;
                 location.LocationState = dto.LocationState;
@@ -195,6 +223,34 @@ namespace FreightBKShipping.Controllers
 
                 if (location == null) return NotFound(new { message = "Location not found" });
 
+                // 🔎 Check used in Jobs
+                bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+                   ( j.JobPodId == id || j.JobPolId == id)&&
+                    j.JobCompanyId == GetCompanyId() &&
+                    j.JobActive == true
+                );
+
+                if (usedInJobs)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"This location '{location.LocationName}' is used in Jobs."
+                    });
+                }
+                // 🔎 Check used in Bills
+                bool usedInBills = await _context.Bills.AnyAsync(b =>
+                    (b.BillPodId == id || b.BillPolId == id) &&
+                    b.BillCompanyId == GetCompanyId() &&
+                    b.BillStatus == true
+                );
+
+                if (usedInBills)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"This location '{location.LocationName}' is used in Bills."
+                    });
+                }
                 _context.Locations.Remove(location);
                 await _context.SaveChangesAsync();
                 await _auditLogService.AddAsync(new AuditLogCreateDto

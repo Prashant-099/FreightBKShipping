@@ -42,6 +42,15 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<GstSlab>> PostGstSlab(GstSlab slab)
         {
+            var duplicate = await _context.GstSlabs.AnyAsync(g =>
+    g.GstSlabCompanyId == GetCompanyId() &&
+    g.GstSlabIgstPer == slab.GstSlabIgstPer
+);
+
+            if (duplicate)
+            {
+                return BadRequest(new { message = "GstSlab already exists." });
+            }
             slab.GstSlabCreated = DateTime.UtcNow;
             slab.GstSlabUpdated = DateTime.UtcNow;
             slab.GstSlabUpdatedByUserId = GetUserId();
@@ -71,6 +80,17 @@ namespace FreightBKShipping.Controllers
         {
             if (id != slab.GstSlabId)
                 return BadRequest();
+
+            var duplicate = await _context.GstSlabs.AnyAsync(g =>
+    g.GstSlabCompanyId == GetCompanyId() &&
+    g.GstSlabIgstPer == slab.GstSlabIgstPer &&
+    g.GstSlabId != id
+);
+
+            if (duplicate)
+            {
+                return BadRequest(new { message = "GstSlab already exists." });
+            }
 
             slab.GstSlabUpdated = DateTime.UtcNow;
             slab.GstSlabUpdatedByUserId = GetUserId();
@@ -109,6 +129,20 @@ namespace FreightBKShipping.Controllers
             var slab = await FilterByCompany(_context.GstSlabs, "GstSlabCompanyId").FirstOrDefaultAsync(b => b.GstSlabId == id);
             if (slab == null)
                 return NotFound();
+
+            // 🔍 Check if GST Slab used in HSN/SAC
+            bool usedInHsn = await _context.HsnSacs.AnyAsync(h =>
+                h.HsnGstSlabId == id &&
+                h.HsnCompanyId == GetCompanyId()
+            );
+
+            if (usedInHsn)
+            {
+                return BadRequest(new
+                {
+                    message = $"This GST Slab  is used in HSN/SAC."
+                });
+            }
 
             _context.GstSlabs.Remove(slab);
             await _auditLogService.AddAsync(new AuditLogCreateDto
