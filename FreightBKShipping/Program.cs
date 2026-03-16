@@ -177,7 +177,7 @@ namespace FreightBKShipping
             app.UseMiddleware<GlobalExceptionMiddleware>();
 
             app.MapControllers();
-            app.MapHub<TicketHub>("/signalr/ticket");
+            app.MapHub<TicketHub>("/tickethub");
             app.Run();
         }
     }
