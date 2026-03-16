@@ -46,6 +46,17 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Status status)
         {
+            var exists = await _context.Status.AnyAsync(s =>
+    s.StatusCompanyId == GetCompanyId() &&
+    s.StatusName.Trim().ToLower() == status.StatusName.Trim().ToLower()
+    && s.Status_code.Trim().ToLower() == status.Status_code.Trim().ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Status Name already exists in '{status.Status_code}'." });
+            }
+
             status.StatusCreated = DateTime.UtcNow;
             status.StatusUpdated = DateTime.UtcNow;
             status.StatusCreatedByUser = GetUserId();
@@ -74,6 +85,18 @@ namespace FreightBKShipping.Controllers
             var status = await _context.Status.FindAsync(id);
             if (status == null) return NotFound();
 
+            var exists = await _context.Status.AnyAsync(s =>
+       s.StatusCompanyId == GetCompanyId() &&
+       s.StatusId != id &&
+       s.StatusName.Trim().ToLower() == model.StatusName.Trim().ToLower()
+       && s.Status_code.Trim().ToLower() == model.Status_code.Trim().ToLower()
+   );
+
+            if (exists)
+            {
+                return BadRequest(new { message = $"Status Name already exists in '{status.Status_code}'." });
+
+            }
             status.StatusName = model.StatusName;
             status.Status_code = model.Status_code;
             status.StatusUpdated = DateTime.UtcNow;
@@ -102,6 +125,27 @@ namespace FreightBKShipping.Controllers
         {
             var status = await FilterByCompany(_context.Status, "StatusCompanyId").FirstOrDefaultAsync(a => a.StatusId == id);
             if (status == null) return NotFound();
+
+            // 🔎 Check used in Jobs
+            bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+               j.JobStatus == id &&
+                j.JobCompanyId == GetCompanyId() &&
+                j.JobActive == true
+
+            );
+            if (usedInJobs)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Status is used in Jobs."
+                });
+            }
+            // 🔎 Check used in Bills
+            bool usedInBills = await _context.Bills.AnyAsync(b =>
+                b.BillVesselId == id &&
+                b.BillCompanyId == GetCompanyId() &&
+                b.BillStatus == true
+            );
 
             _context.Status.Remove(status);
             await _context.SaveChangesAsync();

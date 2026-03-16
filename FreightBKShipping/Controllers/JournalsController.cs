@@ -211,8 +211,7 @@ namespace FreightBKShipping.Controllers
         {
             using var tx = await _context.Database.BeginTransactionAsync();
 
-            try
-            {
+           
                 // Get voucher
                 var voucher = await _context.Vouchers
                     .FirstOrDefaultAsync(v => v.VoucherId == journalDto.JournalVoucherId &&
@@ -403,22 +402,7 @@ namespace FreightBKShipping.Controllers
 
                 await tx.CommitAsync();
                 return NoContent();
-            }
-            catch (DbUpdateException dbEx)
-            {
-                await tx.RollbackAsync();
-                return BadRequest(new
-                {
-                    error = "Database update error",
-                    details = dbEx.InnerException?.Message ?? dbEx.Message,
-                    stack = dbEx.StackTrace
-                });
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync();
-                return BadRequest(new { error = "Error creating journal", details = ex.Message, stack = ex.StackTrace });
-            }
+           
         }
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJournal(int id, JournalDto journalDto)

@@ -141,7 +141,7 @@ namespace FreightBKShipping.Controllers
                 );
 
             if (isDuplicate)
-                return BadRequest(new { message = "Voucher name already exists." });
+                return BadRequest( "Voucher Name Already Exists." );
 
             var voucher = new Voucher
             {
@@ -242,7 +242,7 @@ namespace FreightBKShipping.Controllers
 
             if (isDuplicate)
             {
-                return BadRequest(new { message = "Voucher name already exists." });
+                return BadRequest(new { message = "Voucher Name Already Exists." });
             }
 
 

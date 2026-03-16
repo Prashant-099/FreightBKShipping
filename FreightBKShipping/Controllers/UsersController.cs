@@ -140,18 +140,17 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateUser(UserAddDto dto)
         {
-             try
-            {
+            
                 if (await _context.Users.AnyAsync(u =>
     u.UserCompanyId == GetCompanyId() && u.UserEmail == dto.UserEmail))
                 {
-                    return BadRequest(new { message = "Email already exists." });
+                    return BadRequest( "Email already exists." );
                 }
 
                 if (await _context.Users.AnyAsync(u =>
                     u.UserCompanyId == GetCompanyId() && u.UserMobile == dto.UserMobile))
                 {
-                    return BadRequest(new { message = "Mobile number already exists." });
+                    return BadRequest("Mobile number already exists.");
                 }
                     var userId = Guid.NewGuid().ToString();
 
@@ -202,23 +201,7 @@ namespace FreightBKShipping.Controllers
                 YearId = 0
             }, GetCompanyId());
             return Ok(true);
-        }
-            catch (DbUpdateException dbEx)
-{
-                var message = dbEx.InnerException?.Message ?? dbEx.Message;
-
-                return BadRequest(new
-                {
-                    message = message
-                });
-            }
-catch (Exception ex)
-{
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
+        
         }
 
         // ✅ PUT: api/users/{id} (MULTI BRANCH UPDATE)

@@ -72,7 +72,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = $"Service group  already exists." });
+                return BadRequest($"ServiceGroup  Already Exists.");
             }
 
             var group = new ServiceGroup
@@ -119,7 +119,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = $"Service group  already exists." });
+                return BadRequest(new { message = $"ServiceGroup  Already Exists." });
             }
 
 
@@ -163,10 +163,7 @@ namespace FreightBKShipping.Controllers
 
             if (existsInService)
             {
-                return BadRequest(new
-                {
-                    message = $"This ServiceGroup  is used in Services."
-                });
+                return BadRequest( $"It is used in Services.");
             }
 
             _context.ServiceGroups.Remove(group);

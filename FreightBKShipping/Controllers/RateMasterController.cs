@@ -70,9 +70,23 @@ public class RateMasterController : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] RateMasterCreateDto dto)
     {
-        try
+        var exists = await _context.RateMasters.AnyAsync(r =>
+    r.RateMasterCompanyId == GetCompanyId() &&
+    r.RateMasterPartyId == dto.RateMasterPartyId &&
+    r.RateMasterServiceId == dto.RateMasterServiceId &&
+    r.RateMasterApplicableDt.Value.Date == dto.RateMasterApplicableDt.Date
+);
+
+        if (exists)
         {
-            var rateMaster = new RateMaster
+            return BadRequest(new
+            {
+                message = "Rate already exists."
+            });
+
+
+            }
+                    var rateMaster = new RateMaster
             {
                 RateMasterPartyId = dto.RateMasterPartyId,
                 RateMasterServiceId = dto.RateMasterServiceId,
@@ -104,11 +118,7 @@ public class RateMasterController : BaseController
                 YearId = 0
             }, GetCompanyId());
             return Ok(rateMaster);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        
     }
 
     // 🔹 UPDATE (COMPANY SAFE)
@@ -124,6 +134,22 @@ public class RateMasterController : BaseController
 
         if (rate == null)
             return NotFound();
+
+        var exists = await _context.RateMasters.AnyAsync(r =>
+    r.RateMasterCompanyId == companyId &&
+    r.RateMasterId != id &&
+    r.RateMasterPartyId == dto.RateMasterPartyId &&
+    r.RateMasterServiceId == dto.RateMasterServiceId &&
+    r.RateMasterApplicableDt.Value.Date == dto.RateMasterApplicableDt.Value.Date
+);
+
+        if (exists)
+        {
+            return BadRequest(new
+            {
+                message = "Rate already exists."
+            });
+        }
 
         rate.RateMasterApplicableDt = dto.RateMasterApplicableDt;
         rate.RateMasterPartyId = dto.RateMasterPartyId;

@@ -51,7 +51,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = $"HSN/SAC  already exists." });
+                return BadRequest($"HSN/SAC  Already Exists.");
 
             }
             var gstSlab = await _context.GstSlabs
@@ -96,7 +96,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = $"HSN/SAC already exists." });
+                return BadRequest(new { message = $"HSN/SAC Already Exists." });
             }
 
             // ✅ Recalculate GST percentage if slab changed
@@ -150,10 +150,7 @@ namespace FreightBKShipping.Controllers
 
             if (existsInService)
             {
-                return BadRequest(new
-                {
-                    message = $"This HSN/SAC  is used in Services."
-                });
+                return BadRequest( $"It is used in Services.");
             }
 
             bool existsInCargo= await _context.Cargoes.AnyAsync(s =>
@@ -164,10 +161,7 @@ namespace FreightBKShipping.Controllers
 
             if (existsInCargo)
             {
-                return BadRequest(new
-                {
-                    message = $"This HSN/SAC  is used in Cargo."
-                });
+                return BadRequest($"It is used in Cargo.");
             }
             _context.HsnSacs.Remove(hsnSac);
             await _context.SaveChangesAsync();

@@ -435,8 +435,7 @@ namespace FreightBKShipping.Controllers
         {
             using var tx = await _context.Database.BeginTransactionAsync();
 
-            try
-            {
+           
                 // 1️⃣ Get voucher based on BillType or VoucherId
                 var voucher = await _context.Vouchers
                     .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId && v.VoucherBranchId== billDto.BillBranchId && v.VoucherCompanyId == GetCompanyId());
@@ -794,22 +793,8 @@ namespace FreightBKShipping.Controllers
                 // return CreatedAtAction(nameof(GetBill), new { id = bill.BillId }, bill);
                 return NoContent();
 
-            }
-            catch (DbUpdateException dbEx)
-            {
-                // Detailed inner exception for EF Core errors
-                return BadRequest(new
-                {
-                    error = "Database update error",
-                    details = dbEx.InnerException?.Message ?? dbEx.Message,
-                    stack = dbEx.StackTrace
-                });
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync();
-                return BadRequest(new { error = "Error creating bill", details = ex.Message, stack = ex.StackTrace });
-            }
+           
+           
         }
 
 
@@ -817,8 +802,7 @@ namespace FreightBKShipping.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBill(int id, BillDto billDto)
         {
-            try
-            {
+          
 
                 if (id != billDto.BillId)
                 return BadRequest("Bill ID mismatch.");
@@ -1223,23 +1207,7 @@ namespace FreightBKShipping.Controllers
             }, GetCompanyId());
 
             return NoContent();
-        }
-            catch (DbUpdateException dbEx)
-{
-                var message = dbEx.InnerException?.Message ?? dbEx.Message;
-
-                return BadRequest(new
-                {
-                    message = message
-    });
-            }
-catch (Exception ex)
-{
-                return BadRequest(new
-                                  {
-                                      message = ex.Message
-                                  });
-            }
+        
         }
 
         private async Task RecalculateSalesBillDueAsync(int? salesBillId)
