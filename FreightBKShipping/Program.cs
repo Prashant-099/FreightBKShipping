@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
+using FreightBKShipping.SignalR;                     // ← added
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Services;
+using FreightBKShipping.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,31 +21,39 @@ namespace FreightBKShipping
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // ── CORS ── SignalR requires AllowCredentials, so AllowAnyOrigin won't work.
+            // Replace your old CORS block with this one.
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAnyOrigin", policy =>
                 {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .WithExposedHeaders("Access-Control-Allow-Origin");
-
-
+                    policy
+                        // ⚠️ Put your exact Blazor app URLs here (both http and https)
+                        .WithOrigins(
+                            "https://localhost:7226",   // ← your actual Blazor port
+    "http://localhost:5171",
+    "https://localhost:7001",
+    "http://localhost:5001"
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed(_ => true)
+                        .WithExposedHeaders("Access-Control-Allow-Origin");
                 });
             });
 
             // Add services to the container.
-
             builder.Services.AddControllers();
+
             // ✅ 2. Register AppDbContext
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseMySql(
                     builder.Configuration.GetConnectionString("DefaultConnection"),
                     new MySqlServerVersion(new Version(8, 0, 36))));
 
-
             builder.Services.AddScoped<ISieveProcessor, SieveProcessor>();
-
             builder.Services.Configure<SieveOptions>(builder.Configuration.GetSection("Sieve"));
 
             // ✅ 3. Add services
@@ -59,7 +69,11 @@ namespace FreightBKShipping
             builder.Services.AddScoped<ILrService, LrService>();
             builder.Services.AddScoped<ITicketService, TicketService>();
 
+            // ✅ SignalR                                       // ← added
+            builder.Services.AddSignalR();                     // ← added
+
             builder.Services.AddHttpContextAccessor();
+
             // ✅ 4. Add JWT Authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -76,6 +90,24 @@ namespace FreightBKShipping
                             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
                         RoleClaimType = ClaimTypes.Role
                     };
+
+                    // ── Allow SignalR to read JWT from query string ──   // ← added
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            var path = context.HttpContext.Request.Path;
+
+                            if (!string.IsNullOrEmpty(accessToken) &&
+                                path.StartsWithSegments("/signalr"))
+                            {
+                                context.Token = accessToken;
+                            }
+
+                            return Task.CompletedTask;
+                        }
+                    };                                                    // ← added
                 });
 
             builder.Services.AddAuthorization();
@@ -115,36 +147,37 @@ namespace FreightBKShipping
             builder.Services.AddAuthorization(options =>
             {
                 options.AddPolicy("CompanyManagementOnly", policy =>
-                    policy.RequireRole("SuperAdmin")); // sirf SuperAdmin company create/edit/delete kar sake
+                    policy.RequireRole("SuperAdmin"));
             });
 
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-           
 
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage(); // Show detailed error
+                app.UseDeveloperExceptionPage();
             }
             else
             {
                 app.UseExceptionHandler("/error");
             }
+
             app.UseSwagger();
             app.UseSwaggerUI();
-
             app.UseHttpsRedirection();
 
+            app.UseCors("AllowAnyOrigin");                     // ← must be BEFORE UseAuthorization
+
+            app.UseAuthentication();                           // ← must come before UseAuthorization
             app.UseAuthorization();
 
             app.UseMiddleware<GlobalExceptionMiddleware>();
 
             app.MapControllers();
-
+            app.MapHub<TicketHub>("/signalr/ticket");
             app.Run();
         }
     }
