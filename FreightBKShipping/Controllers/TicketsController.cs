@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.DTOs;
 using FreightBKShipping.Services;
+using FreightBKShipping.SignalR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FreightBKShipping.Controllers
 {
@@ -9,10 +11,12 @@ namespace FreightBKShipping.Controllers
     public class TicketsController : BaseController
     {
         private readonly ITicketService _ticketService;
+        private readonly IHubContext<TicketHub> _hub;
 
-        public TicketsController(ITicketService ticketService)
+        public TicketsController(ITicketService ticketService, IHubContext<TicketHub> hub)
         {
             _ticketService = ticketService;
+            _hub = hub;
         }
 
         // GET api/Tickets
@@ -52,6 +56,15 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(ModelState);
 
             var reply = await _ticketService.SendReplyAsync(dto, GetUserId());
+
+            // ✅ Broadcast to everyone viewing this ticket in real time
+            await _hub.Clients.Group($"ticket-{dto.TicketId}")
+                .SendAsync("ReceiveMessage",
+                    reply.SenderType,
+                    reply.MessageText,
+                    reply.CreatedAt,
+                    reply.MessageId);
+
             return Ok(reply);
         }
 
@@ -73,6 +86,7 @@ namespace FreightBKShipping.Controllers
             var result = await _ticketService.UpdateTicketAsync(id, dto, GetCompanyId(), GetUserId());
             if (!result)
                 return NotFound(new { message = $"Ticket {id} not found or update failed." });
+
             return Ok(result);
         }
 
@@ -81,6 +95,11 @@ namespace FreightBKShipping.Controllers
         public async Task<IActionResult> Close(int id)
         {
             var result = await _ticketService.CloseTicketAsync(id, GetUserId());
+
+            // ✅ Notify both sides that ticket is now closed
+            await _hub.Clients.Group($"ticket-{id}")
+                .SendAsync("TicketClosed", id);
+
             return Ok(result);
         }
     }
