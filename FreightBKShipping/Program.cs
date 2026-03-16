@@ -100,7 +100,7 @@ namespace FreightBKShipping
                             var path = context.HttpContext.Request.Path;
 
                             if (!string.IsNullOrEmpty(accessToken) &&
-                                path.StartsWithSegments("/signalr"))
+                                path.StartsWithSegments("/tickethub"))
                             {
                                 context.Token = accessToken;
                             }
