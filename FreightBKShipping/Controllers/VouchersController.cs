@@ -135,8 +135,8 @@ namespace FreightBKShipping.Controllers
                 .AnyAsync(v =>
                     v.VoucherCompanyId == GetCompanyId() &&
                     v.VoucherBranchId == dto.VoucherBranchId &&
-                    v.VoucherGroup == dto.VoucherGroup &&
-                    v.VoucherName == dto.VoucherName &&
+                    v.VoucherGroup.Trim().ToLower() == dto.VoucherGroup.Trim().ToLower() &&
+                    v.VoucherName.Trim().ToLower() == dto.VoucherName.Trim().ToLower() &&
                     v.VoucherDetails.Any(d => d.VoucherDetailYearId == yearId)
                 );
 
@@ -235,8 +235,8 @@ namespace FreightBKShipping.Controllers
                     v.VoucherId != id &&
                     v.VoucherCompanyId == GetCompanyId() &&
                     v.VoucherBranchId == dto.VoucherBranchId &&
-                    v.VoucherGroup == dto.VoucherGroup &&
-                    v.VoucherName == dto.VoucherName &&
+                    v.VoucherGroup.Trim().ToLower() == dto.VoucherGroup.Trim().ToLower() &&
+                    v.VoucherName.Trim().ToLower() == dto.VoucherName.Trim().ToLower() &&
                     v.VoucherDetails.Any(d => d.VoucherDetailYearId == yearId)
                 );
 

@@ -77,7 +77,7 @@ public async Task<IActionResult> GetUserBranches(string userId)
             var isDuplicate = await _context.Branches
         .AnyAsync(b =>
             b.BranchCompanyId == GetCompanyId() &&
-            b.BranchName.ToLower() == dto.BranchName.ToLower()
+            b.BranchName.Trim().ToLower() == dto.BranchName.Trim().ToLower()
         );
 
             if (isDuplicate)
@@ -149,7 +149,7 @@ public async Task<IActionResult> GetUserBranches(string userId)
         .AnyAsync(b =>
             b.BranchId != id &&
             b.BranchCompanyId == GetCompanyId() &&
-            b.BranchName.ToLower() == dto.BranchName.ToLower()
+            b.BranchName.Trim().ToLower() == dto.BranchName.Trim().ToLower()
         );
 
             if (isDuplicate)

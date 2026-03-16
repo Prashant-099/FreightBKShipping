@@ -27,7 +27,7 @@ namespace FreightBKShipping.Controllers
 
             var exists = await _context.Cargoes.AnyAsync(c =>
         c.CargoCompanyId == GetCompanyId() &&
-        c.CargoName.ToLower() == dto.CargoName.ToLower()
+        c.CargoName.Trim().ToLower() == dto.CargoName.Trim().ToLower()
     );
 
             if (exists)
@@ -80,7 +80,7 @@ namespace FreightBKShipping.Controllers
             var exists = await _context.Cargoes.AnyAsync(c =>
         c.CargoCompanyId == GetCompanyId() &&
         c.CargoId != id &&
-        c.CargoName.ToLower() == dto.CargoName.ToLower()
+        c.CargoName.Trim().ToLower() == dto.CargoName.Trim().ToLower()
     );
 
             if (exists)

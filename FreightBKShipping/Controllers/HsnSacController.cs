@@ -46,7 +46,7 @@ namespace FreightBKShipping.Controllers
 
             var exists = await _context.HsnSacs.AnyAsync(h =>
         h.HsnCompanyId == GetCompanyId() &&
-        h.HsnName.ToLower() == hsnSac.HsnName.ToLower()
+        h.HsnName.Trim().ToLower() == hsnSac.HsnName.Trim().ToLower()
     );
 
             if (exists)
@@ -91,7 +91,7 @@ namespace FreightBKShipping.Controllers
             var exists = await _context.HsnSacs.AnyAsync(h =>
     h.HsnCompanyId == GetCompanyId() &&
     h.HsnId != id &&
-    h.HsnName.ToLower() == hsnSac.HsnName.ToLower()
+    h.HsnName.Trim().ToLower() == hsnSac.HsnName.Trim().ToLower()
 );
 
             if (exists)

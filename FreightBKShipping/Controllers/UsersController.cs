@@ -228,7 +228,7 @@ catch (Exception ex)
             if (await _context.Users.AnyAsync(u =>
          u.UserCompanyId == GetCompanyId() &&
          u.UserId != dto.UserId &&
-         u.UserEmail == dto.UserEmail))
+         u.UserEmail.Trim().ToLower() == dto.UserEmail.Trim().ToLower()))
             {
                 return BadRequest(new { message = "Email already exists." });
             }
@@ -236,7 +236,7 @@ catch (Exception ex)
             if (await _context.Users.AnyAsync(u =>
                 u.UserCompanyId == GetCompanyId() &&
                 u.UserId != dto.UserId &&
-                u.UserMobile == dto.UserMobile))
+                u.UserMobile.Trim().ToLower() == dto.UserMobile.Trim().ToLower()))
             {
                 return BadRequest(new { message = "Mobile number already exists." });
             }

@@ -61,6 +61,15 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<CountryReadDto>> Create(CountryCreateDto dto)
         {
+            var exists = await _context.Countries.AnyAsync(c =>
+    c.CountryCompanyId == GetCompanyId() &&
+    c.CountryName.Trim().ToLower() == dto.CountryName.Trim().ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Country Name already exists." });
+            }
             var country = new Country
             {
                 CountryCompanyId = GetCompanyId(),
@@ -98,6 +107,16 @@ namespace FreightBKShipping.Controllers
             var country = await _context.Countries.FindAsync(id);
             if (country == null) return NotFound();
 
+            var exists = await _context.Countries.AnyAsync(c =>
+    c.CountryCompanyId == GetCompanyId() &&
+    c.CountryId != id &&
+    c.CountryName.Trim().ToLower() == dto.CountryName.Trim().ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Country Name already exists." });
+            }
             country.CountryName = dto.CountryName;
             country.CountryCode = dto.CountryCode;
             country.CountryCurrency = dto.CountryCurrency;
@@ -114,31 +133,31 @@ namespace FreightBKShipping.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var country = await FilterByCompany(_context.Countries, "CountryCompanyId").FirstOrDefaultAsync(b => b.CountryId == id);
+            var country = await FilterByCompany(_context.Countries, "CountryCompanyId").FirstOrDefaultAsync(b => b.CountryId == id) ;
             if (country == null) return NotFound();
 
-            _context.Countries.Remove(country);
-            try
+            // 🔎 Check used in Jobs
+            bool usedInJobs = await _context.Jobs.AnyAsync(j =>
+               j.JobCountryOrigin.Trim().ToLower() == country.CountryName.Trim().ToLower() &&
+                j.JobCompanyId == GetCompanyId() &&
+                j.JobActive == true
+            );
+
+            if (usedInJobs)
             {
+                return BadRequest(new
+                {
+                    message = $"This Currency  is used in Jobs."
+                });
+            }
+           
+
+            _context.Countries.Remove(country);
+          
                 await _context.SaveChangesAsync();
                 return Ok(true);
-            }
-            catch (DbUpdateException ex)
-            {
-                // Foreign Key constraint violation
-                if (ex.InnerException != null &&
-                    ex.InnerException.Message.Contains("foreign key constraint fails"))
-                {
-                    return Ok(false);   // return false as you asked
-                }
-
-                // Other unknown DB error – return 500 with detail
-                return StatusCode(500, new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
+           
+            
         }
     }
 }
