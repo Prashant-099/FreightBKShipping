@@ -1,6 +1,9 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.SignalR;
 using FreightBKShipping.Models;
+
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreightBKShipping.Services
@@ -8,10 +11,12 @@ namespace FreightBKShipping.Services
     public class TicketService : ITicketService
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<TicketHub> _hubContext;  // ← added
 
-        public TicketService(AppDbContext context)
+        public TicketService(AppDbContext context, IHubContext<TicketHub> hubContext)  // ← added
         {
             _context = context;
+            _hubContext = hubContext;  // ← added
         }
 
         public async Task<IEnumerable<SupportTicket>> GetTicketsAsync(int companyId)
@@ -83,6 +88,15 @@ namespace FreightBKShipping.Services
                 await _context.SaveChangesAsync();
             }
 
+            // ── SIGNALR: push new message to everyone watching this ticket ──
+            await _hubContext.Clients
+     .Group($"ticket-{dto.TicketId}")
+     .SendAsync("ReceiveMessage",
+         message.SenderType,
+         message.MessageText,
+         message.CreatedAt,
+         message.MessageId);
+
             return message;
         }
 
@@ -129,6 +143,12 @@ namespace FreightBKShipping.Services
             ticket.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // ── SIGNALR: tell everyone watching this ticket it is now closed ──
+            await _hubContext.Clients
+                .Group($"ticket-{ticketId}")
+                .SendAsync("TicketClosed", ticketId);
+
             return true;
         }
     }
