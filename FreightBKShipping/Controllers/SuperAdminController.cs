@@ -68,7 +68,8 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(new { message = "Message cannot be empty." });
 
             var msg = await _service.SendSupportReplyAsync(id, dto.Message, GetUserId());
-
+            if (msg == null)
+                return BadRequest(new { message = "Failed to send reply." });
             // ✅ Broadcast to everyone viewing this ticket in real time
             await _hub.Clients.Group($"ticket-{id}")
                 .SendAsync("ReceiveMessage",
@@ -104,8 +105,15 @@ namespace FreightBKShipping.Controllers
             if (!result) return NotFound(new { message = $"Ticket {id} not found." });
 
             // ✅ Notify both sides that ticket is now closed
-            await _hub.Clients.Group($"ticket-{id}")
-                .SendAsync("TicketClosed", id);
+            try
+            {
+                await _hub.Clients.Group($"ticket-{id}")
+                    .SendAsync("TicketClosed", id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SignalR close notification failed: {ex.Message}");
+            }
 
             return Ok(result);
         }
