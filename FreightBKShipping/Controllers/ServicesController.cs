@@ -146,12 +146,12 @@ namespace FreightBKShipping.Controllers
             // Optional: prevent duplicate service name within company
             bool exists = await _context.Services.AnyAsync(s =>
     s.ServiceCompanyId == GetCompanyId() &&
-    s.ServiceName.Trim().ToLower() == dto.ServiceName.Trim().ToLower()
+    s.ServiceName.Replace(" ","").ToLower() == dto.ServiceName.Replace(" ", "").ToLower()
 );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Service '{dto.ServiceName}' already exists." });
+                return BadRequest($"Service Already Exists." );
             }
             var service = new Service
             {
@@ -211,12 +211,12 @@ namespace FreightBKShipping.Controllers
             bool exists = await _context.Services.AnyAsync(s =>
     s.ServiceCompanyId == GetCompanyId() &&
     s.ServiceId != id &&
-    s.ServiceName.Trim().ToLower() == dto.ServiceName.Trim().ToLower()
+    s.ServiceName.Replace(" ", "").ToLower() == dto.ServiceName.Replace(" ", "").ToLower()
 );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Service '{dto.ServiceName}' already exists." });
+                return BadRequest(new { message = $"Service Already Exists." });
             }
             service.ServiceName = dto.ServiceName;
             service.ServicePrintName = dto.ServicePrintName;
@@ -268,18 +268,27 @@ namespace FreightBKShipping.Controllers
      .AnyAsync(d =>
          _context.Bills.Any(b =>
              b.BillId == d.BillDetailBillId &&
+             b.BillStatus ==true &&
              b.BillCompanyId == GetCompanyId()
          )
      );
 
             if (existsInBill)
             {
-                return BadRequest(new
-                {
-
-                    Message = "This Sevice is Used in Bill."
-                });
+                return BadRequest("It is Used in Bill.");
             }
+            // 🔎 Check if used in ServiceTable
+            bool usedInratemaster = await _context.RateMasters.AnyAsync(s =>
+                s.RateMasterServiceId == id &&
+                s.RateMasterCompanyId == GetCompanyId()
+            );
+
+            if (usedInratemaster)
+            {
+                return BadRequest($"It  is used in Rate Master .");
+            }
+
+
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto

@@ -39,17 +39,16 @@ public class AccountsController : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Account dto)
     {
-        try
-        {
+        
             var duplicate = await _context.Accounts.AnyAsync(a =>
     a.AccountCompanyId == GetCompanyId() &&
     a.AccountYearId == dto.AccountYearId &&
-    a.AccountName.Trim().ToLower() == dto.AccountName.Trim().ToLower()
+    a.AccountName.Replace(" ","").ToLower() == dto.AccountName.Replace(" ", "").ToLower()
 );
 
             if (duplicate)
             {
-                return BadRequest(new { message = "Account name already exists." });
+                return BadRequest( "Account Name Already Exists." );
             }
 
             dto.AccountCompanyId = GetCompanyId();
@@ -72,12 +71,7 @@ public class AccountsController : BaseController
                 YearId = dto?.AccountYearId??0
             }, GetCompanyId());
             return Ok(dto);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(new { error = ex.Message, stack = ex.StackTrace
-    });
-    }
+    
     }
 
     [HttpPut("{id}")]
@@ -91,12 +85,12 @@ public class AccountsController : BaseController
      a.AccountCompanyId == GetCompanyId() &&
      a.AccountYearId == dto.AccountYearId &&
      a.AccountId != id &&
-     a.AccountName.Trim().ToLower() == dto.AccountName.Trim().ToLower()
+     a.AccountName.Replace(" ", "").ToLower() == dto.AccountName.Replace(" ", "").ToLower()
  );
 
         if (duplicate)
         {
-            return BadRequest(new { message = "Account name already exists." });
+            return BadRequest(new { message = "Account Name Already Exists." });
         }
         // Validate AccountBalanceType
         //if (dto.AccountBalanceType != "Dr" && dto.AccountBalanceType != "Cr")
@@ -210,28 +204,27 @@ public class AccountsController : BaseController
          );
             if (usedInGstSlab)
             {
-                return BadRequest(new
-                {
-                    Message = "Account cannot be deleted. It is used in GST Tax Slab."
-                });
+                return BadRequest( "It is used in GST Tax Slab.");
             }
 
         if (existsInjournal)
         {
-            return BadRequest(new
-            {
-                Message = "Account cannot be deleted. It is used in Receipt/Payment."
-            });
+            return BadRequest( "It is used in Receipt/Payment.");
         }
         if (existsInBill || existsInJob)
             {
-                return BadRequest(new
-                {
-               
-                    message = "It cannot be deleted because it is used in Bill or Job."
-                });
+                return BadRequest("It is used in Bill or Job.");
             }
+        // 🔎 Check if used in ServiceTable
+        bool usedInratemaster = await _context.RateMasters.AnyAsync(s =>
+            s.RateMasterPartyId == id &&
+            s.RateMasterCompanyId == GetCompanyId()
+        );
 
+        if (usedInratemaster)
+        {
+            return BadRequest( $"It is used in Rate Master.");
+        }
         _context.Accounts.Remove(account);
         await _context.SaveChangesAsync();
         await _auditLogService.AddAsync(new AuditLogCreateDto

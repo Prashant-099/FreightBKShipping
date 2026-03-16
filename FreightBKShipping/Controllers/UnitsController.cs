@@ -46,6 +46,16 @@ namespace FreightBKShipping.Controllers
         [HttpPost]
         public async Task<ActionResult<Unit>> CreateUnit(Unit unit)
         {
+            var exists = await _context.Units.AnyAsync(u =>
+    u.UnitCompanyId == GetCompanyId() &&
+    u.UnitName.Trim().ToLower() == unit.UnitName.Trim().ToLower()
+);
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Unit Name already exists." });
+            }
+
             unit.UnitCompanyId = GetCompanyId();
             unit.UnitAddedByUserId = GetUserId();
             unit.UnitUpdatedByUserId = GetUserId();
@@ -80,6 +90,16 @@ namespace FreightBKShipping.Controllers
 
             if (existing == null) return NotFound();
 
+            var exists = await _context.Units.AnyAsync(u =>
+       u.UnitCompanyId == GetCompanyId() &&
+       u.UnitId != id &&
+       u.UnitName.Trim().ToLower() == unit.UnitName.Trim().ToLower()
+   );
+
+            if (exists)
+            {
+                return BadRequest(new { message = "Unit Name already exists." });
+            }
             // update fields
             existing.UnitName = unit.UnitName;
             existing.UnitFormalName = unit.UnitFormalName;
@@ -112,6 +132,21 @@ namespace FreightBKShipping.Controllers
             var unit = await query.FirstOrDefaultAsync(u => u.UnitId == id);
 
             if (unit == null) return NotFound();
+
+            // 🔎 Check if used in ServiceTable
+            bool usedInService = await _context.Services.AnyAsync(s =>
+                s.ServiceUnitId == id &&
+                s.ServiceCompanyId == GetCompanyId() &&
+                s.ServiceStatus == true
+            );
+
+            if (usedInService)
+            {
+                return BadRequest(new
+                {
+                    message = $"THis Unit  is used in Service ."
+                });
+            }
 
             _context.Units.Remove(unit);
             await _context.SaveChangesAsync();

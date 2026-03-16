@@ -40,8 +40,7 @@ namespace FreightBKShipping.Controllers
             [HttpPost]
             public async Task<ActionResult<Year>> CreateYear(Year year)
         {
-            try
-            {
+           
 
                 var isDuplicate = await _context.Years
     .AnyAsync(y =>
@@ -52,7 +51,7 @@ namespace FreightBKShipping.Controllers
 
             if (isDuplicate)
             {
-                return BadRequest(new { message = "Financial year already exists." });
+                return BadRequest("Financial Year Already Exists.");
             }
 
             year.YearCompanyId =GetCompanyId();
@@ -87,30 +86,13 @@ namespace FreightBKShipping.Controllers
                 YearId = year.YearId
             }, GetCompanyId());
             return CreatedAtAction(nameof(GetYear), new { id = year.YearId }, year);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                var message = dbEx.InnerException?.Message ?? dbEx.Message;
-
-                return BadRequest(new
-                {
-                    message = message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
+           
         }
 
             [HttpPut("{id}")]
             public async Task<IActionResult> UpdateYear(int id, Year year)
             {
-            try
-            {
+          
                 if (id != year.YearId)
                     return BadRequest();
             var isDuplicate = await _context.Years
@@ -123,7 +105,10 @@ namespace FreightBKShipping.Controllers
 
             if (isDuplicate)
             {
-                return BadRequest(new { message = "Financial year already exists." });
+                return BadRequest(new
+                {
+                    message = "Financial Year Already Exists."
+                });
             }
 
             year.YearCompanyId = GetCompanyId();
@@ -144,16 +129,9 @@ namespace FreightBKShipping.Controllers
             }
             _context.Entry(year).State = EntityState.Modified;
 
-                try
-                {
+                
                     await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                     if (!_context.Years.Any(e => e.YearId == id))
-                        return NotFound();
-                    throw;
-                }
+                
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "Year",
@@ -166,23 +144,7 @@ namespace FreightBKShipping.Controllers
                 YearId = year.YearId
             }, GetCompanyId());
             return NoContent();
-            }
-            catch (DbUpdateException dbEx)
-            {
-                var message = dbEx.InnerException?.Message ?? dbEx.Message;
-
-                return BadRequest(new
-                {
-                    message = message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
+            
         }   
 
             [HttpDelete("{id}")]
@@ -192,7 +154,45 @@ namespace FreightBKShipping.Controllers
                 if (year == null)
                     return NotFound();
 
-                _context.Years.Remove(year);
+            bool usedInJob = await _context.Jobs.AnyAsync(s =>
+          s.JobYearId == id.ToString() &&
+          s.JobActive == true &&
+          s.JobCompanyId == GetCompanyId()
+      );
+
+            if (usedInJob)
+            {
+                return BadRequest($"This Year is used in Jobs.");
+            }
+            bool usedInbill = await _context.Bills.AnyAsync(s =>
+               s.BillYearId == id &&
+               s.BillStatus == true &&
+               s.BillCompanyId == GetCompanyId()
+           );
+
+            if (usedInbill)
+            {
+                return BadRequest( $"This Year is used in Bills.");
+            }
+            bool usedInjournal = await _context.Journals.AnyAsync(s =>
+               s.JournalYearId == id &&
+               s.JournalCompanyId == GetCompanyId()
+           );
+            if (usedInjournal)
+            {
+                return BadRequest( $"This Year is used in Payment/Receipt/journal/Contra.");
+            }
+
+            bool usedInVoucher = await _context.VoucherDetails.AnyAsync(s =>
+         s.VoucherDetailYearId == id &&
+               s.Voucher.VoucherCompanyId == GetCompanyId()
+     );
+
+            if (usedInVoucher)
+            {
+                return BadRequest( $"This Year is used in Voucher Type.");
+            }
+            _context.Years.Remove(year);
                 await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {

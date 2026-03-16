@@ -1,6 +1,8 @@
 ﻿using FreightBKShipping.Data;
 using FreightBKShipping.DTOs;
+using FreightBKShipping.DTOs.Auditlogdto;
 using FreightBKShipping.Models;
+using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,9 +13,10 @@ namespace FreightBKShipping.Controllers
     public class VehiclesController : BaseController
     {
         private readonly AppDbContext _context;
-
-        public VehiclesController(AppDbContext context)
+        private readonly AuditLogService _auditLogService;  
+        public VehiclesController(AppDbContext context, AuditLogService auditLogService)
         {
+            _auditLogService = auditLogService;
             _context = context;
         }
 
@@ -21,7 +24,7 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var vehicles = await FilterByCompany(_context.Vehicles, "VehicleCompanyId")
+            var vehicles = await FilterByCompany(_context.Vehicles, "VehicleCompanyId").Where(v=>v.VehicleStatus==1)
                 .OrderByDescending(v => v.VehicleId)
                 .ToListAsync();
 
@@ -47,7 +50,7 @@ namespace FreightBKShipping.Controllers
         {
             // Unique vehicle_no check
             var exists = await _context.Vehicles
-                .AnyAsync(v => v.VehicleNo == dto.VehicleNo && v.VehicleCompanyId == GetCompanyId());
+                .AnyAsync(v => v.VehicleNo == dto.VehicleNo && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus==1);
 
             if (exists)
                 return BadRequest(new { message = "Vehicle number already exists." });
@@ -89,7 +92,17 @@ namespace FreightBKShipping.Controllers
 
             _context.Vehicles.Add(vehicle);
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vehicle",
+                RecordId = vehicle.VehicleId,
+                VoucherType = "Vehicle",
+                Amount = 0,
+                Operations = "INSERT",
+                Remarks = $"{vehicle.VehicleNo}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(vehicle);
         }
 
@@ -100,6 +113,12 @@ namespace FreightBKShipping.Controllers
             var vehicle = await _context.Vehicles.FindAsync(id);
             if (vehicle == null)
                 return NotFound();
+            // Unique vehicle_no check
+            var exists = await _context.Vehicles
+                .AnyAsync(v => v.VehicleNo == dto.VehicleNo && v.VehicleId != id && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus == 1);
+
+            if (exists)
+                return BadRequest(new { message = "Vehicle number already exists." });
 
             vehicle.VehicleUpdatedByUserId = GetUserId();
             vehicle.VehicleUpdated = DateTime.UtcNow;
@@ -133,7 +152,17 @@ namespace FreightBKShipping.Controllers
             vehicle.VehicleDriverId = dto.VehicleDriverId;
 
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vehicle",
+                RecordId = vehicle.VehicleId,
+                VoucherType = "Vehicle",
+                Amount = 0,
+                Operations = "UPDATE",
+                Remarks = $"{vehicle.VehicleNo}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(vehicle);
         }
 
@@ -144,13 +173,34 @@ namespace FreightBKShipping.Controllers
             var vehicle = await _context.Vehicles.FindAsync(id);
             if (vehicle == null)
                 return NotFound();
+            var lr = await _context.Lrs
+        .Where(j => j.LrVehicleId == id && j.LrCompanyId == GetCompanyId() && j.LrStatus == 1)
+        .Select(j => new { j.LrNoStr })
+        .FirstOrDefaultAsync();
 
+            if (lr != null)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Vehicle Number is used in LR No. '{lr.LrNoStr}'."
+                });
+            }
             vehicle.VehicleStatus = 2; // soft delete
             vehicle.VehicleUpdated = DateTime.UtcNow;
             vehicle.VehicleUpdatedByUserId = GetUserId();
 
             await _context.SaveChangesAsync();
-
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Vehicle",
+                RecordId = id,
+                VoucherType = "Vehicle",
+                Amount = 0,
+                Operations = "DELETE",
+                Remarks = $"{vehicle.VehicleNo}",
+                BranchId = 0,
+                YearId = 0
+            }, GetCompanyId());
             return Ok(true);
         }
     }

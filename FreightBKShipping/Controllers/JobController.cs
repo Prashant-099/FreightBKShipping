@@ -241,8 +241,7 @@ namespace FreightBKShipping.Controllers
 
             using var tx = await _context.Database.BeginTransactionAsync();
 
-            try
-            {
+           
                 // 1️⃣ Voucher
                 var voucher = await _context.Vouchers
                     .FirstOrDefaultAsync(v => v.VoucherGroup == dto.JobType && v.VoucherBranchId == dto.JobBranchId && v.VoucherCompanyId == GetCompanyId());
@@ -350,22 +349,7 @@ namespace FreightBKShipping.Controllers
 
                 await tx.CommitAsync();
                 return Ok(job);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                // Detailed inner exception for EF Core errors
-                return BadRequest(new
-                {
-                    error = "Database update error",
-                    details = dbEx.InnerException?.Message ?? dbEx.Message,
-                    stack = dbEx.StackTrace
-                });
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync();
-                return BadRequest(new { error = "Error creating job", details = ex.Message, stack = ex.StackTrace });
-            }
+           
         }
 
         // PUT: api/Job/5
@@ -396,8 +380,7 @@ namespace FreightBKShipping.Controllers
                     return Conflict(new { message = "Job number already exists." });
             }
 
-            try
-            {
+            
                 var job = await _context.Jobs.FindAsync(id);
                 if (job == null) return NotFound(new { error = "Job not found" });
 
@@ -420,28 +403,14 @@ namespace FreightBKShipping.Controllers
                 await _context.SaveChangesAsync();
 
                 return Ok(job);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                return BadRequest(new
-                {
-                    error = "Database update error",
-                    details = dbEx.InnerException?.Message ?? dbEx.Message,
-                    stack = dbEx.StackTrace
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = "Error updating job", details = ex.Message, stack = ex.StackTrace });
-            }
+         
         }
 
         // DELETE: api/Job/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
+            
                 var job = await _context.Jobs.FindAsync(id);
                 if (job == null) return NotFound(new { error = "Job not found" });
 
@@ -496,20 +465,7 @@ namespace FreightBKShipping.Controllers
                     YearId = int.Parse(job.JobYearId)
                 }, GetCompanyId());
                 return Ok(true);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                return BadRequest(new
-                {
-                    error = "Database delete error",
-                    details = dbEx.InnerException?.Message ?? dbEx.Message,
-                    stack = dbEx.StackTrace
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = "Error deleting job", details = ex.Message, stack = ex.StackTrace });
-            }
+            
         }
 
         [HttpGet("getjobwithcontainer")]

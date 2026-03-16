@@ -150,8 +150,21 @@ namespace FreightBKShipping.Controllers
                     message = $"This Currency  is used in Jobs."
                 });
             }
-           
 
+            // 🔎 Check used in Jobs
+            bool usedInlocation = await _context.Locations.AnyAsync(j =>
+               j.LocationCountryId== id &&
+                j.LocationCompanyId == GetCompanyId() &&
+                j.LocationStatus == true
+            );
+
+            if (usedInlocation)
+            {
+                return BadRequest(new
+                {
+                    message = $"This Currency  is used in Station/Port."
+                });
+            }
             _context.Countries.Remove(country);
           
                 await _context.SaveChangesAsync();

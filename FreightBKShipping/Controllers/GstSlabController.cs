@@ -49,7 +49,7 @@ namespace FreightBKShipping.Controllers
 
             if (duplicate)
             {
-                return BadRequest(new { message = "GstSlab already exists." });
+                return BadRequest( "GstSlab Already Exists." );
             }
             slab.GstSlabCreated = DateTime.UtcNow;
             slab.GstSlabUpdated = DateTime.UtcNow;
@@ -89,7 +89,7 @@ namespace FreightBKShipping.Controllers
 
             if (duplicate)
             {
-                return BadRequest(new { message = "GstSlab already exists." });
+                return BadRequest(new { message = "GstSlab Already Exists." });
             }
 
             slab.GstSlabUpdated = DateTime.UtcNow;
@@ -138,10 +138,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInHsn)
             {
-                return BadRequest(new
-                {
-                    message = $"This GST Slab  is used in HSN/SAC."
-                });
+                return BadRequest( $"This GST Slab  is used in HSN/SAC.");
             }
 
             _context.GstSlabs.Remove(slab);

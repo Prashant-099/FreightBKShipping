@@ -82,7 +82,7 @@ public async Task<IActionResult> GetUserBranches(string userId)
 
             if (isDuplicate)
             {
-                return BadRequest(new { message = "Branch name already exists." });
+                return BadRequest("Branch Name Already Exists." );
             }
 
             if (dto.Branchisdefault)
@@ -154,7 +154,7 @@ public async Task<IActionResult> GetUserBranches(string userId)
 
             if (isDuplicate)
             {
-                return BadRequest(new { message = "Branch name already exists." });
+                return BadRequest(new { message = "Branch Name Already Exists." });
             }
 
             if (dto.Branchisdefault)
@@ -211,7 +211,35 @@ public async Task<IActionResult> GetUserBranches(string userId)
         {
             var branch = await FilterByCompany(_context.Branches, "BranchCompanyId").FirstOrDefaultAsync(b => b.BranchId == id); ;
             if (branch == null) return NotFound();
+            bool usedInJob = await _context.Jobs.AnyAsync(s =>
+               s.JobBranchId == id &&
+               s.JobActive == true &&
+               s.JobCompanyId == GetCompanyId()
+           );
 
+            if (usedInJob)
+            {
+                return BadRequest( $"This Branch is used in Jobs.");
+            }
+            bool usedInbill = await _context.Bills.AnyAsync(s =>
+               s.BillBranchId == id &&
+               s.BillStatus == true &&
+               s.BillCompanyId == GetCompanyId()
+           );
+
+            if (usedInbill)
+            {
+                return BadRequest( $"This Branch is used in Bills.");
+            }
+            bool usedInVoucher= await _context.Vouchers.AnyAsync(s =>
+               s.VoucherBranchId == id &&
+               s.VoucherCompanyId == GetCompanyId()
+           );
+
+            if (usedInVoucher)
+            {
+                return BadRequest( $"This Branch is used in Voucher Type.");
+            }
             _context.Branches.Remove(branch);
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto
