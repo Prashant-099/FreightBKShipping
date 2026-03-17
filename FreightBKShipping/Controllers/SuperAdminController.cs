@@ -1,46 +1,47 @@
 ﻿using FreightBKShipping.Interfaces;
 using FreightBKShipping.Models;
+using FreightBKShipping.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FreightBKShipping.Controllers
 {
-    
-        [ApiController]
-        [Route("api/superadmin")]
-        [Authorize(Roles = "SuperAdmin")]
-        public class SuperAdminController : BaseController
+    [ApiController]
+    [Route("api/superadmin")]
+    [Authorize(Roles = "SuperAdmin")]
+    public class SuperAdminController : BaseController
+    {
+        private readonly ISuperAdminService _service;
+        private readonly IHubContext<TicketHub> _hub;
+
+        public SuperAdminController(ISuperAdminService service, IHubContext<TicketHub> hub)
         {
-            private readonly ISuperAdminService _service;
+            _service = service;
+            _hub = hub;
+        }
 
-            public SuperAdminController(ISuperAdminService service)
-            {
-                _service = service;
-            }
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboard()
+        {
+            return Ok(await _service.GetSuperAdminDashboardAsync());
+        }
 
-            [HttpGet("dashboard")]
-            public async Task<IActionResult> GetDashboard()
-            {
-                return Ok(await _service.GetSuperAdminDashboardAsync());
-            }
+        [HttpGet("company-logs/{companyId}")]
+        public async Task<IActionResult> GetCompanyLogs(int companyId)
+        {
+            return Ok(await _service.GetCompanyLogsAsync(companyId));
+        }
 
-            [HttpGet("company-logs/{companyId}")]
-            public async Task<IActionResult> GetCompanyLogs(int companyId)
-            {
-                return Ok(await _service.GetCompanyLogsAsync(companyId));
-            }
-
-            [HttpPost("force-logout/{companyId}")]
-            public async Task<IActionResult> ForceLogout(int companyId)
-            {
-                await _service.ForceLogoutCompanyAsync(companyId);
-                return Ok("Company logged out successfully.");
-            }
-
+        [HttpPost("force-logout/{companyId}")]
+        public async Task<IActionResult> ForceLogout(int companyId)
+        {
+            await _service.ForceLogoutCompanyAsync(companyId);
+            return Ok("Company logged out successfully.");
+        }
 
         // ── Support Tickets ───────────────────────────────────────────
 
-        // GET api/superadmin/tickets?company=1&status=1&priority=2
         [HttpGet("tickets")]
         public async Task<IActionResult> GetAllTickets(
             [FromQuery] string? company,
@@ -51,7 +52,6 @@ namespace FreightBKShipping.Controllers
             return Ok(tickets);
         }
 
-        // GET api/superadmin/tickets/{id}
         [HttpGet("tickets/{id}")]
         public async Task<IActionResult> GetTicket(int id)
         {
@@ -68,10 +68,19 @@ namespace FreightBKShipping.Controllers
                 return BadRequest(new { message = "Message cannot be empty." });
 
             var msg = await _service.SendSupportReplyAsync(id, dto.Message, GetUserId());
+            if (msg == null)
+                return BadRequest(new { message = "Failed to send reply." });
+            // ✅ Broadcast to everyone viewing this ticket in real time
+            await _hub.Clients.Group($"ticket-{id}")
+                .SendAsync("ReceiveMessage",
+                    msg.SenderType,    // "Support"
+                    msg.MessageText,
+                    msg.CreatedAt,
+                    msg.MessageId);
+
             return Ok(msg);
         }
 
-        // POST api/superadmin/tickets/{id}/assign
         [HttpPost("tickets/{id}/assign")]
         public async Task<IActionResult> Assign(int id, [FromBody] TicketAssignDto dto)
         {
@@ -80,7 +89,6 @@ namespace FreightBKShipping.Controllers
             return Ok(result);
         }
 
-        // PUT api/superadmin/tickets/{id}/status
         [HttpPut("tickets/{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] TicketStatusUpdateDto dto)
         {
@@ -95,14 +103,23 @@ namespace FreightBKShipping.Controllers
         {
             var result = await _service.CloseTicketAsync(id, GetUserId());
             if (!result) return NotFound(new { message = $"Ticket {id} not found." });
+
+            // ✅ Notify both sides that ticket is now closed
+            try
+            {
+                await _hub.Clients.Group($"ticket-{id}")
+                    .SendAsync("TicketClosed", id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SignalR close notification failed: {ex.Message}");
+            }
+
             return Ok(result);
         }
 
-        // GET api/superadmin/admin-users
         [HttpGet("admin-users")]
         public async Task<IActionResult> GetAdminUsers()
             => Ok(await _service.GetSuperAdminUsersAsync());
     }
-
-    
 }

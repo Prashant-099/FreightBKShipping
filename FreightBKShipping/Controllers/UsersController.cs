@@ -142,7 +142,7 @@ namespace FreightBKShipping.Controllers
         {
             
                 if (await _context.Users.AnyAsync(u =>
-    u.UserCompanyId == GetCompanyId() && u.UserEmail == dto.UserEmail))
+                u.UserCompanyId == GetCompanyId() && u.UserEmail == dto.UserEmail))
                 {
                     return BadRequest( "Email already exists." );
                 }
