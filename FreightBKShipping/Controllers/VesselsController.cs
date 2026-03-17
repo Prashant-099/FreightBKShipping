@@ -47,11 +47,11 @@ namespace FreightBKShipping.Controllers
         {
             var exists = await _context.Vessels.AnyAsync(v =>
     v.VesselCompanyId == GetCompanyId() &&
-    v.VesselName.Trim().ToLower() == dto.VesselName.Trim().ToLower());
+    v.VesselName.Replace(" ","").ToLower() == dto.VesselName.Replace(" ", "").ToLower());
 
             if (exists)
             {
-                return BadRequest(new { message = $"Vessel Name  already exists." });
+                return BadRequest( $"Vessel Already Exists.");
             }
             var vessel = new Vessel
             {
@@ -104,12 +104,12 @@ namespace FreightBKShipping.Controllers
             var exists = await _context.Vessels.AnyAsync(v =>
     v.VesselCompanyId == GetCompanyId() &&
     v.VesselId != id &&
-    v.VesselName.Trim().ToLower() == dto.VesselName.Trim().ToLower()
+    v.VesselName.Replace(" ", "").ToLower() == dto.VesselName.Replace(" ", "").ToLower()
 );
 
             if (exists)
             {
-                return BadRequest(new { message = "Vessel Name already exists." });
+                return BadRequest(new { message = "Vessel Already Exists." });
             }
 
             vessel.VesselUpdatedByUserId = GetUserId();
@@ -163,10 +163,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInJobs)
             {
-                return BadRequest(new
-                {
-                    message = $"This Vesesl Name  is used in Jobs."
-                });
+                return BadRequest( $"It is used in Jobs.");
             }
             // 🔎 Check used in Bills
             bool usedInBills = await _context.Bills.AnyAsync(b =>
@@ -177,10 +174,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInBills)
             {
-                return BadRequest(new
-                {
-                    message = $"This Vessel Name  is used in Bills."
-                });
+                return BadRequest( $"It is used in Bills.");
             }
             _context.Vessels.Remove(vessel);
             await _context.SaveChangesAsync();

@@ -50,10 +50,10 @@ namespace FreightBKShipping.Controllers
         {
             // Unique vehicle_no check
             var exists = await _context.Vehicles
-                .AnyAsync(v => v.VehicleNo == dto.VehicleNo && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus==1);
+                .AnyAsync(v => v.VehicleNo.Replace(" ","").ToLower() == dto.VehicleNo.Replace(" ", "").ToLower() && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus==1);
 
             if (exists)
-                return BadRequest(new { message = "Vehicle number already exists." });
+                return BadRequest( "Vehicle number already exists." );
 
             var vehicle = new Vehicle
             {
@@ -115,7 +115,7 @@ namespace FreightBKShipping.Controllers
                 return NotFound();
             // Unique vehicle_no check
             var exists = await _context.Vehicles
-                .AnyAsync(v => v.VehicleNo == dto.VehicleNo && v.VehicleId != id && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus == 1);
+                .AnyAsync(v => v.VehicleNo.Replace(" ", "").ToLower() == dto.VehicleNo.Replace(" ", "").ToLower() && v.VehicleId != id && v.VehicleCompanyId == GetCompanyId() && v.VehicleStatus == 1);
 
             if (exists)
                 return BadRequest(new { message = "Vehicle number already exists." });
@@ -180,10 +180,7 @@ namespace FreightBKShipping.Controllers
 
             if (lr != null)
             {
-                return BadRequest(new
-                {
-                    message = $"This Vehicle Number is used in LR No. '{lr.LrNoStr}'."
-                });
+                return BadRequest( $"This Vehicle Number is used in LR No. '{lr.LrNoStr}'.");
             }
             vehicle.VehicleStatus = 2; // soft delete
             vehicle.VehicleUpdated = DateTime.UtcNow;

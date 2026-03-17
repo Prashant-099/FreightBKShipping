@@ -97,17 +97,9 @@ namespace FreightBKShipping.Controllers
             slab.GstSlabCompanyId = GetCompanyId();
             _context.Entry(slab).State = EntityState.Modified;
 
-            try
-            {
+            
                 await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.GstSlabs.Any(e => e.GstSlabId == id))
-                    return NotFound();
-                else
-                    throw;
-            }
+           
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "GSTslab",

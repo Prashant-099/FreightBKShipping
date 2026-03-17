@@ -110,17 +110,9 @@ namespace FreightBKShipping.Controllers
             hsnSac.HsnCompanyId = GetCompanyId();
             _context.Entry(hsnSac).State = EntityState.Modified;
 
-            try
-            {
+           
                 await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.HsnSacs.Any(e => e.HsnId == id))
-                    return NotFound();
-                else
-                    throw;
-            }
+           
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "HSN/SAC",

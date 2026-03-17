@@ -277,7 +277,7 @@ namespace FreightBKShipping.Controllers
             {
                 return BadRequest("It is Used in Bill.");
             }
-            // 🔎 Check if used in ServiceTable
+            
             bool usedInratemaster = await _context.RateMasters.AnyAsync(s =>
                 s.RateMasterServiceId == id &&
                 s.RateMasterCompanyId == GetCompanyId()
@@ -285,7 +285,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInratemaster)
             {
-                return BadRequest($"It  is used in Rate Master .");
+                return BadRequest($"It  is Used in Rate Master .");
             }
 
 

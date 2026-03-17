@@ -79,10 +79,7 @@ public class RateMasterController : BaseController
 
         if (exists)
         {
-            return BadRequest(new
-            {
-                message = "Rate already exists."
-            });
+            return BadRequest("Rate Already Exists.");
 
 
             }
@@ -147,7 +144,7 @@ public class RateMasterController : BaseController
         {
             return BadRequest(new
             {
-                message = "Rate already exists."
+                message = "Rate Already Exists."
             });
         }
 

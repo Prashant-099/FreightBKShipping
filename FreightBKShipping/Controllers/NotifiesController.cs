@@ -27,34 +27,24 @@ namespace FreightBKShipping.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            try
-            {
+            
                 var notifies = await FilterByCompany(_context.Notifies, "NotifyCompanyId").OrderByDescending(b=>b.NotifyId).ToListAsync();
                 return Ok(notifies);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal error: {ex.Message}");
-            }
+            
         }
 
         // GET: api/Notifies/5
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
         {
-            try
-            {
+           
                 var notify = await FilterByCompany(_context.Notifies, "NotifyCompanyId")
                                     .FirstOrDefaultAsync(n => n.NotifyId == id);
 
                 if (notify == null) return NotFound();
 
                 return Ok(notify);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal error: {ex.Message}");
-            }
+          
         }
 
         // POST: api/Notifies
@@ -65,11 +55,11 @@ namespace FreightBKShipping.Controllers
                 // Check duplicate
                 var exists = await _context.Notifies
                     .AnyAsync(n => n.NotifyCompanyId == GetCompanyId() &&
-                                   n.NotifyType.Trim().ToLower() == dto.NotifyType.Trim().ToLower() &&
-                                   n.NotifyName.Trim().ToLower() == dto.NotifyName.Trim().ToLower());
+                                   n.NotifyType.ToLower() == dto.NotifyType.ToLower() &&
+                                   n.NotifyName.Replace(" ","").ToLower() == dto.NotifyName.Replace(" ", "").ToLower());
 
                 if (exists)
-                    return BadRequest(new { Message = $"This Name Already Eixt in '{dto.NotifyType}' Type." });
+                    return BadRequest( $"It Already Exists in '{dto.NotifyType}'.");
 
                 string? stateName = " ";
                 string? stateCode = " ";
@@ -136,12 +126,12 @@ namespace FreightBKShipping.Controllers
                 // Check duplicate for other records
                 var exists = await _context.Notifies
                     .AnyAsync(n => n.NotifyCompanyId == GetCompanyId() &&
-                                   n.NotifyType.Trim().ToLower() == dto.NotifyType.Trim().ToLower() &&
-                                   n.NotifyName.Trim().ToLower() == dto.NotifyName.Trim().ToLower() &&
+                                   n.NotifyType.ToLower() == dto.NotifyType.ToLower() &&
+                                   n.NotifyName.Replace(" ", "").ToLower() == dto.NotifyName.Replace(" ", "").ToLower() &&
                                    n.NotifyId != id);
 
                 if (exists)
-                    return BadRequest(new { Message = $"This Name Already Eist in '{dto.NotifyType}' Type." });
+                    return BadRequest(new { Message = $"It Already Exists in '{dto.NotifyType}'." });
                 string? stateName = " ";
                 string? stateCode = " ";
                 var state = await _context.States.FindAsync(dto.NotifyStateId);
@@ -209,10 +199,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInJobs)
             {
-                return BadRequest(new
-                {
-                    message = $"This Name  is used in Jobs."
-                });
+                return BadRequest( $"It is used in Jobs.");
             }
             // 🔎 Check used in Bills
             bool usedInBills = await _context.Bills.AnyAsync(b =>
@@ -223,10 +210,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInBills)
             {
-                return BadRequest(new
-                {
-                    message = $"This Name  is used in Bills."
-                });
+                return BadRequest($"It is used in Bills.");
             }
 
             _context.Notifies.Remove(notify);

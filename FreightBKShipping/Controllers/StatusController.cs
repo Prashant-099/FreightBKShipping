@@ -49,12 +49,12 @@ namespace FreightBKShipping.Controllers
             var exists = await _context.Status.AnyAsync(s =>
     s.StatusCompanyId == GetCompanyId() &&
     s.StatusName.Trim().ToLower() == status.StatusName.Trim().ToLower()
-    && s.Status_code.Trim().ToLower() == status.Status_code.Trim().ToLower()
+    && s.Status_code.ToLower() == status.Status_code.ToLower()
 );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Status Name already exists in '{status.Status_code}'." });
+                return BadRequest($"It Already Exists in '{status.Status_code}'.");
             }
 
             status.StatusCreated = DateTime.UtcNow;
@@ -89,12 +89,12 @@ namespace FreightBKShipping.Controllers
        s.StatusCompanyId == GetCompanyId() &&
        s.StatusId != id &&
        s.StatusName.Trim().ToLower() == model.StatusName.Trim().ToLower()
-       && s.Status_code.Trim().ToLower() == model.Status_code.Trim().ToLower()
+       && s.Status_code.ToLower() == model.Status_code.ToLower()
    );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Status Name already exists in '{status.Status_code}'." });
+                return BadRequest(new { message = $"It Already exists in '{model.Status_code}'." });
 
             }
             status.StatusName = model.StatusName;
@@ -135,10 +135,7 @@ namespace FreightBKShipping.Controllers
             );
             if (usedInJobs)
             {
-                return BadRequest(new
-                {
-                    message = $"This Status is used in Jobs."
-                });
+                return BadRequest($"It is used in Jobs.");
             }
             // 🔎 Check used in Bills
             bool usedInBills = await _context.Bills.AnyAsync(b =>

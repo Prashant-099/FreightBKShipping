@@ -86,16 +86,13 @@ namespace FreightBKShipping.Controllers
             
                 var exists = await _context.Locations.AnyAsync(l =>
             l.LocationCompanyId == GetCompanyId() &&
-            l.LocationType.Trim().ToLower() == dto.LocationType.Trim().ToLower() &&
-            l.LocationName.Trim().ToLower() == dto.LocationName.Trim().ToLower()
+            l.LocationType.ToLower() == dto.LocationType.ToLower() &&
+            l.LocationName.Replace(" ","").ToLower() == dto.LocationName.Replace(" ","").ToLower()
         );
 
                 if (exists)
                 {
-                    return BadRequest(new
-                    {
-                        message = $"Location  already exists in this '{dto.LocationType}'."
-                    });
+                    return BadRequest( $"Location Already Exists in '{dto.LocationType}'.");
                 }
 
                 var location = new Location
@@ -146,16 +143,16 @@ namespace FreightBKShipping.Controllers
 
                 var exists = await _context.Locations.AnyAsync(l =>
             l.LocationCompanyId == GetCompanyId() &&
-            l.LocationType.Trim().ToLower() == dto.LocationType.Trim().ToLower() &&
+            l.LocationType.ToLower() == dto.LocationType.ToLower() &&
             l.LocationId != id &&
-            l.LocationName.Trim().ToLower() == dto.LocationName.Trim().ToLower()
+            l.LocationName.Replace(" ", "").ToLower() == dto.LocationName.Replace(" ", "").ToLower()
         );
 
                 if (exists)
                 {
                     return BadRequest(new
                     {
-                        message = $"Location  already exists in this '{dto.LocationType}'."
+                        message = $"Location Already Exists in  '{dto.LocationType}'."
                     });
                 }
                 location.LocationName = dto.LocationName;
@@ -208,10 +205,7 @@ namespace FreightBKShipping.Controllers
 
                 if (usedInJobs)
                 {
-                    return BadRequest(new
-                    {
-                        message = $"This location '{location.LocationName}' is used in Jobs."
-                    });
+                    return BadRequest( $"It is used in Jobs.");
                 }
                 // 🔎 Check used in Bills
                 bool usedInBills = await _context.Bills.AnyAsync(b =>
@@ -222,10 +216,7 @@ namespace FreightBKShipping.Controllers
 
                 if (usedInBills)
                 {
-                    return BadRequest(new
-                    {
-                        message = $"This location '{location.LocationName}' is used in Bills."
-                    });
+                    return BadRequest( $"It is used in Bills.");
                 }
                 _context.Locations.Remove(location);
                 await _context.SaveChangesAsync();
