@@ -27,12 +27,12 @@ namespace FreightBKShipping.Controllers
 
             var exists = await _context.Cargoes.AnyAsync(c =>
         c.CargoCompanyId == GetCompanyId() &&
-        c.CargoName.Trim().ToLower() == dto.CargoName.Trim().ToLower()
+        c.CargoName.Replace(" ","").ToLower() == dto.CargoName.Replace(" ", "").ToLower()
     );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Cargo  already exists." });
+                return BadRequest($"Cargo Already Exists.");
             }
 
 
@@ -80,12 +80,12 @@ namespace FreightBKShipping.Controllers
             var exists = await _context.Cargoes.AnyAsync(c =>
         c.CargoCompanyId == GetCompanyId() &&
         c.CargoId != id &&
-        c.CargoName.Trim().ToLower() == dto.CargoName.Trim().ToLower()
+        c.CargoName.Replace(" ", "").ToLower() == dto.CargoName.Replace(" ", "").ToLower()
     );
 
             if (exists)
             {
-                return BadRequest(new { message = $"Cargo  already exists." });
+                return BadRequest(new { message = $"Cargo Already Exists." });
             }
 
             // Fetch new HSN record
@@ -128,10 +128,7 @@ namespace FreightBKShipping.Controllers
 
             if (existsInjob)
             {
-                return BadRequest(new
-                {
-                        Message = "This Cargo is Used in Job"
-                });
+                return BadRequest( "It is Used in Job");
             }
             _context.Cargoes.Remove(cargo);
             await _context.SaveChangesAsync();

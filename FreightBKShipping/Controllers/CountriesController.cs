@@ -68,7 +68,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Country Name already exists." });
+                return BadRequest("Country Already Exists.");
             }
             var country = new Country
             {
@@ -115,7 +115,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Country Name already exists." });
+                return BadRequest(new { message = "Country Already Exists." });
             }
             country.CountryName = dto.CountryName;
             country.CountryCode = dto.CountryCode;
@@ -145,10 +145,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInJobs)
             {
-                return BadRequest(new
-                {
-                    message = $"This Currency  is used in Jobs."
-                });
+                return BadRequest( $"It is used in Jobs.");
             }
 
             // 🔎 Check used in Jobs
@@ -160,10 +157,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInlocation)
             {
-                return BadRequest(new
-                {
-                    message = $"This Currency  is used in Station/Port."
-                });
+                return BadRequest( $"It is used in Station/Port.");
             }
             _context.Countries.Remove(country);
           

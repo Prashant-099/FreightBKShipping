@@ -53,7 +53,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Unit Name already exists." });
+                return BadRequest("Unit Already Exists.");
             }
 
             unit.UnitCompanyId = GetCompanyId();
@@ -98,7 +98,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Unit Name already exists." });
+                return BadRequest(new { message = "Unit Already Exists." });
             }
             // update fields
             existing.UnitName = unit.UnitName;
@@ -142,10 +142,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInService)
             {
-                return BadRequest(new
-                {
-                    message = $"THis Unit  is used in Service ."
-                });
+                return BadRequest( $"It is used in Service.");
             }
 
             _context.Units.Remove(unit);

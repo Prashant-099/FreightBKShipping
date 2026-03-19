@@ -72,7 +72,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Currency Name already exists." });
+                return BadRequest( "Currency Already Exists." );
             }
             var currency = new Currency
             {
@@ -128,7 +128,7 @@ namespace FreightBKShipping.Controllers
 
             if (exists)
             {
-                return BadRequest(new { message = "Currency Name already exists." });
+                return BadRequest(new { message = "Currency Already Exists." });
 
             }
             currency.CurrencyName = dto.CurrencyName;
@@ -167,10 +167,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInJobs)
             {
-                return BadRequest(new
-                {
-                    message = $"This Currency  is used in Jobs."
-                });
+                return BadRequest($"It is used in Jobs.");
             }
             // 🔎 Check used in Bills
             bool usedInBills = await _context.Bills.AnyAsync(b =>
@@ -181,10 +178,7 @@ namespace FreightBKShipping.Controllers
 
             if (usedInBills)
             {
-                return BadRequest(new
-                {
-                    message = $"This Currency  is used in Bills."
-                });
+                return BadRequest( $"It is used in Bills.");
             }
             _context.Currencies.Remove(currency);
             await _context.SaveChangesAsync();

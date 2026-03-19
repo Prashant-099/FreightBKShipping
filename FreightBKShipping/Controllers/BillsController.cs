@@ -1302,12 +1302,12 @@ namespace FreightBKShipping.Controllers
             if (!string.IsNullOrEmpty(bill.BillLockedBy) )
             {
                 //return BadRequest("This bill is locked by another user and cannot be deleted.");
-                return BadRequest(new {  Message = "Bill is locked" });
+                return BadRequest("Bill is locked" );
             }
             if (!string.IsNullOrEmpty(bill.BillAckNo) && !string.IsNullOrEmpty(bill.BillIrnNo))
             {
                 //return BadRequest("This bill’s e-invoice is already generated and cannot be deleted.");
-                return BadRequest(new  { Message = "E-Invoice generated" });
+                return BadRequest( "E-Invoice generated");
             }
 
 
@@ -1344,19 +1344,13 @@ namespace FreightBKShipping.Controllers
                 if (string.Equals(voucherGroup, "Sales", StringComparison.OrdinalIgnoreCase) ||
     string.Equals(voucherGroup, "Purchase", StringComparison.OrdinalIgnoreCase))
                 {
-                    return BadRequest(new
-                    {
-                        Message = $"Cannot delete bill.It is Used in: {billInfo}"
-                    });
+                    return BadRequest($"It is Used in: {billInfo}");
                 }
 
                 // 🔹 If this bill is Quotation
                 if (string.Equals(voucherGroup, "Quotation", StringComparison.OrdinalIgnoreCase))
                 {
-                    return BadRequest(new
-                    {
-                        Message = $"Cannot delete quotation. It is used in: {billInfo}"
-                    });
+                    return BadRequest( $"It is used in: {billInfo}");
                 }
             }
             // 🔹 CRITICAL: Check if bill has receipts against it
