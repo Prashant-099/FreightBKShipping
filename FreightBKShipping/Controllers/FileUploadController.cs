@@ -125,7 +125,33 @@ public class FileUploadController : BaseController
     }
 
     // ===================== UPLOAD =====================
+    // ===================== ADMIN UPLOAD (companyId ticket se) =====================
+    [HttpPost("admin-upload")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> AdminUploadFile(
+        [FromForm] FileUploadRequest request,
+        [FromForm] int ticketCompanyId) // ✅ frontend se ticket ka companyId bhejo
+    {
+        if (request.File == null || request.File.Length == 0)
+            return BadRequest("File is missing");
 
+        if (request.File.Length > MaxFileSize)
+            return BadRequest("File too large");
+
+        var extension = Path.GetExtension(request.File.FileName).ToLower();
+        if (!AllowedExtensions.Contains(extension))
+            return BadRequest("File type not allowed");
+
+        // ✅ Admin ke liye ticket ka companyId use karo
+        var result = await UploadFileAsync(
+            request.File,
+            request.Category,
+            request.SubCategory,
+            request.ReferenceId,
+            ticketCompanyId); // ✅ admin ka nahi, ticket ka companyId
+
+        return Ok(result);
+    }
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadFile(
@@ -258,27 +284,39 @@ public class FileUploadController : BaseController
 
     // ===================== LIST FROM DB =====================
 
-    [HttpGet("documents")]
-    public async Task<IActionResult> GetDocuments(
-        string category,
-        string? referenceId = null)
-    {
-        int companyId = GetCompanyId();
+  [HttpGet("documents")]
+public async Task<IActionResult> GetDocuments(
+    string category,
+    string? referenceId = null,
+    bool adminOverride = false)
+{
+    int companyId = GetCompanyId();
 
-        var query = _dbContext.DocumentsSaved
+    // ✅ adminOverride=true hone pe companyId filter mat lagao
+    IQueryable<DocumentsSaved> query;
+
+    if (adminOverride)
+    {
+        query = _dbContext.DocumentsSaved
+            .Where(d => d.Category == category && !d.IsDeleted);
+    }
+    else
+    {
+        query = _dbContext.DocumentsSaved
             .Where(d => d.CompanyId == companyId
                      && d.Category == category
                      && !d.IsDeleted);
-
-        if (!string.IsNullOrWhiteSpace(referenceId))
-            query = query.Where(d => d.ReferenceId == referenceId);
-
-        var docs = await query
-            .OrderByDescending(d => d.UploadedAt)
-            .ToListAsync();
-
-        return Ok(docs);
     }
+
+    if (!string.IsNullOrWhiteSpace(referenceId))
+        query = query.Where(d => d.ReferenceId == referenceId);
+
+    var docs = await query
+        .OrderByDescending(d => d.UploadedAt)
+        .ToListAsync();
+
+    return Ok(docs);
+}
 
     // ===================== DELETE =====================
 
@@ -375,6 +413,40 @@ public class FileUploadController : BaseController
             sasUrl,
             expiresAt = DateTime.UtcNow.AddMinutes(expiresInMinutes)
         });
+    }
+
+    // GET api/superadmin/admin-documents
+    [HttpGet("admin-documents")]
+    public async Task<IActionResult> GetAdminDocuments(
+        string category,
+        string? referenceId = null)
+    {
+        var docs = await _dbContext.DocumentsSaved
+            .Where(d => d.Category == category && !d.IsDeleted)
+            .OrderByDescending(d => d.UploadedAt)
+            .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(referenceId))
+            docs = docs.Where(d => d.ReferenceId == referenceId).ToList();
+
+        return Ok(docs);
+    }
+
+    // GET api/superadmin/admin-sas/{documentId}
+    [HttpGet("admin-sas/{documentId}")]
+    public async Task<IActionResult> GetAdminSasUrl(
+        long documentId,
+        int expiresInMinutes = 60)
+    {
+        var doc = await _dbContext.DocumentsSaved
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId && !d.IsDeleted);
+
+        if (doc == null) return NotFound();
+
+        var sasUrl = _sasUrlService.GenerateReadSasUrl(
+            doc.ContainerName, doc.BlobName, expiresInMinutes);
+
+        return Ok(new { documentId, sasUrl, expiresAt = DateTime.UtcNow.AddMinutes(expiresInMinutes) });
     }
 
     // ===================== HELPERS =====================
