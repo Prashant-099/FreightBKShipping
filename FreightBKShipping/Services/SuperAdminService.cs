@@ -125,6 +125,7 @@ public class SuperAdminService : ISuperAdminService
                 TotalUsers = totalUsers,
                 MaxUsersAllowed = maxUsers,
                 RemainingUserSlots = remainingSlots
+
             });
         }
 
@@ -138,7 +139,12 @@ public class SuperAdminService : ISuperAdminService
             FailedLoginsToday = todayFailed,
             CompanyExpiryList = expiryList,
             OnlineCompaniesList = onlineList,
-            CompanyLoginCounts = loginCountList
+            CompanyLoginCounts = loginCountList,
+            TotalOpenTickets = await _context.SupportTickets
+        .CountAsync(t => t.StatusId != 5), // 5 = Closed
+
+            TotalUnreadTickets = await _context.TicketMessages
+        .CountAsync(m => !m.IsReadBySupport)
         };
     }
 
