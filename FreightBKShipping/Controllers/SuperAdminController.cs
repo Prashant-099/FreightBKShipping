@@ -70,13 +70,15 @@ namespace FreightBKShipping.Controllers
             var msg = await _service.SendSupportReplyAsync(id, dto.Message, GetUserId());
             if (msg == null)
                 return BadRequest(new { message = "Failed to send reply." });
-            // ✅ Broadcast to everyone viewing this ticket in real time
+
+            // ✅ FIX: mediaDocumentId bhi broadcast karo — user side refresh nahi karna padega
             await _hub.Clients.Group($"ticket-{id}")
                 .SendAsync("ReceiveMessage",
                     msg.SenderType,    // "Support"
                     msg.MessageText,
                     msg.CreatedAt,
-                    msg.MessageId);
+                    msg.MessageId,
+                    dto.MediaDocumentId ?? 0L);    // 5th param: long
 
             return Ok(msg);
         }
@@ -104,7 +106,6 @@ namespace FreightBKShipping.Controllers
             var result = await _service.CloseTicketAsync(id, GetUserId());
             if (!result) return NotFound(new { message = $"Ticket {id} not found." });
 
-            // ✅ Notify both sides that ticket is now closed
             try
             {
                 await _hub.Clients.Group($"ticket-{id}")

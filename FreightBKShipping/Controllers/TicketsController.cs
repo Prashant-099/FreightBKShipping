@@ -57,13 +57,13 @@ namespace FreightBKShipping.Controllers
 
             var reply = await _ticketService.SendReplyAsync(dto, GetUserId());
 
-            // ✅ Broadcast to everyone viewing this ticket in real time
             await _hub.Clients.Group($"ticket-{dto.TicketId}")
                 .SendAsync("ReceiveMessage",
                     reply.SenderType,
                     reply.MessageText,
                     reply.CreatedAt,
-                    reply.MessageId);
+                    reply.MessageId,
+                    dto.MediaDocumentId ?? 0);   // ✅ ADD THIS
 
             return Ok(reply);
         }

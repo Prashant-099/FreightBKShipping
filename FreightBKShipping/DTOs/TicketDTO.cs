@@ -21,6 +21,7 @@ namespace FreightBKShipping.DTOs
         public string MessageText { get; set; } = string.Empty;
 
         public string SenderType { get; set; } = "User";
+        public long? MediaDocumentId { get; set; }
     }
 
 
