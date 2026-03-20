@@ -1664,6 +1664,9 @@ namespace FreightBKShipping.Controllers
                         .FirstOrDefaultAsync(l => l.LocationId == bill.BillPodId)
                     : null;
 
+                var Voucher = await _context.Vouchers.AsNoTracking()
+                   .FirstOrDefaultAsync(p => p.VoucherId == bill.BillVoucherId);
+
                 var bankAccount = bill.BillBankId > 0
                     ? await _context.Accounts.AsNoTracking()
                         .FirstOrDefaultAsync(a => a.AccountId == bill.BillBankId)
@@ -1701,6 +1704,10 @@ namespace FreightBKShipping.Controllers
                         account_address1 = bill.BillAddress1,
                         account_state = billState?.StateName,
                         account_gstno = bill.BillGstNo,
+                        account_panno = party?.AccountPan,
+
+                        Vouchername = Voucher.VoucherName,
+
                         Cargo = cargo?.CargoName,
                         bill_blno = bill.BillBlNo,
                         bill_hblno = bill.BillHblNo,
@@ -1712,8 +1719,8 @@ namespace FreightBKShipping.Controllers
                         bill_netwt = bill.BillNetWt,
                         Vessel = vessel?.VesselName,
                         Line = lineNotify?.NotifyName,
-                        bill_20ft = bill.Bill20Ft,
-                        bill_40ft = bill.Bill40Ft,
+                        bill_20ft = bill?.Bill20Ft??"0",
+                        bill_40ft = bill?.Bill40Ft??"0",
                         shipper_invno = bill.BillShipperInvNo,
                         Shipper = shipperNotify?.NotifyName,
                         Consignee = consigneeNotify?.NotifyName,
@@ -1771,7 +1778,7 @@ namespace FreightBKShipping.Controllers
                         bill_detail_qty = detail.BillDetailQty,
                         bill_detail_rate = detail.BillDetailRate,
                         BillDetailActualRate = detail.BillDetailActualRate,
-                        bill_detail_exchunit = currency?.CurrencyName,
+                        bill_detail_exchunit = currency?.CurrencySymbol,
                         bill_detail_exchrate = detail.BillDetailExchRate,
                         bill_detail_amount = detail.BillDetailAmount,
                         bill_detail_sgst = detail.BillDetailSgst,
