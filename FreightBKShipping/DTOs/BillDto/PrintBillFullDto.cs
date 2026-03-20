@@ -23,7 +23,8 @@
         public string? account_state { get; set; }
         public string? account_address1 { get; set; }
         public string? account_gstno { get; set; }
-     
+        public string? account_panno { get; set; }
+        public string? Vouchername { get; set; }
         public string? PlaceofSupply { get; set; }
         public string? ShipmentType { get; set; }
         public string? Cargo { get; set; }
