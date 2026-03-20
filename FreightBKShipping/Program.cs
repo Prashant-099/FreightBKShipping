@@ -1,18 +1,15 @@
 ﻿using FreightBKShipping.Data;
-using FreightBKShipping.SignalR;                     // ← added
+using FreightBKShipping.SignalR;
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Services;
-using FreightBKShipping.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Sieve.Models;
 using Sieve.Services;
-using System;
 using System.Security.Claims;
 using System.Text;
-
 
 namespace FreightBKShipping
 {
@@ -22,19 +19,18 @@ namespace FreightBKShipping
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ── CORS ── SignalR requires AllowCredentials, so AllowAnyOrigin won't work.
-            // Replace your old CORS block with this one.
+            // ── CORS ──────────────────────────────────────────────────────────
+            // SignalR requires AllowCredentials, so AllowAnyOrigin is not allowed.
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAnyOrigin", policy =>
                 {
                     policy
-                        // ⚠️ Put your exact Blazor app URLs here (both http and https)
                         .WithOrigins(
-                            "https://localhost:7226",   // ← your actual Blazor port
-    "http://localhost:5171",
-    "https://localhost:7001",
-    "http://localhost:5001"
+                            "https://localhost:7226",
+                            "http://localhost:5171",
+                            "https://localhost:7001",
+                            "http://localhost:5001"
                         )
                         .AllowAnyHeader()
                         .AllowAnyMethod()
@@ -44,10 +40,9 @@ namespace FreightBKShipping
                 });
             });
 
-            // Add services to the container.
             builder.Services.AddControllers();
 
-            // ✅ 2. Register AppDbContext
+            // ── Database ──────────────────────────────────────────────────────
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseMySql(
                     builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -56,7 +51,7 @@ namespace FreightBKShipping
             builder.Services.AddScoped<ISieveProcessor, SieveProcessor>();
             builder.Services.Configure<SieveOptions>(builder.Configuration.GetSection("Sieve"));
 
-            // ✅ 3. Add services
+            // ── Application services ──────────────────────────────────────────
             builder.Services.AddScoped<TokenService>();
             builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<SentWpEmailService>();
@@ -69,12 +64,12 @@ namespace FreightBKShipping
             builder.Services.AddScoped<ILrService, LrService>();
             builder.Services.AddScoped<ITicketService, TicketService>();
 
-            // ✅ SignalR                                       // ← added
-            builder.Services.AddSignalR();                     // ← added
+            // ── SignalR ───────────────────────────────────────────────────────
+            builder.Services.AddSignalR();
 
             builder.Services.AddHttpContextAccessor();
 
-            // ✅ 4. Add JWT Authentication
+            // ── JWT Authentication ─────────────────────────────────────────────
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -91,7 +86,7 @@ namespace FreightBKShipping
                         RoleClaimType = ClaimTypes.Role
                     };
 
-                    // ── Allow SignalR to read JWT from query string ──   // ← added
+                    // Allow SignalR to read JWT from query string (required for WS transport)
                     options.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>
@@ -107,12 +102,17 @@ namespace FreightBKShipping
 
                             return Task.CompletedTask;
                         }
-                    };                                                    // ← added
+                    };
                 });
 
-            builder.Services.AddAuthorization();
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("CompanyManagementOnly", policy =>
+                    policy.RequireRole("SuperAdmin"));
+            });
 
-            // ✅ 5. Swagger + JWT support
+            // ✅ Removed duplicate: AddEndpointsApiExplorer and AddSwaggerGen
+            // were each registered twice in the original — once is enough.
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -136,7 +136,7 @@ namespace FreightBKShipping
                             Reference = new OpenApiReference
                             {
                                 Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
+                                Id   = "Bearer"
                             }
                         },
                         Array.Empty<string>()
@@ -144,40 +144,27 @@ namespace FreightBKShipping
                 });
             });
 
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy("CompanyManagementOnly", policy =>
-                    policy.RequireRole("SuperAdmin"));
-            });
-
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
-            {
                 app.UseDeveloperExceptionPage();
-            }
             else
-            {
                 app.UseExceptionHandler("/error");
-            }
 
             app.UseSwagger();
             app.UseSwaggerUI();
             app.UseHttpsRedirection();
 
-            app.UseCors("AllowAnyOrigin");                     // ← must be BEFORE UseAuthorization
-
-            app.UseAuthentication();                           // ← must come before UseAuthorization
+            // Order matters: CORS → Authentication → Authorization
+            app.UseCors("AllowAnyOrigin");
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseMiddleware<GlobalExceptionMiddleware>();
 
             app.MapControllers();
             app.MapHub<TicketHub>("/tickethub");
+
             app.Run();
         }
     }

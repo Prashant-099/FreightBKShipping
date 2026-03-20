@@ -98,15 +98,41 @@ public class FileUploadController : BaseController
     private readonly AppDbContext _dbContext;
     private readonly ISasUrlService _sasUrlService;
 
+    //private static readonly HashSet<string> AllowedExtensions =
+    //    new(StringComparer.OrdinalIgnoreCase)
+    //    {
+    //        ".pdf", ".jpg", ".jpeg", ".png", ".gif",
+    //        ".doc", ".docx", ".xls", ".xlsx",
+    //        ".txt", ".csv", ".zip", ".rar"
+    //    };
+    // Replace old AllowedExtensions + MaxFileSize block with this
+
     private static readonly HashSet<string> AllowedExtensions =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ".pdf", ".jpg", ".jpeg", ".png", ".gif",
-            ".doc", ".docx", ".xls", ".xlsx",
-            ".txt", ".csv", ".zip", ".rar"
+        ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp",
+        ".mp4", ".webm", ".mov",
+        ".doc", ".docx", ".xls", ".xlsx",
+        ".txt", ".csv", ".zip", ".rar"
         };
 
-    private const long MaxFileSize = 10 * 1024 * 1024;
+    private static readonly HashSet<string> ImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+        ".jpg", ".jpeg", ".png", ".gif", ".webp"
+        };
+
+    private static readonly HashSet<string> VideoExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+        ".mp4", ".webm", ".mov"
+        };
+
+    private const long MaxDocumentFileSize = 10 * 1024 * 1024; // 10 MB
+    private const long MaxImageFileSize = 5 * 1024 * 1024;     // 5 MB
+    private const long MaxVideoFileSize = 25 * 1024 * 1024;    // 25 MB
+
+    //private const long MaxFileSize = 10 * 1024 * 1024;
 
     public FileUploadController(
       IConfiguration configuration,
@@ -125,21 +151,34 @@ public class FileUploadController : BaseController
     }
 
     // ===================== UPLOAD =====================
+    // ===================== ADMIN UPLOAD (companyId ticket se) =====================
+    // Replace AdminUploadFile action with this
+    [HttpPost("admin-upload")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> AdminUploadFile(
+        [FromForm] FileUploadRequest request,
+        [FromForm] int ticketCompanyId)
+    {
+        if (!TryValidateFile(request.File, out _, out var validationError))
+            return BadRequest(validationError);
 
+        var result = await UploadFileAsync(
+            request.File,
+            request.Category,
+            request.SubCategory,
+            request.ReferenceId,
+            ticketCompanyId);
+
+        return Ok(result);
+    }
+
+    // Replace UploadFile action with this
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadFile(
-      [FromForm] FileUploadRequest request)
+    public async Task<IActionResult> UploadFile([FromForm] FileUploadRequest request)
     {
-        if (request.File == null || request.File.Length == 0)
-            return BadRequest("File is missing");
-
-        if (request.File.Length > MaxFileSize)
-            return BadRequest("File too large");
-
-        var extension = Path.GetExtension(request.File.FileName).ToLower();
-        if (!AllowedExtensions.Contains(extension))
-            return BadRequest("File type not allowed");
+        if (!TryValidateFile(request.File, out _, out var validationError))
+            return BadRequest(validationError);
 
         int companyId = GetCompanyId();
 
@@ -152,6 +191,48 @@ public class FileUploadController : BaseController
 
         return Ok(result);
     }
+    // Add these helper methods in controller
+    private bool TryValidateFile(IFormFile? file, out string extension, out string error)
+    {
+        extension = string.Empty;
+        error = string.Empty;
+
+        if (file == null || file.Length == 0)
+        {
+            error = "File is missing";
+            return false;
+        }
+
+        extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        if (!AllowedExtensions.Contains(extension))
+        {
+            error = $"File type not allowed. Allowed: {string.Join(", ", AllowedExtensions.OrderBy(x => x))}";
+            return false;
+        }
+
+        var maxSize = GetMaxFileSizeByExtension(extension);
+        if (file.Length > maxSize)
+        {
+            var maxMb = maxSize / (1024 * 1024);
+            error = $"File too large. Max allowed for {extension} is {maxMb} MB.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static long GetMaxFileSizeByExtension(string extension)
+    {
+        if (VideoExtensions.Contains(extension))
+            return MaxVideoFileSize;
+
+        if (ImageExtensions.Contains(extension))
+            return MaxImageFileSize;
+
+        return MaxDocumentFileSize;
+    }
+
 
     [NonAction]
     private async Task<FileUploadResult> UploadFileAsync(
@@ -258,27 +339,39 @@ public class FileUploadController : BaseController
 
     // ===================== LIST FROM DB =====================
 
-    [HttpGet("documents")]
-    public async Task<IActionResult> GetDocuments(
-        string category,
-        string? referenceId = null)
-    {
-        int companyId = GetCompanyId();
+  [HttpGet("documents")]
+public async Task<IActionResult> GetDocuments(
+    string category,
+    string? referenceId = null,
+    bool adminOverride = false)
+{
+    int companyId = GetCompanyId();
 
-        var query = _dbContext.DocumentsSaved
+    // ✅ adminOverride=true hone pe companyId filter mat lagao
+    IQueryable<DocumentsSaved> query;
+
+    if (adminOverride)
+    {
+        query = _dbContext.DocumentsSaved
+            .Where(d => d.Category == category && !d.IsDeleted);
+    }
+    else
+    {
+        query = _dbContext.DocumentsSaved
             .Where(d => d.CompanyId == companyId
                      && d.Category == category
                      && !d.IsDeleted);
-
-        if (!string.IsNullOrWhiteSpace(referenceId))
-            query = query.Where(d => d.ReferenceId == referenceId);
-
-        var docs = await query
-            .OrderByDescending(d => d.UploadedAt)
-            .ToListAsync();
-
-        return Ok(docs);
     }
+
+    if (!string.IsNullOrWhiteSpace(referenceId))
+        query = query.Where(d => d.ReferenceId == referenceId);
+
+    var docs = await query
+        .OrderByDescending(d => d.UploadedAt)
+        .ToListAsync();
+
+    return Ok(docs);
+}
 
     // ===================== DELETE =====================
 
@@ -315,7 +408,7 @@ public class FileUploadController : BaseController
 
 
     // ===================== Preview! =====================
-
+    // Preview endpoint: force inline + resolved content type
     [HttpGet("preview/{documentId}")]
     public async Task<IActionResult> Preview(long documentId)
     {
@@ -326,33 +419,25 @@ public class FileUploadController : BaseController
             d.CompanyId == companyId &&
             !d.IsDeleted);
 
-        if (doc == null)
-            return NotFound();
+        if (doc == null) return NotFound();
 
-        var containerClient =
-            _blobServiceClient.GetBlobContainerClient(doc.ContainerName);
-
-        var blobClient =
-            containerClient.GetBlobClient(doc.BlobName);
-
-        if (!await blobClient.ExistsAsync())
-            return NotFound();
+        var containerClient = _blobServiceClient.GetBlobContainerClient(doc.ContainerName);
+        var blobClient = containerClient.GetBlobClient(doc.BlobName);
+        if (!await blobClient.ExistsAsync()) return NotFound();
 
         var response = await blobClient.DownloadStreamingAsync();
+        var contentType = ResolveDocumentContentType(doc);
 
-        Response.Headers.Add("Accept-Ranges", "bytes");
+        Response.Headers["Accept-Ranges"] = "bytes";
+        Response.Headers["Content-Disposition"] = "inline";
 
-        return File(
-            response.Value.Content,
-            doc.ContentType,
-            enableRangeProcessing: true
-        );
+        return File(response.Value.Content, contentType, enableRangeProcessing: true);
     }
 
+
+    // SAS endpoint: send inline + content type overrides
     [HttpGet("sas/{documentId}")]
-    public async Task<IActionResult> GetSasUrl(
-    long documentId,
-    int expiresInMinutes = 10)
+    public async Task<IActionResult> GetSasUrl(long documentId, int expiresInMinutes = 10)
     {
         int companyId = GetCompanyId();
 
@@ -361,13 +446,16 @@ public class FileUploadController : BaseController
             d.CompanyId == companyId &&
             !d.IsDeleted);
 
-        if (doc == null)
-            return NotFound();
+        if (doc == null) return NotFound();
+
+        var contentType = ResolveDocumentContentType(doc);
 
         var sasUrl = _sasUrlService.GenerateReadSasUrl(
             doc.ContainerName,
             doc.BlobName,
-            expiresInMinutes);
+            expiresInMinutes,
+            responseContentType: contentType,
+            responseContentDisposition: "inline");
 
         return Ok(new
         {
@@ -377,7 +465,61 @@ public class FileUploadController : BaseController
         });
     }
 
+
+    // GET api/superadmin/admin-documents
+    [HttpGet("admin-documents")]
+    public async Task<IActionResult> GetAdminDocuments(
+        string category,
+        string? referenceId = null)
+    {
+        var docs = await _dbContext.DocumentsSaved
+            .Where(d => d.Category == category && !d.IsDeleted)
+            .OrderByDescending(d => d.UploadedAt)
+            .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(referenceId))
+            docs = docs.Where(d => d.ReferenceId == referenceId).ToList();
+
+        return Ok(docs);
+    }
+
+    // GET api/superadmin/admin-sas/{documentId}
+    // Admin SAS endpoint bhi same override ke saath
+    [HttpGet("admin-sas/{documentId}")]
+    public async Task<IActionResult> GetAdminSasUrl(long documentId, int expiresInMinutes = 60)
+    {
+        var doc = await _dbContext.DocumentsSaved
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId && !d.IsDeleted);
+
+        if (doc == null) return NotFound();
+
+        var contentType = ResolveDocumentContentType(doc);
+
+        var sasUrl = _sasUrlService.GenerateReadSasUrl(
+            doc.ContainerName,
+            doc.BlobName,
+            expiresInMinutes,
+            responseContentType: contentType,
+            responseContentDisposition: "inline");
+
+        return Ok(new { documentId, sasUrl, expiresAt = DateTime.UtcNow.AddMinutes(expiresInMinutes) });
+    }
+
+
     // ===================== HELPERS =====================
+    // FileUploadController helper
+    private string ResolveDocumentContentType(DocumentsSaved doc)
+    {
+        var current = doc.ContentType?.Trim();
+        if (!string.IsNullOrWhiteSpace(current) &&
+            !current.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        {
+            return current;
+        }
+
+        var ext = (doc.FileExtension ?? Path.GetExtension(doc.OriginalFileName) ?? "").ToLowerInvariant();
+        return GetContentType(ext);
+    }
 
     private string SanitizeContainerName(string name)
     {
@@ -399,12 +541,17 @@ public class FileUploadController : BaseController
             .Replace(" ", "_");
     }
 
+    // Replace GetContentType with this
     private string GetContentType(string ext) => ext switch
     {
         ".pdf" => "application/pdf",
         ".jpg" or ".jpeg" => "image/jpeg",
         ".png" => "image/png",
         ".gif" => "image/gif",
+        ".webp" => "image/webp",
+        ".mp4" => "video/mp4",
+        ".webm" => "video/webm",
+        ".mov" => "video/quicktime",
         ".doc" => "application/msword",
         ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ".xls" => "application/vnd.ms-excel",
@@ -415,6 +562,7 @@ public class FileUploadController : BaseController
         ".rar" => "application/x-rar-compressed",
         _ => "application/octet-stream"
     };
+
 }
 
 

@@ -3,10 +3,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using FreightBKShipping.Interfaces;
 
-
 namespace FreightBKShipping.Services
 {
- 
     public class SasUrlService : ISasUrlService
     {
         private readonly string _connectionString;
@@ -23,7 +21,9 @@ namespace FreightBKShipping.Services
         public string GenerateReadSasUrl(
             string containerName,
             string blobName,
-            int minutesValid = 10)
+            int minutesValid = 10,
+            string? responseContentType = null,
+            string? responseContentDisposition = null)
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
@@ -37,6 +37,12 @@ namespace FreightBKShipping.Services
             };
 
             sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+            if (!string.IsNullOrWhiteSpace(responseContentType))
+                sasBuilder.ContentType = responseContentType;
+
+            if (!string.IsNullOrWhiteSpace(responseContentDisposition))
+                sasBuilder.ContentDisposition = responseContentDisposition;
 
             var credential = new StorageSharedKeyCredential(
                 _blobServiceClient.AccountName,
@@ -57,5 +63,4 @@ namespace FreightBKShipping.Services
                 .Split('=', 2)[1];
         }
     }
-
 }

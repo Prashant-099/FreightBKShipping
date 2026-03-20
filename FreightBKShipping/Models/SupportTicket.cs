@@ -22,11 +22,14 @@ namespace FreightBKShipping.Models
         public int PriorityId { get; set; }
 
         public string? AssignedTo { get; set; }
+   
+
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
 
         public DateTime? ClosedAt { get; set; }
+
     }
 }

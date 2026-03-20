@@ -11,12 +11,20 @@ namespace FreightBKShipping.Services
     public class TicketService : ITicketService
     {
         private readonly AppDbContext _context;
-        private readonly IHubContext<TicketHub> _hubContext;  // ← added
 
-        public TicketService(AppDbContext context, IHubContext<TicketHub> hubContext)  // ← added
+        // ✅ FIX 2: _hubContext removed from TicketService.
+        //
+        // Previously BOTH TicketsController AND TicketService were broadcasting
+        // the same SignalR event, causing every message to fire twice.
+        //
+        // Rule: only the CONTROLLER layer should broadcast. The service layer
+        // is responsible only for database persistence.
+        // TicketsController.Reply() already calls _hub.Clients.Group(...).SendAsync()
+        // after calling this service — so this service must NOT do it too.
+
+        public TicketService(AppDbContext context)
         {
             _context = context;
-            _hubContext = hubContext;  // ← added
         }
 
         public async Task<IEnumerable<SupportTicket>> GetTicketsAsync(int companyId)
@@ -33,6 +41,37 @@ namespace FreightBKShipping.Services
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId && t.CompanyId == companyId);
         }
 
+        //public async Task<SupportTicket> CreateTicketAsync(TicketCreateDto dto, int companyId, string userId)
+        //{
+        //    var ticket = new SupportTicket
+        //    {
+        //        TicketNo = "TKT-" + DateTime.UtcNow.Ticks,
+        //        Subject = dto.Subject,
+        //        CompanyId = companyId,
+        //        CreatedBy = userId,
+        //        PriorityId = dto.PriorityId,
+        //        StatusId = 1,
+        //        CreatedAt = DateTime.UtcNow,
+        //    };
+
+        //    _context.SupportTickets.Add(ticket);
+        //    await _context.SaveChangesAsync();
+
+        //    var message = new TicketMessage
+        //    {
+        //        TicketId = ticket.TicketId,
+        //        MessageText = dto.MessageText,
+        //        SenderId = userId,
+        //        SenderType = "User",
+        //        IsReadByUser = true,
+        //        IsReadBySupport = false,
+        //    };
+
+        //    _context.TicketMessages.Add(message);
+        //    await _context.SaveChangesAsync();
+
+        //    return ticket;
+        //}
         public async Task<SupportTicket> CreateTicketAsync(TicketCreateDto dto, int companyId, string userId)
         {
             var ticket = new SupportTicket
@@ -45,7 +84,6 @@ namespace FreightBKShipping.Services
                 StatusId = 1,
                 CreatedAt = DateTime.UtcNow,
             };
-
             _context.SupportTickets.Add(ticket);
             await _context.SaveChangesAsync();
 
@@ -58,13 +96,11 @@ namespace FreightBKShipping.Services
                 IsReadByUser = true,
                 IsReadBySupport = false,
             };
-
             _context.TicketMessages.Add(message);
             await _context.SaveChangesAsync();
 
             return ticket;
         }
-
         public async Task<TicketMessage> SendReplyAsync(TicketReplyDto dto, string userId)
         {
             var message = new TicketMessage
@@ -80,7 +116,6 @@ namespace FreightBKShipping.Services
             _context.TicketMessages.Add(message);
             await _context.SaveChangesAsync();
 
-            // Mark ticket as updated
             var ticket = await _context.SupportTickets.FindAsync(dto.TicketId);
             if (ticket != null)
             {
@@ -88,21 +123,15 @@ namespace FreightBKShipping.Services
                 await _context.SaveChangesAsync();
             }
 
-            // ── SIGNALR: push new message to everyone watching this ticket ──
-            await _hubContext.Clients
-     .Group($"ticket-{dto.TicketId}")
-     .SendAsync("ReceiveMessage",
-         message.SenderType,
-         message.MessageText,
-         message.CreatedAt,
-         message.MessageId);
+            // ✅ FIX 2: NO SignalR broadcast here.
+            // TicketsController.Reply() broadcasts after calling this method.
+            // Doing it here too causes the event to fire twice per message.
 
             return message;
         }
 
         public async Task<IEnumerable<TicketMessage>> GetRepliesAsync(int ticketId, int companyId)
         {
-            // Verify ticket belongs to company before returning messages
             var ticketExists = await _context.SupportTickets
                 .AnyAsync(t => t.TicketId == ticketId && t.CompanyId == companyId);
 
@@ -120,8 +149,7 @@ namespace FreightBKShipping.Services
             var ticket = await _context.SupportTickets
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId && t.CompanyId == companyId);
 
-            if (ticket == null)
-                return false;
+            if (ticket == null) return false;
 
             ticket.StatusId = dto.StatusId;
             ticket.PriorityId = dto.PriorityId;
@@ -134,9 +162,7 @@ namespace FreightBKShipping.Services
         public async Task<bool> CloseTicketAsync(int ticketId, string userId)
         {
             var ticket = await _context.SupportTickets.FindAsync(ticketId);
-
-            if (ticket == null)
-                return false;
+            if (ticket == null) return false;
 
             ticket.StatusId = 5;
             ticket.ClosedAt = DateTime.UtcNow;
@@ -144,12 +170,14 @@ namespace FreightBKShipping.Services
 
             await _context.SaveChangesAsync();
 
-            // ── SIGNALR: tell everyone watching this ticket it is now closed ──
-            await _hubContext.Clients
-                .Group($"ticket-{ticketId}")
-                .SendAsync("TicketClosed", ticketId);
+            // ✅ FIX 2: NO SignalR broadcast here.
+            // TicketsController.Close() already broadcasts "TicketClosed" after
+            // calling this method. Broadcasting here too fired it twice.
 
             return true;
         }
+
+
+
     }
 }
