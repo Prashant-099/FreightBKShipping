@@ -119,5 +119,6 @@
     public class TicketReplyAdminDto
     {
         public string Message { get; set; } = string.Empty;
+        public long? MediaDocumentId { get; set; }
     }
 }
