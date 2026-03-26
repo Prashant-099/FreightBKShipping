@@ -47,5 +47,7 @@ namespace FreightBKShipping.Models
         // ✅ Navigation property back to Journal
         [ForeignKey("BillRefAgainstId")]
         public virtual Journal? Journal { get; set; }
+
+        public Account Account { get; set; }
     }
 }

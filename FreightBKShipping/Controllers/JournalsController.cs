@@ -861,6 +861,103 @@ namespace FreightBKShipping.Controllers
 
             return Ok( true);
         }
+        [HttpGet("print/{id}")]
+        public async Task<ActionResult<PrintJournalFullDto>> GetPrintJournal(int id)
+        {
+            try
+            {
+                // ✅ Single query with includes (performance boost 🚀)
+                var journal = await FilterByCompany(_context.Journals, "JournalCompanyId")
+                    .Include(j => j.Party)
+                    .Include(j => j.Account)
+                    .Include(j => j.Voucher)
+                    .Include(j => j.BillRefDetails)
+                    .ThenInclude(b => b.Account)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(j => j.JournalId == id);
 
+                if (journal == null)
+                    return NotFound($"Journal {id} not found");
+
+                // ✅ Company
+                var company = await _context.companies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.CompanyId == journal.JournalCompanyId);
+
+                var companyState = company?.StateId > 0 ? await _context.States.AsNoTracking().
+                    FirstOrDefaultAsync(s => s.StateId == company.StateId) : null;
+
+                // ✅ Bank (same AccountId use kiya hai tune)
+                var bank = journal.JournalAccountId > 0
+                    ? journal.Account
+                    : null;
+
+                // ✅ Build result
+                var result = new PrintJournalFullDto
+                {
+                    Journal = new JournalPrintDto
+                    {
+                        JournalId = journal.JournalId,
+                        JournalNo = journal.JournalNoStr,
+                        JournalDate = journal.JournalDate,
+
+                        PartyName = journal.Party?.AccountName,
+                        AccountName = journal.Account?.AccountName,
+                        VoucherName = journal.Voucher?.VoucherName,
+
+                        JournalAmount = journal.JournalAmount,
+                        JournalRemarks = journal.JournalRemarks,
+
+                        JournalTotalDiscount = journal.JournalTotalDiscount,
+                        JournalTotalShort = journal.JournalTotalShort,
+                        JournalTotalTds = journal.JournalTotalTds,
+                        JournalTotal = journal.JournalTotal,
+                        JournalOnAccount = journal.JournalOnAccount,
+
+                        CompanyName = company?.Name,
+                        CompanyAddress = company?.Address1,
+                        CompanyGST = company?.Gstin,
+                        CompanyPanno = company?.Panno,
+                        CompanyWebsite = company?.Website,
+                        CompanyState = companyState?.StateName,
+                        CompanyMobile = company?.Mobile,
+                        CompanyEmail = company?.Email,
+
+                        BankName = bank?.AccountBankName,
+                        BankAccountNo = bank?.AccountAccNo,
+                        BankIFSC = bank?.AccountIfsCode,
+                         BankBranch = bank?.AccountBankBranch,
+                        BankAddress = bank?.AccountAddress1
+
+                    },
+
+                    BillRefDetails = journal.BillRefDetails?
+                        .OrderBy(x => x.BillRefDetailId)
+                        .Select(d => new BillRefDetailPrintDto
+                        {
+                            BillRefDetailId = d.BillRefDetailId,
+                            
+
+                            RefType = d.BillRefVchType,
+                            RefNo = d.BillRefVchNo,
+                            RefDate = d.BillRefVchDate,
+
+                            Amount = d.BillRefVchAmount,
+                            Discount = d.BillRefVchDis,
+                            Tds = d.BillRefVchTds,
+                            Short = d.BillRefVchShort,
+                            AccountName = d.Account.AccountName,
+                            Balance = d.BillRefVchBalance
+                        }).ToList()
+                        ?? new List<BillRefDetailPrintDto>()
+                };
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return Problem($"Error: {ex.Message}");
+            }
+        }
     }
 }

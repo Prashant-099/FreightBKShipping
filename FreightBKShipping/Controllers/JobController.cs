@@ -492,6 +492,11 @@ namespace FreightBKShipping.Controllers
                      on j.JobCompanyId equals cg.CompanyId into c1
                  from company in c1.DefaultIfEmpty()
 
+                     // Company State
+                 join st in _context.States
+                     on company.StateId equals st.StateId into stateGroup
+                 from state in stateGroup.DefaultIfEmpty()
+
                      // ✅ POD Location
                  join podLoc in _context.Locations
                      on j.JobPodId equals podLoc.LocationId into podGroup
@@ -534,8 +539,8 @@ namespace FreightBKShipping.Controllers
                      JobNetWt = j.JobNetWt,
                      JobQty = j.JobQty,
                      JobExchRate = j.JobExchRate,
-                     Job20Ft = j.Job20Ft,
-                     Job40Ft = j.Job40Ft,
+                     Job20Ft = j.Job20Ft??"0",
+                     Job40Ft = j.Job40Ft??"0",
                      JobContainer20Ft = j.JobContainer20Ft,
                      JobContainer40Ft = j.JobContainer40Ft,
                      JobDefCurrId = j.JobDefCurrId,
@@ -545,7 +550,11 @@ namespace FreightBKShipping.Controllers
                      JobSufix = j.JobSufix,
                      JobActive = j.JobActive,
                      JobTypeId = j.JobTypeId,
+                     JobIgmNo = j.JobIgmNo,
+                     JobIgmDate=j.JobIgmDate,
                     
+                     JobBeDate = j.JobBeDate,
+                     JobBeNo = j.JobBeNo,
                      JobSubType = j.JobSubType,
                      IsTransportaion = j.IsTransportaion,
                      IsClearing = j.IsClearing,
@@ -554,8 +563,12 @@ namespace FreightBKShipping.Controllers
                      JobShipmentType = j.JobShipmentType,
                      JobGoodsDesc =j.JobGoodsDesc,
                      JobDoValid =j.JobDoValid,
+                     Partyname = partyAccount.AccountName,
+                     JobAgent =j.JobAgent,
 
-
+                     jobeta = j.JobEta,
+                     Jobcfs = j.JobCfs,
+                     Jobterminals = j.JobTerminal,
                      Consigneename = consignee != null ? consignee.NotifyName : null,
                      Linename = line != null ? line.NotifyName : null,
                      PodName = pod != null ? pod.LocationName : null,
@@ -575,7 +588,7 @@ namespace FreightBKShipping.Controllers
                
                          Email = company.Email,
                          Mobile = company.Mobile,
-                     
+                     StateName = state.StateName,
                          Website = company.Website,
                          City = company.City,
                          StateCode = company.StateCode,
@@ -583,7 +596,7 @@ namespace FreightBKShipping.Controllers
                          Pincode = company.Pincode,
                          CurrencySymbol = company.CurrencySymbol,
                          Tagline1 = company.Tagline1,
-                      
+                      ExtendDays = company.ExtendDays,
                          FullAddress =
                              ((company.Address1 ?? "") + " " +
                               (company.Address2 ?? "") + " " +
@@ -794,6 +807,8 @@ namespace FreightBKShipping.Controllers
             public string? JobSufix { get; set; }
             public bool? JobActive { get; set; }
             public int? JobTypeId { get; set; }
+            public string? JobIgmNo { get; set; }
+            public DateTime? JobIgmDate { get; set; }
             public string? JobCust1 { get; set; }
             public string? JobCust2 { get; set; }
             public string? JobCust3 { get; set; }
@@ -843,7 +858,12 @@ namespace FreightBKShipping.Controllers
             public bool? IsForwarding { get; set; }
             public bool? IsMiscService { get; set; }
             public string? JobShipmentType { get; set; }
+            
 
+            public string? Jobcfs { get; set; }
+            public string? Jobterminals { get; set; }
+
+            public DateTime? jobeta { get; set; }
             public List<Lr> lrs { get; set; } = new List<Lr>();
             public CompanyDto? Company { get; set; }
 

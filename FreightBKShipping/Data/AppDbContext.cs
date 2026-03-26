@@ -107,6 +107,12 @@ namespace FreightBKShipping.Data
                 .Property(e => e.JournalType)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<BillRefDetail>()
+       .HasOne(b => b.Account)
+       .WithMany()
+       .HasForeignKey(b => b.BillRefAccountId)
+       .OnDelete(DeleteBehavior.Restrict);
+
             base.OnModelCreating(modelBuilder);
         }
 

@@ -113,6 +113,6 @@ namespace FreightBKShipping.Models
         public virtual Year? Year { get; set; }
 
         // ✅ Collection of Bill Reference Details
-        public virtual ICollection<BillRefDetail>? BillRefDetails { get; set; }
+        public virtual ICollection<BillRefDetail> BillRefDetails { get; set; }
     }
 }
