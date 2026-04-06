@@ -323,6 +323,9 @@ namespace FreightBKShipping.Controllers
                     JournalLockedBy = journalDto.JournalLockedBy,
                     JournalApprovedBy = journalDto.JournalApprovedBy,
                     JournalBillId = journalDto.JournalBillId,
+                    TDSAcccountId = journalDto.TDSAcccountId,
+                    ShortageAccountId = journalDto.ShortageAccountId,
+                    DiscountAccountId = journalDto.DiscountAccountId,
 
                     // Bill Ref Details
                     BillRefDetails = journalDto.BillRefDetails?.Select(r => new BillRefDetail
@@ -461,7 +464,9 @@ namespace FreightBKShipping.Controllers
             journal.JournalOnAccount = journalDto.JournalOnAccount;
             journal.JournalApprovedBy = journalDto.JournalApprovedBy;
             journal.JournalBillId = journalDto.JournalBillId;
-
+            journal.TDSAcccountId = journalDto.TDSAcccountId;
+            journal.ShortageAccountId = journalDto.ShortageAccountId;
+            journal.DiscountAccountId = journalDto.DiscountAccountId;
 
 
             var oldSettlements = new Dictionary<int, decimal>(); // billId → oldSettlement

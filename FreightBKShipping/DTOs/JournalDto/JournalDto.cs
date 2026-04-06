@@ -38,6 +38,9 @@ namespace FreightBKShipping.DTOs.JournalDto
         public int? JournalApprovedBy { get; set; }
         public int? JournalBillId { get; set; }
 
+        public int? TDSAcccountId { get; set; }
+        public int? ShortageAccountId { get; set; }
+        public int? DiscountAccountId { get; set; }
         // Navigation properties (read-only)
         public string? PartyName { get; set; }
         public string? AccountName { get; set; }
