@@ -30,7 +30,7 @@ namespace FreightBKShipping.Controllers
             var vouchers = await (
      from v in _context.Vouchers
      join b in _context.Branches on v.VoucherBranchId equals b.BranchId
-     where v.VoucherCompanyId == GetCompanyId()
+     where v.VoucherCompanyId == GetCompanyId() && v.VoucherStatus == true
      orderby v.VoucherId descending
      select new VoucherReadDto
      {
@@ -49,7 +49,8 @@ namespace FreightBKShipping.Controllers
          VoucherReportId = v.VoucherReportId,
          VoucherReportId2 = v.VoucherReportId2,
          VoucherUpdated = v.VoucherUpdated,
-                VoucherDetails = v.VoucherDetails.Select(d => new VoucherDetailReadDto
+                VoucherDetails = v.VoucherDetails.Where(d => d.VoucherDetailStatus == true)
+                .Select(d => new VoucherDetailReadDto
                 {
                     VoucherDetailId = d.VoucherDetailId,
                     VoucherDetailYearId = d.VoucherDetailYearId,
@@ -184,7 +185,7 @@ namespace FreightBKShipping.Controllers
                     VoucherDetailZeroFill = d.VoucherDetailZeroFill,
                     VoucherDetailLastNo = d.VoucherDetailLastNo,
                     VoucherDetailLutno = d.VoucherDetailLutno,
-                    VoucherDetailStatus = d.VoucherDetailStatus,
+                    VoucherDetailStatus = true,
                     VoucherDetailCreated = DateTime.UtcNow,
                     VoucherDetailUpdated = DateTime.UtcNow
                 }).ToList()
