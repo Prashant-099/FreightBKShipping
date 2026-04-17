@@ -78,7 +78,7 @@ namespace FreightBKShipping.Services
 
             try
             {
-                CalculateLrTotals(model, details, journals);
+                //CalculateLrTotals(model, details, journals);
 
                 _context.Lrs.Add(model);
                 await _context.SaveChangesAsync();
@@ -129,7 +129,8 @@ namespace FreightBKShipping.Services
 
                 _context.Entry(existing).CurrentValues.SetValues(model);
 
-                CalculateLrTotals(existing, details, journals);
+                //FOR LR  ENTRY FORMATE2
+                //CalculateLrTotals(existing, details, journals);
 
                 var oldDetails = _context.LRDetails.Where(x => x.LrDetailsLrId == model.LrId);
                 var oldJournals = _context.LRJournals.Where(x => x.LrId == model.LrId);

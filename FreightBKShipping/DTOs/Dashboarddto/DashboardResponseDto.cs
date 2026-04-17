@@ -36,5 +36,13 @@
         public float RevenueThisMonth { get; set; }
         public int CompletionRate { get; set; }
         public int CancellationRate { get; set; }
+
+
+        public int SalesBillCount { get; set; }
+        public decimal SalesAmount { get; set; }
+
+        public int PurchaseBillCount { get; set; }
+        public decimal PurchaseAmount { get; set; }
+
     }
 }

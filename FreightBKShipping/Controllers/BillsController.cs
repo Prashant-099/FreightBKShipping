@@ -760,11 +760,11 @@ namespace FreightBKShipping.Controllers
                             b.BillStatus == true);
 
                     if (refBill == null)
-                        throw new Exception("Reference bill not found.");
-
+                    return BadRequest(new { message = "Reference bill not found." });
+                    
                     // 🔒 Safety validation
                     if (bill.BillNetAmount > refBill.Bill_due_amt)
-                        throw new Exception(" amount cannot exceed bill due amount.");
+                    return BadRequest(new { message = $"Amount cannot exceed bill due amount ({refBill.Bill_due_amt})." });
 
                     refBill.Bill_due_amt -= bill.BillNetAmount;
                     refBill.BillUpdated = DateTime.UtcNow;

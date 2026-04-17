@@ -248,7 +248,7 @@ namespace FreightBKShipping.Models
         public string? LrBillTypeBill { get; set; }
 
         [Column("lr_billtypetruck")]
-        public int? LrBillTypeTruck { get; set; }
+        public string? LrBillTypeTruck { get; set; }
 
         [Column("lr_billratetruck")]
         public double LrBillRateTruck { get; set; }
@@ -289,7 +289,7 @@ namespace FreightBKShipping.Models
         public double LrInvoiceValue { get; set; }
 
         [Column("lr_invoicedate")]
-        public string? LrInvoiceDate { get; set; }
+        public DateTime? LrInvoiceDate { get; set; }
 
         [Column("lr_dono")]
         public string? LrDoNo { get; set; }
@@ -309,29 +309,29 @@ namespace FreightBKShipping.Models
 
         // ================= Report / POD =================
         [Column("lr_report_date")]
-        public string? LrReportDate { get; set; }
+        public DateTime? LrReportDate { get; set; }
 
         [Column("lr_report_time")]
-        public string? LrReportTime { get; set; }
+        public DateTime? LrReportTime { get; set; }
 
         [Column("lr_unload_date")]
-        public string? LrUnloadDate { get; set; }
+        public DateTime? LrUnloadDate { get; set; }
 
         [Column("lr_load_date")]
-        public string? LrloadDate { get; set; }
+        public DateTime? LrloadDate { get; set; }
 
 
         [Column("lr_unload_time")]
         public string? LrUnloadTime { get; set; }
 
         [Column("lr_pod_date")]
-        public string? LrPodDate { get; set; }
+        public DateTime? LrPodDate { get; set; }
 
         [Column("lr_return_date")]
-        public string? LrReturnDate { get; set; }
+        public DateTime? LrReturnDate { get; set; }
 
         [Column("lr_pod_submitted")]
-        public string? LrPodSubmitted { get; set; }
+        public DateTime? LrPodSubmitted { get; set; }
 
 
         // ================= Detention =================
@@ -516,7 +516,7 @@ namespace FreightBKShipping.Models
         public double LrBhattaExtra { get; set; }
 
         [Column("lr_driver_remarks")]
-        public double LrDriverRemarks { get; set; }
+        public string? LrDriverRemarks { get; set; } = string.Empty;
 
         [Column("lr_toll_exp")]
         public float LrTollExp { get; set; }

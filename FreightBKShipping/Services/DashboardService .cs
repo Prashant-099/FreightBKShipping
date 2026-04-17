@@ -31,7 +31,19 @@ public class DashboardService : IDashboardService
                 b.BillYearId == yearId &&
                 b.BillCompanyId == companyId &&
                 b.BillStatus == true);
-
+        var billWithVoucherQuery =
+    from b in _context.Bills
+    join v in _context.Vouchers
+        on b.BillVoucherId equals v.VoucherId
+    where b.BillCompanyId == companyId
+          && b.BillYearId == yearId
+          && b.BillStatus == true
+    select new
+    {
+        b.BillNetAmount,
+        b.BillDate,
+        v.VoucherGroup
+    };
         // ================= DATE FILTER =================
 
         if (fromDate.HasValue)
@@ -45,7 +57,17 @@ public class DashboardService : IDashboardService
             jobsQuery = jobsQuery.Where(j => j.JobDate <= toDate.Value);
             billsQuery = billsQuery.Where(b => b.BillDate <= toDate.Value);
         }
+        if (fromDate.HasValue)
+        {
+            billWithVoucherQuery = billWithVoucherQuery
+                .Where(x => x.BillDate >= fromDate.Value);
+        }
 
+        if (toDate.HasValue)
+        {
+            billWithVoucherQuery = billWithVoucherQuery
+                .Where(x => x.BillDate <= toDate.Value);
+        }
         // ================= STATUS IDS =================
 
         var pendingIds = await _context.Status
@@ -94,7 +116,19 @@ public class DashboardService : IDashboardService
         stats.CancellationRate = totalJobs > 0
             ? (int)((stats.CancelledJobs * 100.0) / totalJobs)
             : 0;
+        stats.SalesBillCount = await billWithVoucherQuery
+    .CountAsync(x => x.VoucherGroup == "SALES");
 
+        stats.SalesAmount = await billWithVoucherQuery
+            .Where(x => x.VoucherGroup == "SALES")
+            .SumAsync(x => (decimal?)x.BillNetAmount) ?? 0;
+
+        stats.PurchaseBillCount = await billWithVoucherQuery
+            .CountAsync(x => x.VoucherGroup == "PURCHASE");
+
+        stats.PurchaseAmount = await billWithVoucherQuery
+            .Where(x => x.VoucherGroup == "PURCHASE")
+            .SumAsync(x => (decimal?)x.BillNetAmount) ?? 0;
         // ================= CURRENT MONTH =================
 
         var currentMonth = DateTime.Now.Month;

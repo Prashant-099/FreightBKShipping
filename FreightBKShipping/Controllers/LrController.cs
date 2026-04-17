@@ -1,10 +1,14 @@
 ﻿using FreightBKShipping.Controllers;
+using FreightBKShipping.Data;
 using FreightBKShipping.DTOs.Auditlogdto;
+using FreightBKShipping.DTOs.LrPrintDto;
 using FreightBKShipping.Interfaces;
 using FreightBKShipping.Models;
 using FreightBKShipping.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -12,11 +16,11 @@ public class LrController : BaseController
 {
     private readonly ILrService _service;
     private readonly AuditLogService _auditLogService;
-
-    public LrController(ILrService service, AuditLogService auditLogService)
+    private readonly AppDbContext _context;
+    public LrController(ILrService service, AppDbContext context, AuditLogService auditLogService)
     {
         _auditLogService = auditLogService;
-
+        _context = context;
         _service = service;
     }
 
@@ -170,5 +174,145 @@ public class LrController : BaseController
         var lrs = await _service.GetAllForList();
         return Ok(lrs);
     }
-   
+    [HttpGet("print/{id}")]
+    public async Task<ActionResult<LrPrintDto>> GetPrintLr(int id)
+    {
+           var lr = await _context.Lrs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.LrId == id);
+
+            if (lr == null)
+                return NotFound($"LR not found with ID {id}");
+        var company = await _context.companies
+        .AsNoTracking()
+        .FirstOrDefaultAsync(c => c.CompanyId == lr.LrCompanyId);
+
+        var companyState = company?.StateId > 0
+            ? await _context.States.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.StateId == company.StateId)
+            : null;
+
+        // 🔹 Party
+        var party = await _context.Accounts.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.AccountId == lr.LrPartyAccountId);
+
+        // 🔹 Supplier
+        var supplier = await _context.Accounts.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.AccountId == lr.LrSupplierAccountId);
+
+        // 🔹 Vehicle
+        var vehicle = await _context.Vehicles.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.VehicleId == lr.LrVehicleId);
+
+        // 🔹 Locations
+        var fromLocation = await _context.Locations.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.LocationId == lr.LrFromLocationId);
+
+        var toLocation = await _context.Locations.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.LocationId == lr.LrToLocationId);
+
+        var backLocation = lr.LrBackLocationId > 0
+            ? await _context.Locations.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.LocationId == lr.LrBackLocationId)
+            : null;
+
+        // 🔹 Consignee
+        var consignee = lr.LrConsigneeNotifyId > 0
+            ? await _context.Notifies.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.NotifyId == lr.LrConsigneeNotifyId)
+            : null;
+
+        // 🔹 Consignor
+        var consignor = lr.LrConsignorNotifyId > 0
+            ? await _context.Notifies.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.NotifyId == lr.LrConsignorNotifyId)
+            : null;
+        var result = new LrPrintDto
+            {
+                LrId = lr.LrId,
+                LrNo = lr.LrNoStr,
+                LrDate = lr.LrDate,
+                LrTime = lr.LrTime,
+                LrTripNo = lr.LrTripNo,
+
+                LrCompanyId = lr.LrCompanyId,
+                LrVoucherId = lr.LrVoucherId,
+                LrPartyAccount = party?.AccountName??"",
+                LrSupplierAccount = supplier?.AccountName??"",
+                LrVehicle = vehicle?.VehicleNo??"",
+
+                LrFromLocation = fromLocation?.LocationName??"",
+                LrToLocation = toLocation?.LocationName ?? "",
+                LrBackLocation = backLocation?.LocationName ?? "",
+
+                LrContainer1 = lr.LrContainer1,
+                LrContainer2 = lr.LrContainer2,
+
+                LrGrossWt = lr.LrGrossWt,
+                LrTareWt = lr.LrTareWt,
+                LrLoadWt = lr.LrLoadWt,
+                LrUnloadWt = lr.LrUnloadWt,
+                LrShortWt = lr.LrShortWt,
+
+                LrRateBill = lr.LrRateBill,
+                LrGrossFreightBill = lr.LrGrossFreightBill,
+                LrNetFreightBill = lr.LrNetFreightBill,
+
+                LrBillRateTruck = lr.LrBillRateTruck,
+                LrNetFreightTruck = lr.LrNetFreightTruck,
+
+                LrGstPercentage = lr.LrGstPercentage,
+                LrGstAmount = lr.LrGstAmount,
+
+                LrPaymentType = lr.LrPaymentType,
+                LrRemarks = lr.LrRemarks,
+
+                LrAdvanceTotal = lr.LrAdvanceTotal,
+                LrDieselTotal = lr.LrDieselTotal,
+                LrChargesTotal = lr.LrChargesTotal,
+                LrExpenseTotal = lr.LrExpenseTotal,
+                LrAdvRecTotal = lr.LrAdvRecTotal,
+
+                LrNetFreightCalc = lr.LrNetFreightCalc,
+
+                LrCreated = lr.LrCreated,
+                LrUpdated = lr.LrUpdated,
+
+            LrTotalBags = lr.LrTotalBags,
+
+            LrEwayBillNo = lr.LrEwayBillNo,
+            LrEwayBillExpDt = lr.LrEwayBillExpDt,
+            LrInvoiceNo = lr.LrInvoiceNo,
+            LrInvoiceDate = lr.LrInvoiceDate,
+            Consignee = consignee?.NotifyName ?? "",
+            ConsigneeAdd = consignee?.NotifyAddress1 ?? "",
+            Consigneegstin = consignee?.NotifyGstNo ?? "",
+            Consigneestate = consignee?.NotifyState ?? "",
+            Consignor = consignor?.NotifyName ?? "",
+            ConsignorAdd = consignor?.NotifyAddress1 ?? "",
+            Consignorgstin = consignor?.NotifyGstNo ?? "",
+            Consignorstate = consignor?.NotifyState ?? "",
+
+            LrCustom1 = lr.LrCustom1,
+            LrCustom2 = lr.LrCustom2,
+            LrCustom3 = lr.LrCustom3,
+            LrCustom4 = lr.LrCustom4,
+            LrCustom5 = lr.LrCustom5,
+            LrCustom6 = lr.LrCustom6,
+            LrCustom7 = lr.LrCustom7,
+            LrCustom8 = lr.LrCustom8,
+            // 🔹 COMPANY (IMPORTANT)
+            CompanyName = company?.Name,
+                CompanyAddress = company?.Address1,
+                CompanyGstin = company?.Gstin,
+                CompanyState = companyState?.StateName,
+                CompanyMobile = company?.Mobile,
+                CompanyEmail = company?.Email,
+                CompanyWebsite = company?.Website,
+                CompanyPan = company?.Panno
+            };
+
+            return Ok(result);
+        
+    }
 }
