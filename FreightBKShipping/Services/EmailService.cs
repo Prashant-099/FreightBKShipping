@@ -60,8 +60,9 @@ public class EmailService
         string smtpUser = _config["Email:User"];
         string smtpPass = _config["Email:Pass"];
 
+        string resetLink = $"http://freightbook.in/reset-password?email={toEmail}&token={token}";
         //string resetLink = $"http://localhost:7226/reset-password?email={toEmail}&token={token}";
-        string resetLink = $"reset-password?email={toEmail}&token={token}";
+        //string resetLink = $"reset-password?email={toEmail}&token={token}";
 
         var message = new MailMessage(fromEmail, toEmail)
         {
