@@ -34,7 +34,7 @@ namespace FreightBKShipping.Controllers
                 .OrderByDescending(b => b.BillId)
                 .ThenByDescending(b => b.BillDate)
                 .AsNoTracking()
-                .Include(b => b.BillDetails.Where(d => d.BillDetailStatus == true))
+                .Include(b => b.BillDetails)
                 .Include(b => b.Voucher)
                 .Include(b => b.Party)
                 .Include(b => b.PlaceOfSupply)
@@ -1049,102 +1049,168 @@ namespace FreightBKShipping.Controllers
             //_context.BillDetails.RemoveRange(detailsToRemove);
 
             // ✅ Soft delete instead of removing
-            var detailsToDeactivate = bill.BillDetails
-                .Where(d => !billDto.BillDetails.Any(x => x.BillDetailId == d.BillDetailId))
-                .ToList();
+            //var detailsToDeactivate = bill.BillDetails
+            //    .Where(d => !billDto.BillDetails.Any(x => x.BillDetailId == d.BillDetailId))
+            //    .ToList();
 
-            foreach (var detail in detailsToDeactivate)
-            {
-                detail.BillDetailStatus = false;
-                detail.BillDetailUpdatedByUserId = GetUserId();
-                detail.BillDetailUpdated = DateTime.UtcNow;
-            }
+            //foreach (var detail in detailsToDeactivate)
+            //{
+            //    detail.BillDetailStatus = false;
+            //    detail.BillDetailUpdatedByUserId = GetUserId();
+            //    detail.BillDetailUpdated = DateTime.UtcNow;
+            //}
 
-            // Add or update details
+            //// Existing ids only
+            //var incomingIds = billDto.BillDetails
+            //    .Where(x => x.BillDetailId > 0)
+            //    .Select(x => x.BillDetailId)
+            //    .ToList();
+
+            //// Delete removed rows
+            //var detailsToRemove = bill.BillDetails
+            //    .Where(d => !incomingIds.Contains(d.BillDetailId))
+            //    .ToList();
+
+            //_context.BillDetails.RemoveRange(detailsToRemove);
+
+            //foreach (var item in detailsToRemove)
+            //{
+            //    bill.BillDetails.Remove(item);
+            //}
+            //// Add or update details
+            //foreach (var detailDto in billDto.BillDetails)
+            //{
+            //    var existingDetail = bill.BillDetails.FirstOrDefault(d => d.BillDetailId == detailDto.BillDetailId);
+            //    if (existingDetail != null)
+            //    {
+            //        // Update existing
+            //        existingDetail.BillDetailUpdatedByUserId = GetUserId();
+            //        existingDetail.BillDetailUpdated = DateTime.UtcNow;
+            //        existingDetail.BillDetailProductId = detailDto.BillDetailProductId;
+            //        existingDetail.BillDetailSno = detailDto.BillDetailSno;
+            //        existingDetail.BillDetailUnitId = detailDto.BillDetailUnitId;
+            //        existingDetail.BillDetailHsnId = detailDto.BillDetailHsnId;
+            //        existingDetail.BillDetailSlabId = detailDto.BillDetailSlabId;
+            //        existingDetail.BillDetailExchRate = detailDto.BillDetailExchRate;
+            //        existingDetail.BillDetailQty = detailDto.BillDetailQty;
+            //        existingDetail.BillDetailBillQty = detailDto.BillDetailQty;
+            //        existingDetail.BillDetailRate = detailDto.BillDetailRate;
+            //        existingDetail.BillDetailActualRate = detailDto.BillDetailActualRate;
+            //        existingDetail.BillDetailAmount = detailDto.BillDetailAmount;
+            //        existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
+            //        existingDetail.BillDetailTotal = detailDto.BillDetailTotal;
+            //        existingDetail.BillDetailHsnCode = detailDto.BillDetailHsnCode;
+            //        existingDetail.BillDetailUnit = detailDto.BillDetailUnit;
+            //        existingDetail.BillDetailExtraChrg = detailDto.BillDetailExtraChrg;
+            //        existingDetail.BillDetailCurrencyId = detailDto.BillDetailCurrencyId;
+            //        existingDetail.BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt;
+            //        existingDetail.BillDetailExchAmount = detailDto.BillDetailTaxableAmt;
+            //        existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
+            //        existingDetail.BillDetailSno = detailDto.BillDetailSno;
+            //        existingDetail.BillDetailAccountId = detailDto.BillDetailAccountId;
+            //        existingDetail.BillDetailIgstAcId = detailDto.BillDetailIgstAcId;
+            //        existingDetail.BillDetailCgstAcId = detailDto.BillDetailCgstAcId;
+            //        existingDetail.BillDetailSgstAcId = detailDto.BillDetailSgstAcId;
+            //        existingDetail.BillDetailGstPer = detailDto.BillDetailGstPer;
+            //        existingDetail.BillDetailIgst = detailDto.BillDetailIgst;
+            //        existingDetail.BillDetailCgst = detailDto.BillDetailCgst;
+            //        existingDetail.BillDetailSgst = detailDto.BillDetailSgst;
+            //        existingDetail.BillDetailIgstPer = detailDto.BillDetailIgstPer;
+            //        existingDetail.BillDetailCgstPer = detailDto.BillDetailCgstPer;
+            //        existingDetail.BillDetailSgstPer = detailDto.BillDetailSgstPer;
+            //       // existingDetail.BillDetailStatus = detailDto.BillDetailStatus;
+            //    }
+            //    else
+            //    {
+            //        // Add new
+            //        bill.BillDetails.Add(new BillDetail
+            //        {
+            //            BillDetailAddedByUserId = GetUserId(),
+            //            BillDetailUpdatedByUserId = GetUserId(),
+            //            BillDetailCreated = DateTime.UtcNow,
+            //            BillDetailUpdated = DateTime.UtcNow,
+            //            BillDetailProductId = detailDto.BillDetailProductId,
+            //            BillDetailUnitId = detailDto.BillDetailUnitId,
+            //            BillDetailHsnId = detailDto.BillDetailHsnId,
+            //            BillDetailQty = detailDto.BillDetailQty,
+            //            BillDetailRate = detailDto.BillDetailRate,
+            //            BillDetailActualRate = detailDto.BillDetailActualRate,
+            //            BillDetailAmount = detailDto.BillDetailAmount,
+            //            BillDetailRemarks = detailDto.BillDetailRemarks,
+            //            BillDetailTotal = detailDto.BillDetailTotal,
+            //            BillDetailSlabId = detailDto.BillDetailSlabId,
+            //            BillDetailAccountId = detailDto.BillDetailAccountId,
+            //            BillDetailSgstAcId = detailDto.BillDetailSgstAcId,
+            //            BillDetailIgstAcId = detailDto.BillDetailIgstAcId,
+            //            BillDetailCgstAcId = detailDto.BillDetailCgstAcId,
+            //            BillDetailSno = detailDto.BillDetailSno,
+            //            BillDetailExchUnit = detailDto.BillDetailExchUnit,
+            //            BillDetailHsnCode = detailDto.BillDetailHsnCode,
+            //            BillDetailUnit = detailDto.BillDetailUnit,
+            //            BillDetailExtraChrg = detailDto.BillDetailExtraChrg,
+            //            BillDetailCurrencyId = detailDto.BillDetailCurrencyId,
+            //            BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt,
+            //            BillDetailGstPer = detailDto.BillDetailGstPer,
+            //            BillDetailIgst = detailDto.BillDetailIgst,
+            //            BillDetailCgst = detailDto.BillDetailCgst,
+            //            BillDetailSgst = detailDto.BillDetailSgst,
+            //            BillDetailIgstPer = detailDto.BillDetailIgstPer,
+            //            BillDetailCgstPer = detailDto.BillDetailCgstPer,
+            //            BillDetailSgstPer = detailDto.BillDetailSgstPer,
+            //           // BillDetailStatus = detailDto.BillDetailStatus,
+            //        });
+            //    }
+            //}
+            // ✅ Delete all old details
+            _context.BillDetails.RemoveRange(bill.BillDetails);
+
+            // ✅ Clear local collection
+            bill.BillDetails.Clear();
+
+            // ✅ Add fresh details from DTO
             foreach (var detailDto in billDto.BillDetails)
             {
-                var existingDetail = bill.BillDetails.FirstOrDefault(d => d.BillDetailId == detailDto.BillDetailId);
-                if (existingDetail != null)
+                bill.BillDetails.Add(new BillDetail
                 {
-                    // Update existing
-                    existingDetail.BillDetailUpdatedByUserId = GetUserId();
-                    existingDetail.BillDetailUpdated = DateTime.UtcNow;
-                    existingDetail.BillDetailProductId = detailDto.BillDetailProductId;
-                    existingDetail.BillDetailSno = detailDto.BillDetailSno;
-                    existingDetail.BillDetailUnitId = detailDto.BillDetailUnitId;
-                    existingDetail.BillDetailHsnId = detailDto.BillDetailHsnId;
-                    existingDetail.BillDetailSlabId = detailDto.BillDetailSlabId;
-                    existingDetail.BillDetailExchRate = detailDto.BillDetailExchRate;
-                    existingDetail.BillDetailQty = detailDto.BillDetailQty;
-                    existingDetail.BillDetailBillQty = detailDto.BillDetailQty;
-                    existingDetail.BillDetailRate = detailDto.BillDetailRate;
-                    existingDetail.BillDetailActualRate = detailDto.BillDetailActualRate;
-                    existingDetail.BillDetailAmount = detailDto.BillDetailAmount;
-                    existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
-                    existingDetail.BillDetailTotal = detailDto.BillDetailTotal;
-                    existingDetail.BillDetailHsnCode = detailDto.BillDetailHsnCode;
-                    existingDetail.BillDetailUnit = detailDto.BillDetailUnit;
-                    existingDetail.BillDetailExtraChrg = detailDto.BillDetailExtraChrg;
-                    existingDetail.BillDetailCurrencyId = detailDto.BillDetailCurrencyId;
-                    existingDetail.BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt;
-                    existingDetail.BillDetailExchAmount = detailDto.BillDetailTaxableAmt;
-                    existingDetail.BillDetailRemarks = detailDto.BillDetailRemarks;
-                    existingDetail.BillDetailSno = detailDto.BillDetailSno;
-                    existingDetail.BillDetailAccountId = detailDto.BillDetailAccountId;
-                    existingDetail.BillDetailIgstAcId = detailDto.BillDetailIgstAcId;
-                    existingDetail.BillDetailCgstAcId = detailDto.BillDetailCgstAcId;
-                    existingDetail.BillDetailSgstAcId = detailDto.BillDetailSgstAcId;
-                    existingDetail.BillDetailGstPer = detailDto.BillDetailGstPer;
-                    existingDetail.BillDetailIgst = detailDto.BillDetailIgst;
-                    existingDetail.BillDetailCgst = detailDto.BillDetailCgst;
-                    existingDetail.BillDetailSgst = detailDto.BillDetailSgst;
-                    existingDetail.BillDetailIgstPer = detailDto.BillDetailIgstPer;
-                    existingDetail.BillDetailCgstPer = detailDto.BillDetailCgstPer;
-                    existingDetail.BillDetailSgstPer = detailDto.BillDetailSgstPer;
-                    existingDetail.BillDetailStatus = detailDto.BillDetailStatus;
-                }
-                else
-                {
-                    // Add new
-                    bill.BillDetails.Add(new BillDetail
-                    {
-                        BillDetailAddedByUserId = GetUserId(),
-                        BillDetailUpdatedByUserId = GetUserId(),
-                        BillDetailCreated = DateTime.UtcNow,
-                        BillDetailUpdated = DateTime.UtcNow,
-                        BillDetailProductId = detailDto.BillDetailProductId,
-                        BillDetailUnitId = detailDto.BillDetailUnitId,
-                        BillDetailHsnId = detailDto.BillDetailHsnId,
-                        BillDetailQty = detailDto.BillDetailQty,
-                        BillDetailRate = detailDto.BillDetailRate,
-                        BillDetailActualRate = detailDto.BillDetailActualRate,
-                        BillDetailAmount = detailDto.BillDetailAmount,
-                        BillDetailRemarks = detailDto.BillDetailRemarks,
-                        BillDetailTotal = detailDto.BillDetailTotal,
-                        BillDetailSlabId = detailDto.BillDetailSlabId,
-                        BillDetailAccountId = detailDto.BillDetailAccountId,
-                        BillDetailSgstAcId = detailDto.BillDetailSgstAcId,
-                        BillDetailIgstAcId = detailDto.BillDetailIgstAcId,
-                        BillDetailCgstAcId = detailDto.BillDetailCgstAcId,
-                        BillDetailSno = detailDto.BillDetailSno,
-                        BillDetailExchUnit = detailDto.BillDetailExchUnit,
-                        BillDetailHsnCode = detailDto.BillDetailHsnCode,
-                        BillDetailUnit = detailDto.BillDetailUnit,
-                        BillDetailExtraChrg = detailDto.BillDetailExtraChrg,
-                        BillDetailCurrencyId = detailDto.BillDetailCurrencyId,
-                        BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt,
-                        BillDetailGstPer = detailDto.BillDetailGstPer,
-                        BillDetailIgst = detailDto.BillDetailIgst,
-                        BillDetailCgst = detailDto.BillDetailCgst,
-                        BillDetailSgst = detailDto.BillDetailSgst,
-                        BillDetailIgstPer = detailDto.BillDetailIgstPer,
-                        BillDetailCgstPer = detailDto.BillDetailCgstPer,
-                        BillDetailSgstPer = detailDto.BillDetailSgstPer,
-                        BillDetailStatus = detailDto.BillDetailStatus,
-                    });
-                }
-            }
+                    BillDetailAddedByUserId = GetUserId(),
+                    BillDetailUpdatedByUserId = GetUserId(),
+                    BillDetailCreated = DateTime.UtcNow,
+                    BillDetailUpdated = DateTime.UtcNow,
 
+                    BillDetailProductId = detailDto.BillDetailProductId,
+                    BillDetailUnitId = detailDto.BillDetailUnitId,
+                    BillDetailHsnId = detailDto.BillDetailHsnId,
+                    BillDetailQty = detailDto.BillDetailQty,
+                    BillDetailRate = detailDto.BillDetailRate,
+                    BillDetailActualRate = detailDto.BillDetailActualRate,
+                    BillDetailAmount = detailDto.BillDetailAmount,
+                    BillDetailRemarks = detailDto.BillDetailRemarks,
+                    BillDetailTotal = detailDto.BillDetailTotal,
+                    BillDetailSlabId = detailDto.BillDetailSlabId,
+                    BillDetailAccountId = detailDto.BillDetailAccountId,
+
+                    BillDetailSgstAcId = detailDto.BillDetailSgstAcId,
+                    BillDetailIgstAcId = detailDto.BillDetailIgstAcId,
+                    BillDetailCgstAcId = detailDto.BillDetailCgstAcId,
+
+                    BillDetailSno = detailDto.BillDetailSno,
+                    BillDetailExchUnit = detailDto.BillDetailExchUnit,
+                    BillDetailHsnCode = detailDto.BillDetailHsnCode,
+                    BillDetailUnit = detailDto.BillDetailUnit,
+                    BillDetailExtraChrg = detailDto.BillDetailExtraChrg,
+                    BillDetailCurrencyId = detailDto.BillDetailCurrencyId,
+                    BillDetailTaxableAmt = detailDto.BillDetailTaxableAmt,
+
+                    BillDetailGstPer = detailDto.BillDetailGstPer,
+                    BillDetailIgst = detailDto.BillDetailIgst,
+                    BillDetailCgst = detailDto.BillDetailCgst,
+                    BillDetailSgst = detailDto.BillDetailSgst,
+
+                    BillDetailIgstPer = detailDto.BillDetailIgstPer,
+                    BillDetailCgstPer = detailDto.BillDetailCgstPer,
+                    BillDetailSgstPer = detailDto.BillDetailSgstPer,
+                });
+            }
             // ---- Handle BillRefDetails ----
             //var refsToRemove = bill.BillRefDetails
             //    .Where(r => !billDto.BillRefDetails.Any(x => x.BillRefDetailId == r.BillRefDetailId))
