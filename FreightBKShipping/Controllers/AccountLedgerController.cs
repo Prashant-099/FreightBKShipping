@@ -167,13 +167,114 @@ using Microsoft.EntityFrameworkCore;
         : 0,
             };
 
+
+
+        //  sales/purchase a/c
+        var salespurchaseLedger =
+    from d in _context.BillDetails.Include(x => x.Account)
+    join b in _context.Bills on d.BillDetailBillId equals b.BillId
+    where d.BillDetailAccountId == accountId
+          && b.BillCompanyId == companyId
+          && b.BillStatus == true
+          && (fromDate == null || b.BillDate >= fromDate)
+          && (toDate == null || b.BillDate <= toDate)
+
+    select new LedgerDto
+    {
+        VoucherDate = b.BillDate,
+        VchName = b.BillType,
+        VoucherNo = b.BillNo,
+        AccountName = d.Account.AccountName,
+        Particulars = b.Party.AccountName,
+
+        Debit = b.BillType == "Purchase"
+                    ? (decimal)d.BillDetailAmount
+                    : 0,
+
+        Credit = b.BillType == "Sales"
+                    ? (decimal)d.BillDetailAmount
+                    : 0
+    };
+
+        // gst ledgers
+        var gstLedger =
+    from d in _context.BillDetails
+    join b in _context.Bills on d.BillDetailBillId equals b.BillId
+
+    where b.BillCompanyId == companyId
+          && b.BillStatus == true
+
+      && (
+            (
+                d.BillDetailIgstAcId == accountId
+                && d.BillDetailIgst > 0
+            )
+
+            ||
+
+            (
+                d.BillDetailCgstAcId == accountId
+                && d.BillDetailCgst > 0
+            )
+
+            ||
+
+            (
+                d.BillDetailSgstAcId == accountId
+                && d.BillDetailSgst > 0
+            )
+         )
+
+      && (fromDate == null || b.BillDate >= fromDate)
+          && (toDate == null || b.BillDate <= toDate)
+
+    select new LedgerDto
+    {
+        VoucherDate = b.BillDate,
+        VchName = b.BillType,
+        VoucherNo = b.BillNo,
+        Particulars = b.Party.AccountName,
+
+        AccountName =
+            d.BillDetailIgstAcId == accountId ? "IGST A/C" :
+            d.BillDetailCgstAcId == accountId ? "CGST A/C" :
+            d.BillDetailSgstAcId == accountId ? "SGST A/C" :
+            "",
+
+        Debit =
+            b.BillType == "Purchase"
+                ?
+                    (
+                        d.BillDetailIgstAcId == accountId ? (decimal)d.BillDetailIgst :
+                        d.BillDetailCgstAcId == accountId ? (decimal)d.BillDetailCgst :
+                        d.BillDetailSgstAcId == accountId ? (decimal)d.BillDetailSgst :
+                        0
+                    )
+                : 0,
+
+        Credit =
+            b.BillType == "Sales"
+                ?
+                    (
+                        d.BillDetailIgstAcId == accountId ? (decimal)d.BillDetailIgst :
+                        d.BillDetailCgstAcId == accountId ? (decimal)d.BillDetailCgst :
+                        d.BillDetailSgstAcId == accountId ? (decimal)d.BillDetailSgst :
+                        0
+                    )
+                : 0
+    };
+
+
         // ── Execute all queries ───────────────────────────────────────────────
         var billList = await bills.ToListAsync();
         var adjustmentList = await journalAdjustments.ToListAsync();
         var receiptWithRefList = await receiptPaymentWithRef.ToListAsync();
         var receiptWithoutRefList = await receiptPaymentWithoutRef.ToListAsync();
         var ContralList = await contraEntries.ToListAsync();
+        var salespurchaseLedgerList = await salespurchaseLedger.ToListAsync();
         var extraList = await extraEntries.ToListAsync();
+        var gstLedgerList = await gstLedger.ToListAsync();
+
 
         // ── Concat (NOT Union) to avoid silent deduplication ─────────────────
         var ledger = billList
@@ -182,6 +283,8 @@ using Microsoft.EntityFrameworkCore;
             .Concat(receiptWithoutRefList)
             .Concat(ContralList)
             .Concat(extraList)
+              .Concat(salespurchaseLedgerList)
+              .Concat(gstLedgerList)
             .OrderBy(x => x.VoucherDate)
             .ThenBy(x => x.VoucherNo)
             .ToList();

@@ -195,5 +195,8 @@ namespace FreightBKShipping.Models
         public float BillDetailGstPer { get; set; }
         [ForeignKey(nameof(BillDetailBillId))]
         public Bill Bill { get; set; }
+
+        [ForeignKey(nameof(BillDetailAccountId))]
+        public virtual Account? Account { get; set; }
     }
 }

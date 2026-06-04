@@ -93,6 +93,7 @@
     {
        
         public string?service_printname { get; set; }
+        public string? BillDetailRemarks { get; set; }
         public string? bill_detail_hsncode { get; set; }
         public string? bill_detail_exchunit { get; set; }
         public double bill_detail_qty { get; set; }

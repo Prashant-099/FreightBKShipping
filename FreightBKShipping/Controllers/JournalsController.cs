@@ -850,6 +850,42 @@ namespace FreightBKShipping.Controllers
 
             // 🔥 HARD DELETE: Journal
             _context.Journals.Remove(journal);
+
+            // 🔹 Update VoucherDetail LastNo if deleting latest voucher
+            //if (journal.JournalNo > 0)
+            //{
+            //    var voucherDetail = await _context.VoucherDetails
+            //        .Include(vd => vd.Voucher)
+            //        .FirstOrDefaultAsync(vd =>
+            //            vd.VoucherDetailVoucherId == journal.JournalVoucherId &&
+            //            vd.VoucherDetailYearId == journal.JournalYearId &&
+            //            vd.VoucherDetailStatus == true &&
+            //            //vd.Voucher.VoucherBranchId == journal.JournalBranchId &&
+            //            vd.Voucher.VoucherCompanyId == journal.JournalCompanyId &&
+            //            vd.Voucher.VoucherMethod == "Automatic");
+
+            //    if (voucherDetail != null)
+            //    {
+            //        // Only rollback if current deleted voucher is latest
+            //        if (voucherDetail.VoucherDetailLastNo == journal.JournalNo)
+            //        {
+            //            // Find remaining max voucher no
+            //            int newLastNo = await _context.Journals
+            //                .Where(j =>
+            //                    j.JournalCompanyId == journal.JournalCompanyId &&
+            //                    //j.JournalBranchId == journal.JournalBranchId &&
+            //                    j.JournalYearId == journal.JournalYearId &&
+            //                    j.JournalVoucherId == journal.JournalVoucherId &&
+            //                    j.JournalStatus == true &&
+            //                    j.JournalId != journal.JournalId)
+            //                .MaxAsync(j => (int?)j.JournalNo) ?? 0;
+
+            //            voucherDetail.VoucherDetailLastNo = newLastNo;
+            //            voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+            //        }
+            //    }
+            //}
+
             await _context.SaveChangesAsync();
 
             // ✅ Audit log

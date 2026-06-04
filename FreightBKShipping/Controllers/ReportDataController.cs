@@ -150,7 +150,7 @@ namespace FreightBKShipping.Controllers
             if (entity == null) return NotFound();
             _context.Reportdata.Remove(entity);
             await _context.SaveChangesAsync();
-            return Ok(new { success = true });
+            return Ok(true);
         }
 
         [HttpGet("layout/{id:int}")]
@@ -250,11 +250,51 @@ namespace FreightBKShipping.Controllers
                     CreateUid = userId,
                     Created = DateTime.UtcNow,
                     Updated = DateTime.UtcNow,
-                    Status = true
+                    Status = 1
                 });
             }
             await _context.SaveChangesAsync();
             return Ok(new { success = true, message = "Report saved successfully" });
+        }
+
+        [HttpPut("designer/reports/{reportName}")]
+        public async Task<IActionResult> UpdateDesignerReportData(string reportName)
+        {
+            using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+            var layoutData = await reader.ReadToEndAsync();
+
+            if (string.IsNullOrWhiteSpace(layoutData))
+                return BadRequest(new { success = false, message = "Layout data is empty" });
+
+            var companyId = GetCompanyId();
+            var userId = GetUserId()?.ToString() ?? "system";
+
+            var existing = await _context.Reportdata
+                .FirstOrDefaultAsync(r => r.FormatName == reportName.Trim() && r.CompanyId == companyId);
+
+            if (existing != null)
+            {
+                existing.LayoutData = layoutData;
+                existing.EditedUid = userId;
+                existing.Updated = DateTime.UtcNow;
+            }
+            else
+            {
+                _context.Reportdata.Add(new Reportdata
+                {
+                    FormatName = reportName.Trim(),
+                    LayoutData = layoutData,
+                    DocType = "Report",
+                    CompanyId = companyId,
+                    CreateUid = userId,
+                    Created = DateTime.UtcNow,
+                    Updated = DateTime.UtcNow,
+                    Status = 1
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(true); // 👈 Return simple boolean
         }
 
         [HttpDelete("designer/reports/{reportName}")]
@@ -283,7 +323,7 @@ namespace FreightBKShipping.Controllers
             var query = _context.Reportdata
                 .Where(r => r.DocType == docType
                          && r.CompanyId == companyId
-                         && r.Status == true);
+                         && r.Status == 1);
 
             if (!string.IsNullOrWhiteSpace(formatName))
                 query = query.Where(r => r.FormatName == formatName);
@@ -312,7 +352,7 @@ namespace FreightBKShipping.Controllers
             var reportId = await _context.Reportdata
                 .Where(r => r.DocType == docType
                          && r.CompanyId == companyId
-                         && r.Status == true)
+                         && r.Status == 1)
                 .OrderByDescending(r => r.ReportDataId)
                 .Select(r => r.ReportDataId)
                 .FirstOrDefaultAsync();
@@ -323,6 +363,38 @@ namespace FreightBKShipping.Controllers
             return Ok(reportId);
         }
 
+
+
+        [HttpPost("copy")]
+        public async Task<IActionResult> CopyReport(
+    [FromBody] CopyReportDto dto)
+        {
+            var report = await _context.Reportdata
+                .FirstOrDefaultAsync(x => x.ReportDataId == dto.ReportId);
+
+            if (report == null)
+                return NotFound();
+
+            var newReport = new Reportdata
+            {
+                DocType = report.DocType,
+                FormatName = dto.FormatName,
+                LayoutData = report.LayoutData,
+                CopyFormat = report.FormatName,
+                VchId = report.VchId,
+                CompanyId = GetCompanyId(),
+                Status = 1,
+                CreateUid = GetUserId(),
+                ReportCode= report.DocType,
+                Created = DateTime.Now
+            };
+
+            _context.Reportdata.Add(newReport);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(newReport.ReportDataId);
+        }
 
     }
 }

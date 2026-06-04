@@ -10,7 +10,7 @@
         public string? CopyFormat { get; set; }
         public string? NextFormat { get; set; }
         public int CompanyId { get; set; }
-        public bool? Status { get; set; }
+        public byte? Status { get; set; }
 
 
     }
@@ -24,6 +24,6 @@
         public string? CopyFormat { get; set; }
         public string? NextFormat { get; set; }
         public int CompanyId { get; set; }
-        public bool? Status { get; set; }
+        public byte? Status { get; set; }
     }
 }

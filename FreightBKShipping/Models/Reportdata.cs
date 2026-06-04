@@ -35,7 +35,7 @@ namespace FreightBKShipping.Models
             public int CompanyId { get; set; }
 
             [Column("reportdata_status")]
-            public bool? Status { get; set; }
+            public byte? Status { get; set; }
 
             [Column("reportdata_create_uid")]
             [StringLength(60)]
@@ -51,6 +51,6 @@ namespace FreightBKShipping.Models
             [Column("reportdata_updated")]
             public DateTime? Updated { get; set; }
             [Column("reportdata_code")]
-            public DateTime? ReportCode { get; set; }
+            public string? ReportCode { get; set; }
         }
     }

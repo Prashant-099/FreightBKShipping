@@ -169,7 +169,8 @@ public class CompanySetupService
         company.Website = dto.Website;
         company.ContactPerson = dto.ContactPerson;
         company.Gstin = dto.Gstin;
-
+        company.StateId = dto.StateId;
+        company.Panno = dto.Panno;
         company.Updated = DateTime.UtcNow;
         company.UpdatedByUserId = userId;
 

@@ -482,10 +482,11 @@ namespace FreightBKShipping.Controllers
                                         b.BillYearId == billDto.BillYearId)
                             .MaxAsync(b => (int?)b.BillVchNo) ?? nextNo) + 1;
                     }
-
-                    billNo =
+                string formattedNo = nextNo.ToString()
+   .PadLeft(voucherDetail.VoucherDetailZeroFill + nextNo.ToString().Length, '0');
+                billNo =
                         (voucherDetail.VoucherDetailPrefix ?? "") +
-                        nextNo +
+                        formattedNo +
                         (voucherDetail.VoucherDetailSufix ?? "");
 
                     voucherDetail.VoucherDetailLastNo = nextNo;
@@ -1183,6 +1184,7 @@ namespace FreightBKShipping.Controllers
                     BillDetailQty = detailDto.BillDetailQty,
                     BillDetailRate = detailDto.BillDetailRate,
                     BillDetailActualRate = detailDto.BillDetailActualRate,
+                    BillDetailExchRate = detailDto.BillDetailExchRate,
                     BillDetailAmount = detailDto.BillDetailAmount,
                     BillDetailRemarks = detailDto.BillDetailRemarks,
                     BillDetailTotal = detailDto.BillDetailTotal,
@@ -1209,6 +1211,9 @@ namespace FreightBKShipping.Controllers
                     BillDetailIgstPer = detailDto.BillDetailIgstPer,
                     BillDetailCgstPer = detailDto.BillDetailCgstPer,
                     BillDetailSgstPer = detailDto.BillDetailSgstPer,
+
+                    BillDetailBillQty = detailDto.BillDetailQty,
+                    BillDetailExchAmount = detailDto.BillDetailTaxableAmt,
                 });
             }
             // ---- Handle BillRefDetails ----
@@ -1840,6 +1845,7 @@ namespace FreightBKShipping.Controllers
                     result.BillDetails.Add(new BillDetailPrintDto
                     {
                         service_printname = service?.ServiceName,
+                        BillDetailRemarks = detail.BillDetailRemarks,
                         bill_detail_hsncode = detail.BillDetailHsnCode,
                         bill_detail_qty = detail.BillDetailQty,
                         bill_detail_rate = detail.BillDetailRate,
