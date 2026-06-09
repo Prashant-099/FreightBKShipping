@@ -63,7 +63,8 @@ namespace FreightBKShipping
             builder.Services.AddScoped<ICompanySubscriptionService, CompanySubscriptionService>();
             builder.Services.AddScoped<ILrService, LrService>();
             builder.Services.AddScoped<ITicketService, TicketService>();
-
+            builder.Services.AddScoped<ITransactionService, TransactionService>();
+            builder.Services.AddScoped<TransactionService>();
             // ── SignalR ───────────────────────────────────────────────────────
             builder.Services.AddSignalR();
 

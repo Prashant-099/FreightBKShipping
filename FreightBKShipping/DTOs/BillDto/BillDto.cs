@@ -28,6 +28,7 @@ namespace FreightBKShipping.DTOs.BillDto
         public double BillTaxableAmt { get; set; }
         public double BillNonTaxable { get; set; }
         public double BillRoundAmt { get; set; }
+        public int BillRoundOffId { get; set; }
         public bool BillIsRoundOff { get; set; }
         public int BillGstIdFreight { get; set; }
         public int BillGstIdCharge { get; set; }

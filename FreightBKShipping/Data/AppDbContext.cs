@@ -43,6 +43,10 @@ namespace FreightBKShipping.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Journal> Journals { get; set; }
         public DbSet<BillRefDetail> BillRefDetails { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+
+        public DbSet<TransactionDetail> TransactionDetails { get; set; }
+
 
         public DbSet<CompanySubscription> CompanySubscriptions { get; set; }
 
@@ -112,6 +116,11 @@ namespace FreightBKShipping.Data
        .WithMany()
        .HasForeignKey(b => b.BillRefAccountId)
        .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Transaction>()
+    .HasMany(t => t.TransactionDetails)
+    .WithOne(td => td.Transaction)
+    .HasForeignKey(td => td.TransactionDetailTransactionId);
 
             base.OnModelCreating(modelBuilder);
         }

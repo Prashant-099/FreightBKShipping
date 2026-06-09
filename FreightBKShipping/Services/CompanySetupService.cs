@@ -566,6 +566,12 @@ private async Task<int> CreateFinancialYear(Company company)
         // Misc
         BuildAccount(companyId, userId, yearId, "Discount", 2, "Dr"),
         BuildAccount(companyId, userId, yearId, "Round Off", 2, "Dr"),
+
+        //add prashant
+         BuildAccount(companyId, userId, yearId, "TDS A/c", 3, "Cr"),
+          BuildAccount(companyId, userId, yearId, "Sales Return", 3, "Cr"),
+          BuildAccount(companyId, userId, yearId, "Purchase Return", 3, "Cr"),
+          BuildAccount(companyId, userId, yearId, "SHORTAGE A/C", 2, "Dr"),
     };
 
         foreach (var acc in accounts)

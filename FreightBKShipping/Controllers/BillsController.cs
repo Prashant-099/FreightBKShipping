@@ -17,11 +17,12 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-
-        public BillsController(AppDbContext context, AuditLogService auditLogService)
+        private readonly TransactionService _transService;
+        public BillsController(AppDbContext context, AuditLogService auditLogService, TransactionService transService)
         {
             _auditLogService = auditLogService;
             _context = context;
+            _transService = transService;
         }
 
         // GET: api/Bills
@@ -435,53 +436,53 @@ namespace FreightBKShipping.Controllers
         {
             using var tx = await _context.Database.BeginTransactionAsync();
 
-           
-                // 1️⃣ Get voucher based on BillType or VoucherId
-                var voucher = await _context.Vouchers
-                    .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId && v.VoucherBranchId== billDto.BillBranchId && v.VoucherCompanyId == GetCompanyId());
 
-                if (voucher == null)
-                    return BadRequest(new { message = "Voucher not found! Please Create Voucher For Current Branch " });
+            // 1️⃣ Get voucher based on BillType or VoucherId
+            var voucher = await _context.Vouchers
+                .FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId && v.VoucherBranchId == billDto.BillBranchId && v.VoucherCompanyId == GetCompanyId());
 
-                bool isAutomatic = voucher.VoucherMethod == "Automatic";
+            if (voucher == null)
+                return BadRequest(new { message = "Voucher not found! Please Create Voucher For Current Branch " });
 
-                // 2️⃣ Get voucher detail for the year
-                var voucherDetail = await _context.VoucherDetails
-                    .FirstOrDefaultAsync(vd =>
-                        vd.VoucherDetailVoucherId == voucher.VoucherId &&
-                        vd.VoucherDetailYearId == billDto.BillYearId &&
-                        vd.VoucherDetailStatus == true);
+            bool isAutomatic = voucher.VoucherMethod == "Automatic";
 
-                if (voucherDetail == null)
-                    return BadRequest(new { message = "Voucher details not configured." });
+            // 2️⃣ Get voucher detail for the year
+            var voucherDetail = await _context.VoucherDetails
+                .FirstOrDefaultAsync(vd =>
+                    vd.VoucherDetailVoucherId == voucher.VoucherId &&
+                    vd.VoucherDetailYearId == billDto.BillYearId &&
+                    vd.VoucherDetailStatus == true);
 
-                int nextNo;
-                string billNo;
+            if (voucherDetail == null)
+                return BadRequest(new { message = "Voucher details not configured." });
 
-                if (isAutomatic)
+            int nextNo;
+            string billNo;
+
+            if (isAutomatic)
+            {
+                // 3️⃣ Auto number
+                nextNo = voucherDetail.VoucherDetailLastNo + 1;
+
+                // Check if this number already exists
+                bool exists = await _context.Bills.AnyAsync(b =>
+                    b.BillVchNo == nextNo &&
+                    b.BillCompanyId == GetCompanyId() &&
+                    b.BillBranchId == billDto.BillBranchId &&
+                    b.BillVoucherId == billDto.BillVoucherId &&
+                    b.BillYearId == billDto.BillYearId &&
+                    b.BillStatus == true); // optional check
+
+                if (exists)
                 {
-                    // 3️⃣ Auto number
-                    nextNo = voucherDetail.VoucherDetailLastNo + 1;
-
-                    // Check if this number already exists
-                    bool exists = await _context.Bills.AnyAsync(b =>
-                        b.BillVchNo == nextNo &&
-                        b.BillCompanyId == GetCompanyId() &&
-                        b.BillBranchId == billDto.BillBranchId &&
-                        b.BillVoucherId == billDto.BillVoucherId &&
-                        b.BillYearId == billDto.BillYearId &&
-                        b.BillStatus ==true); // optional check
-
-                    if (exists)
-                    {
-                        nextNo = (await _context.Bills
-                            .Where(b => b.BillCompanyId == GetCompanyId() &&
-                                        b.BillBranchId == billDto.BillBranchId &&
-                                         b.BillVoucherId == billDto.BillVoucherId &&
-                                          b.BillStatus == true &&
-                                        b.BillYearId == billDto.BillYearId)
-                            .MaxAsync(b => (int?)b.BillVchNo) ?? nextNo) + 1;
-                    }
+                    nextNo = (await _context.Bills
+                        .Where(b => b.BillCompanyId == GetCompanyId() &&
+                                    b.BillBranchId == billDto.BillBranchId &&
+                                     b.BillVoucherId == billDto.BillVoucherId &&
+                                      b.BillStatus == true &&
+                                    b.BillYearId == billDto.BillYearId)
+                        .MaxAsync(b => (int?)b.BillVchNo) ?? nextNo) + 1;
+                }
                 string formattedNo = nextNo.ToString()
    .PadLeft(voucherDetail.VoucherDetailZeroFill + nextNo.ToString().Length, '0');
                 billNo =
@@ -489,57 +490,57 @@ namespace FreightBKShipping.Controllers
                         formattedNo +
                         (voucherDetail.VoucherDetailSufix ?? "");
 
-                    voucherDetail.VoucherDetailLastNo = nextNo;
-                    voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
-                }
-                else
-                {
-                    // 4️⃣ Manual number
-                    bool exists = await _context.Bills.AnyAsync(b =>
-                        b.BillNo == billDto.BillNo &&
-                         b.BillStatus == true &&
-                        b.BillCompanyId == GetCompanyId() &&
-                        b.BillBranchId == billDto.BillBranchId &&
-                         b.BillVoucherId == billDto.BillVoucherId &&
-                        b.BillYearId == billDto.BillYearId);
+                voucherDetail.VoucherDetailLastNo = nextNo;
+                voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+            }
+            else
+            {
+                // 4️⃣ Manual number
+                bool exists = await _context.Bills.AnyAsync(b =>
+                    b.BillNo == billDto.BillNo &&
+                     b.BillStatus == true &&
+                    b.BillCompanyId == GetCompanyId() &&
+                    b.BillBranchId == billDto.BillBranchId &&
+                     b.BillVoucherId == billDto.BillVoucherId &&
+                    b.BillYearId == billDto.BillYearId);
 
-                    if (exists)
-                        return Conflict(new { message = "Bill number already exists." });
+                if (exists)
+                    return Conflict(new { message = "Bill number already exists." });
 
-                    nextNo =0;
-                    billNo = billDto.BillNo;
-                }
+                nextNo = 0;
+                billNo = billDto.BillNo;
+            }
 
-                // Assign generated number to DTO or entity
-                billDto.BillNo = billNo;
-                billDto.BillVchNo = nextNo;
+            // Assign generated number to DTO or entity
+            billDto.BillNo = billNo;
+            billDto.BillVchNo = nextNo;
 
-                //var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillStatus == billDto.BillStatus && c.BillBranchId == billDto.BillBranchId && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
-                //if (exists)
-                //{
+            //var exists = await _context.Bills.AnyAsync(c => c.BillNo == billDto.BillNo && c.BillStatus == billDto.BillStatus && c.BillBranchId == billDto.BillBranchId && c.BillVoucherId == billDto.BillVoucherId && c.BillCompanyId == GetCompanyId() && c.BillYearId == billDto.BillYearId);
+            //if (exists)
+            //{
 
-                //    return Conflict(new { message = "Bill number already exists." });
-                //}
-                var shipparty = await _context.Accounts
-      .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
+            //    return Conflict(new { message = "Bill number already exists." });
+            //}
+            var shipparty = await _context.Accounts
+  .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
             var party = await _context.Accounts
        .FirstOrDefaultAsync(p => p.AccountId == billDto.BillPartyId);
             var pos = await _context.States
                 .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
-     //       var voucher = await _context.Vouchers
-     //.FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
+            //       var voucher = await _context.Vouchers
+            //.FirstOrDefaultAsync(v => v.VoucherId == billDto.BillVoucherId);
 
             //if (voucher == null)
             //    return BadRequest("Invalid voucher selected.");
 
 
-                 bool isCreditNote =
-    string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
-                bool isdebitNote =
-    string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+            bool isCreditNote =
+string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+            bool isdebitNote =
+string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
 
 
-                var bill = new Bill
+            var bill = new Bill
             {
                 BillCompanyId = GetCompanyId(),
                 BillAddedByUserId = GetUserId(),
@@ -548,8 +549,9 @@ namespace FreightBKShipping.Controllers
                 BillUpdated = DateTime.UtcNow,
 
                 // Basic info
+                BillRoundOffId = billDto.BillRoundOffId,
                 BillPartyId = billDto.BillPartyId,
-                partyname = party.AccountName,//not mapped in db
+                partyname = party?.AccountName,//not mapped in db
                 BillVoucherId = billDto.BillVoucherId,
                 BillYearId = billDto.BillYearId,
                 BillNo = billDto.BillNo,
@@ -574,13 +576,13 @@ namespace FreightBKShipping.Controllers
                 BillTotalUsd = billDto.BillTotalUsd,
                 BillTotal = billDto.BillTotal,
                 BillPlaceOfSupply = billDto.BillPlaceOfSupply,
-                posname = pos.StateName,
+                posname = pos?.StateName,
                 BillSupplyType = billDto.BillSupplyType,
                 BillSalesmanId = billDto.BillSalesmanId,
 
 
                 // Extra fields from JSON
-                BillShipParty = shipparty.AccountName,
+                BillShipParty = shipparty?.AccountName,
                 BillAddress1 = billDto.BillAddress1,
                 BillAddress2 = billDto.BillAddress2,
                 BillAddress3 = billDto.BillAddress3,
@@ -664,15 +666,15 @@ namespace FreightBKShipping.Controllers
                 BillShipPartyId = billDto.BillShipPartyId,
                 BillTcsPer = billDto.BillTcsPer,
                 BillTcsAmt = billDto.BillTcsAmt,
-                    BillQuatationId = billDto.BillQuatationId,
+                BillQuatationId = billDto.BillQuatationId,
 
-                    BillQuatationNo = billDto.BillQuatationNo,
-                    // Bill_due_amt = billDto.BillNetAmount,
+                BillQuatationNo = billDto.BillQuatationNo,
+                // Bill_due_amt = billDto.BillNetAmount,
 
-                    Bill_due_amt =
-   (isCreditNote || isdebitNote) && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
-        ? 0
-        : billDto.BillNetAmount,
+                Bill_due_amt =
+(isCreditNote || isdebitNote) && billDto.BillAgainstBillId.HasValue && billDto.BillAgainstBillId > 0
+    ? 0
+    : billDto.BillNetAmount,
                 // Details
                 BillDetails = billDto.BillDetails.Select(d => new BillDetail
                 {
@@ -724,73 +726,614 @@ namespace FreightBKShipping.Controllers
                 //    BillRefVchAmount = r.BillRefVchAmount
                 //}).ToList()
             };
-                // 🔹 If bill is created against another bill, update due amount
-                //if (bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0)
-                //{
-                //    var refBill = await _context.Bills
-                //        .FirstOrDefaultAsync(b =>
-                //            b.BillId == bill.BillAgainstBillId &&
-                //            b.BillCompanyId == GetCompanyId() &&
-                //            b.BillStatus == true);
+            // 🔹 If bill is created against another bill, update due amount
+            //if (bill.BillAgainstBillId.HasValue && bill.BillAgainstBillId > 0)
+            //{
+            //    var refBill = await _context.Bills
+            //        .FirstOrDefaultAsync(b =>
+            //            b.BillId == bill.BillAgainstBillId &&
+            //            b.BillCompanyId == GetCompanyId() &&
+            //            b.BillStatus == true);
 
-                //    if (refBill == null)
-                //        throw new Exception("Reference bill not found.");
+            //    if (refBill == null)
+            //        throw new Exception("Reference bill not found.");
 
-                //    // 🔹 Validation: cannot exceed due amount
-                //    if (bill.BillNetAmount > refBill.Bill_due_amt)
-                //        throw new Exception("Bill amount cannot be greater than reference bill due amount.");
+            //    // 🔹 Validation: cannot exceed due amount
+            //    if (bill.BillNetAmount > refBill.Bill_due_amt)
+            //        throw new Exception("Bill amount cannot be greater than reference bill due amount.");
 
-                //    // 🔹 Reduce due amount
-                //    refBill.Bill_due_amt -= bill.BillNetAmount;
-                //    refBill.BillUpdated = DateTime.UtcNow;
-                //    refBill.BillUpdatedByUserId = GetUserId();
+            //    // 🔹 Reduce due amount
+            //    refBill.Bill_due_amt -= bill.BillNetAmount;
+            //    refBill.BillUpdated = DateTime.UtcNow;
+            //    refBill.BillUpdatedByUserId = GetUserId();
 
-                //    _context.Bills.Update(refBill);
+            //    _context.Bills.Update(refBill);
 
-                //}
-               
+            //}
 
-                if ((isCreditNote || isdebitNote) &&
-    bill.BillAgainstBillId.HasValue &&
-    bill.BillAgainstBillId > 0)
-                {
-                    var refBill = await _context.Bills
-                        .FirstOrDefaultAsync(b =>
-                            b.BillId == bill.BillAgainstBillId &&
-                            b.BillCompanyId == GetCompanyId() &&
-                            b.BillStatus == true);
 
-                    if (refBill == null)
+            if ((isCreditNote || isdebitNote) &&
+bill.BillAgainstBillId.HasValue &&
+bill.BillAgainstBillId > 0)
+            {
+                var refBill = await _context.Bills
+                    .FirstOrDefaultAsync(b =>
+                        b.BillId == bill.BillAgainstBillId &&
+                        b.BillCompanyId == GetCompanyId() &&
+                        b.BillStatus == true);
+
+                if (refBill == null)
                     return BadRequest(new { message = "Reference bill not found." });
-                    
-                    // 🔒 Safety validation
-                    if (bill.BillNetAmount > refBill.Bill_due_amt)
+
+                // 🔒 Safety validation
+                if (bill.BillNetAmount > refBill.Bill_due_amt)
                     return BadRequest(new { message = $"Amount cannot exceed bill due amount ({refBill.Bill_due_amt})." });
 
-                    refBill.Bill_due_amt -= bill.BillNetAmount;
-                    refBill.BillUpdated = DateTime.UtcNow;
-                    refBill.BillUpdatedByUserId = GetUserId();
+                refBill.Bill_due_amt -= bill.BillNetAmount;
+                refBill.BillUpdated = DateTime.UtcNow;
+                refBill.BillUpdatedByUserId = GetUserId();
 
-                    _context.Bills.Update(refBill);
+                _context.Bills.Update(refBill);
+            }
+
+
+
+            _context.Bills.Add(bill);
+            await _context.SaveChangesAsync();
+            await _auditLogService.AddAsync(new AuditLogCreateDto
+            {
+                TableName = "Bills",
+                RecordId = bill.BillId,
+                VoucherType = bill.Voucher.VoucherName,
+                Amount = (int)bill.BillNetAmount,
+                Operations = "INSERT",
+                Remarks = bill.Voucher.VoucherName + " No: " + bill.BillNo,
+                BranchId = bill.BillBranchId,
+                YearId = bill.BillYearId
+            }, GetCompanyId());
+
+            // FOR TRANSACTIONS TABLE
+            var details = new List<TransactionDetailDto>();
+
+            bool isPurchase =
+                string.Equals(
+                    bill.BillType,
+                    "PURCHASE",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isSales =
+                string.Equals(
+                    bill.BillType,
+                    "SALES",
+                    StringComparison.OrdinalIgnoreCase);
+
+            if (isPurchase )
+            {
+
+                // =========================
+                // PARTY CREDIT
+                // =========================
+
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Debit = 0,
+
+                    Credit = bill.BillTotal
+                });
+                // =========================
+                // PURCHASE + GST DEBIT
+                // =========================
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // Purchase Account DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    // CGST INPUT DR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailCgst,
+                            Credit = 0
+                        });
+                    }
+
+                    // SGST INPUT DR
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailSgst,
+                            Credit = 0
+                        });
+                    }
+
+                    // IGST INPUT DR
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailIgst,
+                            Credit = 0
+                        });
+                    }
                 }
 
+                // =========================
+                // ROUND OFF
+                // =========================
 
-                
-                _context.Bills.Add(bill);
-            await _context.SaveChangesAsync();
-                await _auditLogService.AddAsync(new AuditLogCreateDto
+                if (bill.BillRoundAmt != 0)
                 {
-                    TableName = "Bills",
-                    RecordId = bill.BillId,
-                    VoucherType = bill.Voucher.VoucherName,
-                    Amount = (int)bill.BillNetAmount,
-                    Operations = "INSERT",
-                    Remarks = bill.Voucher.VoucherName + " No: " + bill.BillNo,
-                    BranchId = bill.BillBranchId,
-                    YearId = bill.BillYearId
-                }, GetCompanyId());
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
 
-                await tx.CommitAsync();
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0,
+
+                        Credit = bill.BillRoundAmt < 0
+            ? Math.Abs(bill.BillRoundAmt)
+            : 0,
+                    });
+                }
+
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
+           if(isSales) 
+            {
+                //var details = new List<TransactionDetailDto>();
+
+            // =========================
+            // PARTY DEBIT
+            // =========================
+
+            details.Add(new TransactionDetailDto
+            {
+                PartyId = bill.BillPartyId,
+                AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                Debit = bill.BillTotal,
+                Credit = 0
+            });
+
+            // =========================
+            // DETAILS CREDIT
+            // =========================
+
+            foreach (var item in bill.BillDetails)
+            {
+                // Income Account
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = item.BillDetailAccountId,
+                    AccountId = bill.BillPartyId,
+                    Debit = 0,
+                    Credit = item.BillDetailTaxableAmt
+                });
+
+                // CGST
+                if (item.BillDetailCgst > 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailCgstAcId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailCgst
+                    });
+                }
+
+                // SGST
+                if (item.BillDetailSgst > 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailSgstAcId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailSgst
+                    });
+                }
+
+                // IGST
+                if (item.BillDetailIgst > 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailIgstAcId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailIgst
+                    });
+                }
+                
+
+            }
+                //rounoff a/c
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt < 0
+            ? Math.Abs(bill.BillRoundAmt)
+            : 0,
+
+                        Credit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+     .GroupBy(x => new
+     {
+         x.PartyId,
+         x.AccountId
+     })
+     .Select(g => new TransactionDetailDto
+     {
+         PartyId = g.Key.PartyId,
+
+         AccountId = g.Key.AccountId,
+
+         Debit = g.Sum(x => x.Debit),
+
+         Credit = g.Sum(x => x.Credit)
+     })
+     .ToList();
+
+
+            // =========================
+            // SAVE TRANSACTION
+            // =========================
+
+            await _transService.SaveTransaction(new TransactionDto
+            {
+                CompanyId = GetCompanyId(),
+
+                VoucherId = bill.BillId,
+
+                VoucherTypeId = bill.BillVoucherId,
+
+                VoucherNo = bill.BillNo,
+
+                VoucherType = bill.BillType,
+
+                Date = bill.BillDate,
+
+                Amount = bill.BillTotal,
+
+                Remarks = bill.BillRemarks,
+
+                AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                Details = details
+            });
+
+        }
+            
+
+            if (isCreditNote)
+            {
+                // PARTY CREDIT
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = 0,
+                    Credit = bill.BillTotal
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // SALES RETURN DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    // GST DR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailCgst,
+                            Credit = 0
+                        });
+                    }
+
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailSgst,
+                            Credit = 0
+                        });
+                    }
+
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailIgst,
+                            Credit = 0
+                        });
+                    }
+
+
+                }
+
+                // ROUND OFF
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0,
+
+                        Credit = bill.BillRoundAmt < 0
+                            ? Math.Abs(bill.BillRoundAmt)
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
+            
+
+            if (isdebitNote)
+            {
+                // PARTY DEBIT
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = bill.BillTotal,
+                    Credit = 0
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // PURCHASE RETURN CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailTaxableAmt
+                    });
+
+                    // GST CR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailCgst
+                        });
+                    }
+
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailSgst
+                        });
+                    }
+
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailIgst
+                        });
+                    }
+                }
+
+                // ROUND OFF
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt < 0
+                            ? Math.Abs(bill.BillRoundAmt)
+                            : 0,
+
+                        Credit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
+            await tx.CommitAsync();
                 // return CreatedAtAction(nameof(GetBill), new { id = bill.BillId }, bill);
                 return NoContent();
 
@@ -867,14 +1410,14 @@ namespace FreightBKShipping.Controllers
                 string.Equals(bill.BillType, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
 
             bool isNewCreditNote =
-                string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+                string.Equals(voucher?.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
 
 
             bool isOldDebitNote =
                 string.Equals(bill.BillType, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
 
             bool isNewDebitNote =
-                string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+                string.Equals(voucher?.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
 
             // 🔒 VALIDATION: CN / DN cannot exceed available due
             // 🔒 VALIDATION: Allow edit but prevent negative due
@@ -918,6 +1461,9 @@ namespace FreightBKShipping.Controllers
                 .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
 
             // Update main bill fields
+            bill.BillRoundOffId = billDto.BillRoundOffId;
+            bill.BillRoundAmt = billDto.BillRoundAmt;
+            bill.BillIsRoundOff = billDto.BillIsRoundOff;
             bill.BillCompanyId = GetCompanyId();
             bill.BillUpdatedByUserId = GetUserId();
             bill.BillUpdated = DateTime.UtcNow;
@@ -931,13 +1477,13 @@ namespace FreightBKShipping.Controllers
             bill.BillJobId = billDto.BillJobId;
             bill.BillNo = billDto.BillNo;
             bill.BillDate = billDto.BillDate;
-            bill.BillType = voucher.VoucherGroup;
+            bill.BillType = voucher?.VoucherGroup;
             bill.BillAmount = billDto.BillAmount;
             bill.BillRemarks = billDto.BillRemarks;
             bill.BillTotalUsd = billDto.BillTotalUsd;
-            bill.BillShipParty = shipparty.AccountName;
-            bill.partyname = party.AccountName;
-            bill.posname = pos.StateName;
+            bill.BillShipParty = shipparty?.AccountName;
+            bill.partyname = party?.AccountName;
+            bill.posname = pos?.StateName;
             bill.BillShipPartyId = billDto.BillShipPartyId;
             bill.BillAddress1 = billDto.BillAddress1;
             bill.BillAddress2 = billDto.BillAddress2;
@@ -1016,6 +1562,7 @@ namespace FreightBKShipping.Controllers
             bill.BillApprovedBy = billDto.BillApprovedBy;
             bill.BillDrcrAccId = billDto.BillDrCrAccId;
             bill.BillAdvance = billDto.BillAdvance;
+            bill.BillTotal = billDto.BillTotal;
             bill.BillNetAmount = billDto.BillNetAmount;
             bill.BillTdsAmt = billDto.BillTdsAmt;
             bill.BillTdsPer = billDto.BillTdsPer;
@@ -1265,6 +1812,7 @@ namespace FreightBKShipping.Controllers
             }
             await _context.SaveChangesAsync();
 
+            // FOR AUDITlOG TABLE
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "Bills",
@@ -1276,6 +1824,558 @@ namespace FreightBKShipping.Controllers
                 BranchId = bill.BillBranchId,
                 YearId = bill.BillYearId
             }, GetCompanyId());
+
+
+            // ======================================
+            // UPDATE TRANSACTION
+            // ======================================
+            var details = new List<TransactionDetailDto>();
+
+            bool isPurchase =
+                string.Equals(
+                    bill.BillType,
+                    "PURCHASE",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isSales =
+                string.Equals(
+                    bill.BillType,
+                    "SALES",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isCreditNote =
+string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+            bool isdebitNote =
+string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+            if (isPurchase)
+            {
+
+                // =========================
+                // PARTY CREDIT
+                // =========================
+
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Debit = 0,
+
+                    Credit = bill.BillTotal
+                });
+                
+                // =========================
+                // PURCHASE + GST DEBIT
+                // =========================
+
+                foreach (var item in bill.BillDetails)
+                {
+
+
+                    // Purchase Account DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    // CGST INPUT DR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailCgst,
+                            Credit = 0
+                        });
+                    }
+
+                    // SGST INPUT DR
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailSgst,
+                            Credit = 0
+                        });
+                    }
+
+                    // IGST INPUT DR
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailIgst,
+                            Credit = 0
+                        });
+                    }
+                }
+
+                // =========================
+                // ROUND OFF
+                // =========================
+
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0,
+
+                        Credit = bill.BillRoundAmt < 0
+            ? Math.Abs(bill.BillRoundAmt)
+            : 0,
+                    });
+                }
+
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
+            if (isSales)
+            {
+                //var details = new List<TransactionDetailDto>();
+
+                // =========================
+                // PARTY DEBIT
+                // =========================
+
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = bill.BillTotal,
+                    Credit = 0
+                });
+
+                // =========================
+                // DETAILS CREDIT
+                // =========================
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // Income Account
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailTaxableAmt
+                    });
+
+                    // CGST
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailCgst
+                        });
+                    }
+
+                    // SGST
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailSgst
+                        });
+                    }
+
+                    // IGST
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailIgst
+                        });
+                    }
+                    
+
+                }
+                //rounoff a/c
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt < 0
+            ? Math.Abs(bill.BillRoundAmt)
+            : 0,
+
+                        Credit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+
+            }
+
+
+            if (isCreditNote)
+            {
+                // PARTY CREDIT
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = 0,
+                    Credit = bill.BillTotal
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // SALES RETURN DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    // GST DR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailCgst,
+                            Credit = 0
+                        });
+                    }
+
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailSgst,
+                            Credit = 0
+                        });
+                    }
+
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = item.BillDetailIgst,
+                            Credit = 0
+                        });
+                    }
+
+
+                }
+
+                // ROUND OFF
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0,
+
+                        Credit = bill.BillRoundAmt < 0
+                            ? Math.Abs(bill.BillRoundAmt)
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
+
+
+            if (isdebitNote)
+            {
+                // PARTY DEBIT
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = bill.BillTotal,
+                    Credit = 0
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    // PURCHASE RETURN CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailTaxableAmt
+                    });
+
+                    // GST CR
+                    if (item.BillDetailCgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailCgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailCgst
+                        });
+                    }
+
+                    if (item.BillDetailSgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailSgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailSgst
+                        });
+                    }
+
+                    if (item.BillDetailIgst > 0)
+                    {
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = item.BillDetailIgstAcId,
+                            AccountId = bill.BillPartyId,
+                            Debit = 0,
+                            Credit = item.BillDetailIgst
+                        });
+                    }
+                }
+
+                // ROUND OFF
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+
+                        Debit = bill.BillRoundAmt < 0
+                            ? Math.Abs(bill.BillRoundAmt)
+                            : 0,
+
+                        Credit = bill.BillRoundAmt > 0
+                            ? bill.BillRoundAmt
+                            : 0
+                    });
+                }
+                // =========================
+                // GROUP SAME ACCOUNTS
+                // =========================
+
+                details = details
+         .GroupBy(x => new
+         {
+             x.PartyId,
+             x.AccountId
+         })
+         .Select(g => new TransactionDetailDto
+         {
+             PartyId = g.Key.PartyId,
+
+             AccountId = g.Key.AccountId,
+
+             Debit = g.Sum(x => x.Debit),
+
+             Credit = g.Sum(x => x.Credit)
+         })
+         .ToList();
+
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+
+                    VoucherId = bill.BillId,
+
+                    VoucherTypeId = bill.BillVoucherId,
+
+                    VoucherNo = bill.BillNo,
+
+                    VoucherType = bill.BillType,
+
+                    Date = bill.BillDate,
+
+                    Amount = bill.BillTotal,
+
+                    Remarks = bill.BillRemarks,
+
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+
+                    Details = details
+                });
+            }
 
             return NoContent();
         
@@ -1483,7 +2583,18 @@ namespace FreightBKShipping.Controllers
                 detail.BillDetailStatus = false; // make sure this column exists
             }
             _context.Bills.Update(bill);
-           
+
+
+
+            // DELETE TRANSACTION & DETAILS ENTRY
+            // =========================
+
+            await _transService.DeleteTransactionByVoucher(
+                bill.BillId,
+                bill.BillVoucherId);
+
+
+
             await _context.SaveChangesAsync();
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {

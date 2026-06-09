@@ -90,6 +90,9 @@ namespace FreightBKShipping.Models
         [Column("bill_isroundoff")]
         public bool BillIsRoundOff { get; set; }
 
+        [Column("bill_roundoff_Id")]
+        public int BillRoundOffId { get; set; }
+
         [Column("bill_gstid_freight")]
         public int BillGstIdFreight { get; set; }
 

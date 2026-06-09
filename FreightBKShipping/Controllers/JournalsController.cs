@@ -16,11 +16,12 @@ namespace FreightBKShipping.Controllers
     {
         private readonly AppDbContext _context;
         private readonly AuditLogService _auditLogService;
-
-        public JournalsController(AppDbContext context, AuditLogService auditLogService)
+        private readonly TransactionService _transService;
+        public JournalsController(AppDbContext context, AuditLogService auditLogService, TransactionService transService)
         {
             _auditLogService = auditLogService;
             _context = context;
+            _transService = transService;
         }   
 
         // GET: api/Journals
@@ -403,7 +404,486 @@ namespace FreightBKShipping.Controllers
                     YearId = journal.JournalYearId
                 }, GetCompanyId());
 
-                await tx.CommitAsync();
+
+            // FOR TRANSACTIONS TABLE
+            var details = new List<TransactionDetailDto>();
+
+            bool isReceipt =
+                string.Equals(
+                    journal.JournalMasterType,
+                    "RECEIPT",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isPayment =
+               string.Equals(
+                   journal.JournalMasterType,
+                   "PAYMENT",
+                   StringComparison.OrdinalIgnoreCase);
+            bool isContra =
+    string.Equals(
+        journal.JournalMasterType,
+        "CONTRA",
+        StringComparison.OrdinalIgnoreCase);
+            bool isJournal =
+    string.Equals(
+        journal.JournalMasterType,
+        "JOURNAL",
+        StringComparison.OrdinalIgnoreCase);
+            if (isReceipt)
+            {
+                //decimal totalPartyCredit =
+                //    (decimal)(journal.JournalTotal+
+                //    journal.JournalTotalDiscount +
+                //    journal.JournalTotalTds +
+                //    journal.JournalTotalShort);
+
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalTotal
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = (double)journal.JournalTotal,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // BILL TO BILL
+                // =========================
+
+                if (journal.BillRefDetails != null &&
+                    journal.BillRefDetails.Any())
+                {
+                    foreach (var item in journal.BillRefDetails)
+                    {
+                        double billAmount =
+                            item.BillRefVchAmount;
+
+                        // PARTY DR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalPartyId,
+                            AccountId = journal.JournalAccountId,
+                            Debit = 0,
+                            Credit = billAmount
+                        });
+
+                        // CASH/BANK CR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalAccountId,
+                            AccountId = journal.JournalPartyId,
+                            Debit = billAmount,
+                            Credit = 0
+                        });
+                    }
+                }
+
+
+
+
+                // DISCOUNT DR
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+                }
+
+                // TDS DR
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+                }
+
+                // SHORTAGE DR
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                }
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)(journal.JournalTotal),
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+            //payment
+            if (isPayment)
+            {
+                // =========================
+                // ON ACCOUNT
+                // =========================
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = (double)journal.JournalTotal,
+                        Credit = 0
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalTotal
+                    });
+                }
+
+                // =========================
+                // BILL TO BILL
+                // =========================
+
+                if (journal.BillRefDetails != null &&
+                    journal.BillRefDetails.Any())
+                {
+                    foreach (var item in journal.BillRefDetails)
+                    {
+                        double billAmount =
+                             item.BillRefVchAmount;
+
+                        // PARTY DR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalPartyId,
+                            AccountId = journal.JournalAccountId,
+                            Debit = billAmount,
+                            Credit = 0
+                        });
+
+                        // CASH/BANK CR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalAccountId,
+                            AccountId = journal.JournalPartyId,
+                            Debit = 0,
+                            Credit = billAmount
+                        });
+                    }
+                }
+
+                // =========================
+                // DISCOUNT
+                // =========================
+
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    // PARTY 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+
+                    // DISCOUNT 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // TDS
+                // =========================
+
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+
+                    // TDS CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // SHORTAGE
+                // =========================
+
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+
+
+                    // SHORTAGE CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // GROUP
+                // =========================
+
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+
+            if (isContra)
+            {
+
+                // TO ACCOUNT DR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalPartyId,
+                    AccountId = journal.JournalAccountId,
+                    Debit = journal.JournalTotal,
+                    Credit = 0
+                });
+                // FROM ACCOUNT CR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalAccountId,
+                    AccountId = journal.JournalPartyId,
+                    Debit = 0,
+                    Credit = journal.JournalTotal
+                });
+
+                
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+            if (isJournal)
+            {
+                details = new List<TransactionDetailDto>();
+
+                var drList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "DR")
+                    .ToList();
+
+                var crList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "CR")
+                    .ToList();
+
+                int count = Math.Min(drList.Count, crList.Count);
+
+                for (int i = 0; i < count; i++)
+                {
+                    var dr = drList[i];
+                    var cr = crList[i];
+
+                    // DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = cr.BillRefAccountId,
+                        AccountId = dr.BillRefAccountId,
+                        Debit = dr.BillRefVchAmount,
+                        Credit = 0
+                    });
+
+                    // CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = dr.BillRefAccountId,
+                        AccountId = cr.BillRefAccountId,
+                        Debit = 0,
+                        Credit = cr.BillRefVchAmount
+                    });
+                }
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = 0,
+                    Details = details
+                });
+            }
+            await tx.CommitAsync();
                 return NoContent();
            
         }
@@ -557,6 +1037,474 @@ namespace FreightBKShipping.Controllers
 
             await _context.SaveChangesAsync();
 
+
+
+            // FOR  update TRANSACTIONS TABLE
+           
+            var details = new List<TransactionDetailDto>();
+
+            bool isReceipt =
+                string.Equals(
+                    journal.JournalMasterType,
+                    "RECEIPT",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isPayment =
+               string.Equals(
+                   journal.JournalMasterType,
+                   "PAYMENT",
+                   StringComparison.OrdinalIgnoreCase);
+
+            bool isContra =
+string.Equals(
+journal.JournalMasterType,
+"CONTRA",
+StringComparison.OrdinalIgnoreCase);
+            bool isJournal =
+    string.Equals(
+        journal.JournalMasterType,
+        "JOURNAL",
+        StringComparison.OrdinalIgnoreCase);
+            if (isReceipt)
+            {
+                //decimal totalPartyCredit =
+                //    (decimal)(journal.JournalTotal+
+                //    journal.JournalTotalDiscount +
+                //    journal.JournalTotalTds +
+                //    journal.JournalTotalShort);
+
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalTotal
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = (double)journal.JournalTotal,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // BILL TO BILL
+                // =========================
+
+                if (journal.BillRefDetails != null &&
+                    journal.BillRefDetails.Any())
+                {
+                    foreach (var item in journal.BillRefDetails)
+                    {
+                        double billAmount =
+                            item.BillRefVchAmount;
+
+                        // PARTY DR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalPartyId,
+                            AccountId = journal.JournalAccountId,
+                            Debit = 0,
+                            Credit = billAmount
+                        });
+
+                        // CASH/BANK CR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalAccountId,
+                            AccountId = journal.JournalPartyId,
+                            Debit = billAmount,
+                            Credit = 0
+                        });
+                    }
+                }
+
+
+
+
+                // DISCOUNT DR
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+                }
+
+                // TDS DR
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+                }
+
+                // SHORTAGE DR
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                }
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)(journal.JournalTotal),
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+            if (isPayment)
+            {
+                // =========================
+                // ON ACCOUNT
+                // =========================
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = (double)journal.JournalTotal,
+                        Credit = 0
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalTotal
+                    });
+                }
+
+                // =========================
+                // BILL TO BILL
+                // =========================
+
+                if (journal.BillRefDetails != null &&
+                    journal.BillRefDetails.Any())
+                {
+                    foreach (var item in journal.BillRefDetails)
+                    {
+                        double billAmount =
+                            item.BillRefVchAmount;
+
+                        // PARTY DR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalPartyId,
+                            AccountId = journal.JournalAccountId,
+                            Debit = billAmount,
+                            Credit = 0
+                        });
+
+                        // CASH/BANK CR
+                        details.Add(new TransactionDetailDto
+                        {
+                            PartyId = journal.JournalAccountId,
+                            AccountId = journal.JournalPartyId,
+                            Debit = 0,
+                            Credit = billAmount
+                        });
+                    }
+                }
+
+                // =========================
+                // DISCOUNT
+                // =========================
+
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    // PARTY 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit =0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+
+                    // DISCOUNT 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // TDS
+                // =========================
+
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+
+                    // TDS CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // SHORTAGE
+                // =========================
+
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+                    
+
+                    // SHORTAGE CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // GROUP
+                // =========================
+
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                // =========================
+                // update TRANSACTION
+                // =========================
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+
+            //for contra 
+            if (isContra)
+            {
+
+                /// TO ACCOUNT DR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalPartyId,
+                    AccountId = journal.JournalAccountId,
+                    Debit = journal.JournalTotal,
+                    Credit = 0
+                });
+                // FROM ACCOUNT CR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalAccountId,
+                    AccountId = journal.JournalPartyId,
+                    Debit = 0,
+                    Credit = journal.JournalTotal
+                });
+
+
+
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+
+            if (isJournal)
+            {
+                details = new List<TransactionDetailDto>();
+
+                var drList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "DR")
+                    .ToList();
+
+                var crList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "CR")
+                    .ToList();
+
+                int count = Math.Min(drList.Count, crList.Count);
+
+                for (int i = 0; i < count; i++)
+                {
+                    var dr = drList[i];
+                    var cr = crList[i];
+
+                    // DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = cr.BillRefAccountId,
+                        AccountId = dr.BillRefAccountId,
+                        Debit = dr.BillRefVchAmount,
+                        Credit = 0
+                    });
+
+                    // CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = dr.BillRefAccountId,
+                        AccountId = cr.BillRefAccountId,
+                        Debit = 0,
+                        Credit = cr.BillRefVchAmount
+                    });
+                }
+
+                await _transService.UpdateTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = 0,
+                    Details = details
+                });
+            }
             await _auditLogService.AddAsync(new AuditLogCreateDto
             {
                 TableName = "Journals",
@@ -887,6 +1835,16 @@ namespace FreightBKShipping.Controllers
             //}
 
             await _context.SaveChangesAsync();
+
+
+
+            // DELETE TRANSACTION & DETAILS ENTRY
+            // =========================
+
+            await _transService.DeleteTransactionByVoucher(
+                journal.JournalId,
+                journal.JournalVoucherId);
+
 
             // ✅ Audit log
             await _auditLogService.AddAsync(new AuditLogCreateDto
