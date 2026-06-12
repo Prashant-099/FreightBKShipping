@@ -445,7 +445,7 @@ namespace FreightBKShipping.Controllers
                         PartyId = journal.JournalPartyId,
                         AccountId = journal.JournalAccountId,
                         Debit = 0,
-                        Credit = (double)journal.JournalTotal
+                        Credit = (double)journal.JournalOnAccount
                     });
 
                     // CASH/BANK CR
@@ -453,7 +453,7 @@ namespace FreightBKShipping.Controllers
                     {
                         PartyId = journal.JournalAccountId,
                         AccountId = journal.JournalPartyId,
-                        Debit = (double)journal.JournalTotal,
+                        Debit = (double)journal.JournalOnAccount,
                         Credit = 0
                     });
                 }
@@ -600,7 +600,7 @@ namespace FreightBKShipping.Controllers
                     {
                         PartyId = journal.JournalPartyId,
                         AccountId = journal.JournalAccountId,
-                        Debit = (double)journal.JournalTotal,
+                        Debit = (double)journal.JournalOnAccount,
                         Credit = 0
                     });
 
@@ -610,7 +610,7 @@ namespace FreightBKShipping.Controllers
                         PartyId = journal.JournalAccountId,
                         AccountId = journal.JournalPartyId,
                         Debit = 0,
-                        Credit = (double)journal.JournalTotal
+                        Credit = (double)journal.JournalOnAccount
                     });
                 }
 
@@ -1081,7 +1081,7 @@ StringComparison.OrdinalIgnoreCase);
                         PartyId = journal.JournalPartyId,
                         AccountId = journal.JournalAccountId,
                         Debit = 0,
-                        Credit = (double)journal.JournalTotal
+                        Credit = (double)journal.JournalOnAccount
                     });
 
                     // CASH/BANK CR
@@ -1089,7 +1089,7 @@ StringComparison.OrdinalIgnoreCase);
                     {
                         PartyId = journal.JournalAccountId,
                         AccountId = journal.JournalPartyId,
-                        Debit = (double)journal.JournalTotal,
+                        Debit = (double)journal.JournalOnAccount,
                         Credit = 0
                     });
                 }
@@ -1235,7 +1235,7 @@ StringComparison.OrdinalIgnoreCase);
                     {
                         PartyId = journal.JournalPartyId,
                         AccountId = journal.JournalAccountId,
-                        Debit = (double)journal.JournalTotal,
+                        Debit = (double)journal.JournalOnAccount,
                         Credit = 0
                     });
 
@@ -1245,7 +1245,7 @@ StringComparison.OrdinalIgnoreCase);
                         PartyId = journal.JournalAccountId,
                         AccountId = journal.JournalPartyId,
                         Debit = 0,
-                        Credit = (double)journal.JournalTotal
+                        Credit = (double)journal.JournalOnAccount
                     });
                 }
 
