@@ -7,6 +7,7 @@ namespace FreightBKShipping.DTOs.JournalDto
     public class JournalDto
     {
         public int JournalId { get; set; }
+        public int? JournalBranchId { get; set; }
         public int JournalCompanyId { get; set; }
         public string? JournalAddedByUserId { get; set; }
         public string? JournalUpdatedByUserId { get; set; }
