@@ -88,6 +88,7 @@ namespace FreightBKShipping.Controllers
                 HasWhatsapp = c.company.HasWhatsapp,
                 FssExpiry =c.company.FssExpiry,
                 ContactPerson = c.company.ContactPerson,
+                Logo = c.company.Logo,
                 AddedByUserId = c.company.AddedByUserId
             })
             .ToListAsync();

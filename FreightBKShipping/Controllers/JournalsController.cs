@@ -1924,6 +1924,7 @@ StringComparison.OrdinalIgnoreCase);
                         CompanyState = companyState?.StateName,
                         CompanyMobile = company?.Mobile,
                         CompanyEmail = company?.Email,
+                        Companylogo = company?.Logo,
 
                         BankName = bank?.AccountBankName,
                         BankAccountNo = bank?.AccountAccNo,

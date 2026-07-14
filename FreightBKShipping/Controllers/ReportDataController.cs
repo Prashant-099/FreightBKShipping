@@ -9,7 +9,7 @@ using Sieve.Services;
 using System.Text;
 namespace FreightBKShipping.Controllers
 {
-    [Authorize]
+    [AllowAnonymous]
     [ApiController]
     [Route("api/[controller]")]
     public class ReportDataController : BaseController

@@ -2937,6 +2937,7 @@ string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnore
                         company_mobile = company?.Mobile,
                         company_email = company?.Email,
                         company_website = company?.Website,
+                        company_logo = company?.Logo,
                         company_panno = company?.Panno
                     },
                     BillDetails = new List<BillDetailPrintDto>()

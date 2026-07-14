@@ -30,6 +30,7 @@
         public string? CompanyGST { get; set; }
         public string? CompanyMobile { get; set; }
         public string? CompanyEmail { get; set; }
+        public byte[]? Companylogo { get; set; }
 
         public string? CompanyWebsite { get; set; }
         public string? CompanyState { get; set; }

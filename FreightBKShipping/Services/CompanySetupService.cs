@@ -62,7 +62,7 @@ public class CompanySetupService
 
                 HasWhatsapp = dto.HasWhatsapp,
                 ContactPerson = dto.ContactPerson,
-
+                Logo = dto.Logo,
                 AddedByUserId = createdByUserId,
 
                 // 🔥 Temporary (Can remove later fully)
@@ -171,6 +171,7 @@ public class CompanySetupService
         company.Gstin = dto.Gstin;
         company.StateId = dto.StateId;
         company.Panno = dto.Panno;
+        company.Logo = dto.Logo;
         company.Updated = DateTime.UtcNow;
         company.UpdatedByUserId = userId;
 

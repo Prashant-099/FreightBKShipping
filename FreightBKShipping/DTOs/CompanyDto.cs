@@ -34,7 +34,7 @@ namespace FreightBKShipping.DTOs
         public DateTime? FssExpiry { get; set; }
         public int CompanyId { get; set; }
         public int? MaxUser { get; set; }
-
+        public byte[]? Logo { get; set; }
 
     }
     public class CompanyDto
@@ -74,6 +74,7 @@ namespace FreightBKShipping.DTOs
         public string AddedByUserId { get; set; } = string.Empty;
         public string FullAddress { get; set; }
         public DateTime? FssExpiry { get; set; }
+        public byte[]? Logo { get; set; }
 
     }
 
@@ -124,5 +125,6 @@ namespace FreightBKShipping.DTOs
             public string? ContactPerson { get; set; }
 
             public DateTime? FssExpiry { get; set; }
-        }
+        public byte[]? Logo { get; set; }
+    }
 }
