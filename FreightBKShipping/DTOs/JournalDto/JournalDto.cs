@@ -67,4 +67,21 @@ namespace FreightBKShipping.DTOs.JournalDto
         public float BillRefVchBalance { get; set; }
         public int BillRefAccountId { get; set; }
     }
+
+    public class BulkJournalImportResultDto
+    {
+        public int TotalCount { get; set; }
+        public int SuccessCount { get; set; }
+        public int FailCount { get; set; }
+        public List<BulkJournalResultItemDto> Items { get; set; } = new();
+    }
+
+    public class BulkJournalResultItemDto
+    {
+        public string? JournalNoInput { get; set; }   // Excel se aaya Receipt No (match ke liye)
+        public bool Success { get; set; }
+        public int JournalId { get; set; }
+        public string? JournalNo { get; set; }
+        public string? Error { get; set; }
+    }
 }

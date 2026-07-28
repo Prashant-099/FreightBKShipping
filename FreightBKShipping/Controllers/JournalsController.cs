@@ -207,6 +207,627 @@ namespace FreightBKShipping.Controllers
             return dto;
         }
 
+        [HttpGet("exists")]
+        public async Task<ActionResult<bool>> Exists(
+    string journalNo,
+    int branchId,
+    int voucherId,
+    int yearId)
+        {
+            bool exists = await _context.Journals.AnyAsync(j =>
+                j.JournalNoStr == journalNo &&
+                j.JournalBranchId == branchId &&
+                j.JournalVoucherId == voucherId &&
+                j.JournalYearId == yearId &&
+                j.JournalStatus == true &&
+                j.JournalCompanyId == GetCompanyId());
+
+            return Ok(exists);
+        }
+
+        // POST: api/Journals/bulk
+        // Bulk receipt import — one Journal each, own transaction so one bad row
+        // doesn't roll back the rest. Duplicate JournalNoStr is checked & skipped.
+        [HttpPost("bulk")]
+        public async Task<ActionResult<BulkJournalImportResultDto>>BulkCreateJournals(List<Journal> journals)
+        {
+            var result = new BulkJournalImportResultDto { TotalCount = journals?.Count ?? 0 };
+
+            if (journals == null || !journals.Any())
+                return BadRequest(new { message = "No receipts provided." });
+
+            foreach (var dto in journals)
+            {
+                var item = new BulkJournalResultItemDto { JournalNoInput = dto.JournalNoStr };
+
+                using var tx = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // 1️⃣ Voucher
+                    var voucher = await _context.Vouchers
+                        .FirstOrDefaultAsync(v => v.VoucherId == dto.JournalVoucherId &&
+                                                  v.VoucherCompanyId == GetCompanyId());
+                    if (voucher == null)
+                    {
+                        item.Error = "Invalid voucher selected.";
+                        result.Items.Add(item);
+                        await tx.RollbackAsync();
+                        continue;
+                    }
+
+                    // 2️⃣ Voucher detail for the year
+                    var voucherDetail = await _context.VoucherDetails
+                        .FirstOrDefaultAsync(vd =>
+                            vd.VoucherDetailVoucherId == voucher.VoucherId &&
+                            vd.VoucherDetailYearId == dto.JournalYearId &&
+                            vd.VoucherDetailStatus == true);
+                    if (voucherDetail == null)
+                    {
+                        item.Error = "Voucher details not configured.";
+                        result.Items.Add(item);
+                        await tx.RollbackAsync();
+                        continue;
+                    }
+
+                    //bool isAutomatic = voucher.VoucherMethod == "Automatic";
+                    //int nextNo;
+                    //string journalNoStr;
+
+                    //if (isAutomatic)
+                    //{
+                    //    nextNo = voucherDetail.VoucherDetailLastNo + 1;
+
+                    //    bool numExists = await _context.Journals.AnyAsync(j =>
+                    //        j.JournalNo == nextNo &&
+                    //        j.JournalCompanyId == GetCompanyId() &&
+                    //        j.JournalVoucherId == dto.JournalVoucherId &&
+                    //        j.JournalYearId == dto.JournalYearId &&
+                    //        j.JournalStatus == true);
+
+                    //    if (numExists)
+                    //    {
+                    //        nextNo = (await _context.Journals
+                    //            .Where(j => j.JournalCompanyId == GetCompanyId() &&
+                    //                        j.JournalVoucherId == dto.JournalVoucherId &&
+                    //                        j.JournalStatus == true &&
+                    //                        j.JournalYearId == dto.JournalYearId)
+                    //            .MaxAsync(j => (int?)j.JournalNo) ?? nextNo) + 1;
+                    //    }
+
+                    //    string formattedNo = nextNo.ToString()
+                    //        .PadLeft(voucherDetail.VoucherDetailZeroFill + nextNo.ToString().Length, '0');
+
+                    //    journalNoStr =
+                    //        (voucherDetail.VoucherDetailPrefix ?? "") +
+                    //        formattedNo +
+                    //        (voucherDetail.VoucherDetailSufix ?? "");
+
+                    //    voucherDetail.VoucherDetailLastNo = nextNo;
+                    //    voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+                    //}
+                    //else
+                    //{
+                    //    // ✅ Manual — JournalNoStr duplicate check
+                    //    if (string.IsNullOrWhiteSpace(dto.JournalNoStr))
+                    //    {
+                    //        item.Error = "Receipt No missing.";
+                    //        result.Items.Add(item);
+                    //        await tx.RollbackAsync();
+                    //        continue;
+                    //    }
+
+                    //    bool exists = await _context.Journals.AnyAsync(j =>
+                    //        j.JournalNoStr == dto.JournalNoStr &&
+                    //        j.JournalStatus == true &&
+                    //        j.JournalCompanyId == GetCompanyId() &&
+                    //        j.JournalVoucherId == dto.JournalVoucherId &&
+                    //        j.JournalYearId == dto.JournalYearId);
+
+                    //    if (exists)
+                    //    {
+                    //        item.Error = "Receipt number already exists.";
+                    //        result.Items.Add(item);
+                    //        await tx.RollbackAsync();
+                    //        continue;
+                    //    }
+
+                    //    nextNo = 0;
+                    //    journalNoStr = dto.JournalNoStr;
+                    //}
+
+                    // 3️⃣ Build journal (all on-account, no BillRefDetails)
+                    var journal = new Journal
+                    {
+                        JournalCompanyId = GetCompanyId(),
+                        JournalAddedByUserId = GetUserId(),
+                        JournalUpdatedByUserId = GetUserId(),
+                        JournalCreated = DateTime.UtcNow,
+                        JournalUpdated = DateTime.UtcNow,
+                        JournalBranchId = dto.JournalBranchId,
+                        JournalVoucherId = dto.JournalVoucherId,
+                        JournalYearId = dto.JournalYearId,
+                        JournalPartyId = dto.JournalPartyId,
+                        JournalAccountId = dto.JournalAccountId,
+                        JournalNo = dto.JournalNo,
+                        JournalNoStr = dto.JournalNoStr,
+                        JournalMasterType = dto.JournalMasterType,
+                        JournalDate = dto.JournalDate,
+                        JournalAmount = dto.JournalAmount,
+                        JournalChqNo = dto.JournalChqNo,
+                        JournalChqDate = dto.JournalChqDate,
+                        JournalRemarks = dto.JournalRemarks,
+                        JournalRefType = dto.JournalRefType,
+                        JournalStatus = true,
+                        JournalTotalDiscount = dto.JournalTotalDiscount,
+                        JournalTotalShort = dto.JournalTotalShort,
+                        JournalTotalTds = dto.JournalTotalTds,
+                        JournalTotal = dto.JournalTotal,
+                        JournalOnAccount = dto.JournalOnAccount,
+                        TDSAcccountId = dto.TDSAcccountId,
+                        ShortageAccountId = dto.ShortageAccountId,
+                        DiscountAccountId = dto.DiscountAccountId,
+                        BillRefDetails = new List<BillRefDetail>()
+                    };
+
+                    _context.Journals.Add(journal);
+                    await _context.SaveChangesAsync(); // need JournalId
+
+                    await _auditLogService.AddAsync(new AuditLogCreateDto
+                    {
+                        TableName = "Journals",
+                        RecordId = journal.JournalId,
+                        VoucherType = voucher.VoucherName,
+                        Amount = (int)journal.JournalTotal,
+                        Operations = "INSERT",
+                        Remarks = voucher.VoucherName + " No: " + journal.JournalNoStr,
+                        YearId = journal.JournalYearId
+                    }, GetCompanyId());
+
+                    // 4️⃣ Ledger transaction (RECEIPT on-account only)
+                    await PostReceiptOnAccountAsync(journal);
+
+                    await tx.CommitAsync();
+
+                    item.Success = true;
+                    item.JournalId = journal.JournalId;
+                    item.JournalNo = journal.JournalNoStr;
+                    result.Items.Add(item);
+                }
+                catch (Exception ex)
+                {
+                    await tx.RollbackAsync();
+                    item.Success = false;
+                    item.Error = ex.Message;
+                    result.Items.Add(item);
+                }
+            }
+
+            result.SuccessCount = result.Items.Count(x => x.Success);
+            result.FailCount = result.Items.Count(x => !x.Success);
+            return Ok(result);
+        }
+
+        // On-account RECEIPT ledger posting (same DR/CR as CreateJournal's isReceipt block,
+        // but only the on-account + discount/tds/shortage parts — no bill-to-bill).
+        private async Task PostReceiptOnAccountAsync(Journal journal)
+        {
+            var details = new List<TransactionDetailDto>();
+
+            bool isReceipt =
+                string.Equals(
+                    journal.JournalMasterType,
+                    "RECEIPT",
+                    StringComparison.OrdinalIgnoreCase);
+            bool isPayment =
+               string.Equals(
+                   journal.JournalMasterType,
+                   "PAYMENT",
+                   StringComparison.OrdinalIgnoreCase);
+            bool isContra =
+    string.Equals(
+        journal.JournalMasterType,
+        "CONTRA",
+        StringComparison.OrdinalIgnoreCase);
+            bool isJournal =
+    string.Equals(
+        journal.JournalMasterType,
+        "JOURNAL",
+        StringComparison.OrdinalIgnoreCase);
+            if (isReceipt)
+            {
+                //decimal totalPartyCredit =
+                //    (decimal)(journal.JournalTotal+
+                //    journal.JournalTotalDiscount +
+                //    journal.JournalTotalTds +
+                //    journal.JournalTotalShort);
+
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalOnAccount
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = (double)journal.JournalOnAccount,
+                        Credit = 0
+                    });
+                }
+
+                
+
+
+
+                // DISCOUNT DR
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+                }
+
+                // TDS DR
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+                }
+
+                // SHORTAGE DR
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                }
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)(journal.JournalTotal),
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+            //payment
+            if (isPayment)
+            {
+                // =========================
+                // ON ACCOUNT
+                // =========================
+
+                if (journal.JournalOnAccount > 0)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.JournalAccountId,
+                        Debit = (double)journal.JournalOnAccount,
+                        Credit = 0
+                    });
+
+                    // CASH/BANK CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalAccountId,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = (double)journal.JournalOnAccount
+                    });
+                }
+
+                
+
+                // =========================
+                // DISCOUNT
+                // =========================
+
+                if (journal.JournalTotalDiscount > 0 &&
+                    journal.DiscountAccountId.HasValue)
+                {
+                    // PARTY 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.DiscountAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalDiscount
+                    });
+
+                    // DISCOUNT 
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.DiscountAccountId.Value,
+                        Debit = journal.JournalTotalDiscount,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // TDS
+                // =========================
+
+                if (journal.JournalTotalTds > 0 &&
+                    journal.TDSAcccountId.HasValue)
+                {
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.TDSAcccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalTds
+                    });
+
+                    // TDS CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.TDSAcccountId.Value,
+                        Debit = journal.JournalTotalTds,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // SHORTAGE
+                // =========================
+
+                if (journal.JournalTotalShort > 0 &&
+                    journal.ShortageAccountId.HasValue)
+                {
+
+
+                    // SHORTAGE CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.ShortageAccountId.Value,
+                        AccountId = journal.JournalPartyId,
+                        Debit = 0,
+                        Credit = journal.JournalTotalShort
+                    });
+                    // PARTY DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = journal.JournalPartyId,
+                        AccountId = journal.ShortageAccountId.Value,
+                        Debit = journal.JournalTotalShort,
+                        Credit = 0
+                    });
+                }
+
+                // =========================
+                // GROUP
+                // =========================
+
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                // =========================
+                // SAVE TRANSACTION
+                // =========================
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = (double)journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+
+            if (isContra)
+            {
+
+                // TO ACCOUNT DR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalPartyId,
+                    AccountId = journal.JournalAccountId,
+                    Debit = journal.JournalTotal,
+                    Credit = 0
+                });
+                // FROM ACCOUNT CR
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = journal.JournalAccountId,
+                    AccountId = journal.JournalPartyId,
+                    Debit = 0,
+                    Credit = journal.JournalTotal
+                });
+
+
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = journal.JournalAccountId,
+                    Details = details
+                });
+            }
+            if (isJournal)
+            {
+                details = new List<TransactionDetailDto>();
+
+                var drList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "DR")
+                    .ToList();
+
+                var crList = journal.BillRefDetails
+                    .Where(x => x.BillRefVchType == "CR")
+                    .ToList();
+
+                int count = Math.Min(drList.Count, crList.Count);
+
+                for (int i = 0; i < count; i++)
+                {
+                    var dr = drList[i];
+                    var cr = crList[i];
+
+                    // DR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = cr.BillRefAccountId,
+                        AccountId = dr.BillRefAccountId,
+                        Debit = dr.BillRefVchAmount,
+                        Credit = 0
+                    });
+
+                    // CR
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = dr.BillRefAccountId,
+                        AccountId = cr.BillRefAccountId,
+                        Debit = 0,
+                        Credit = cr.BillRefVchAmount
+                    });
+                }
+
+                // GROUP
+                details = details
+                    .GroupBy(x => new
+                    {
+                        x.PartyId,
+                        x.AccountId
+                    })
+                    .Select(g => new TransactionDetailDto
+                    {
+                        PartyId = g.Key.PartyId,
+                        AccountId = g.Key.AccountId,
+                        Debit = g.Sum(x => x.Debit),
+                        Credit = g.Sum(x => x.Credit)
+                    })
+                    .ToList();
+
+                await _transService.SaveTransaction(new TransactionDto
+                {
+                    CompanyId = GetCompanyId(),
+                    VoucherId = journal.JournalId,
+                    VoucherTypeId = journal.JournalVoucherId,
+                    VoucherNo = journal.JournalNoStr,
+                    VoucherType = journal.JournalMasterType,
+                    Date = journal.JournalDate,
+                    Amount = journal.JournalTotal,
+                    Remarks = journal.JournalRemarks,
+                    AccountId = 0,
+                    Details = details
+                });
+            }
+        }
         // POST: api/Journals
         [HttpPost]
         public async Task<ActionResult<Journal>> CreateJournal(JournalDto journalDto)

@@ -119,7 +119,7 @@ namespace FreightBKShipping.DTOs.BillDto
         public int BillApprovedBy { get; set; }
         public int BillDrCrAccId { get; set; }
         public float BillAdvance { get; set; }
-        public float BillNetAmount { get; set; }
+        public double BillNetAmount { get; set; }
         public float BillTdsAmt { get; set; }
         public float BillTdsPer { get; set; }
         public int? BillAgainstBillId { get; set; }
@@ -148,5 +148,23 @@ namespace FreightBKShipping.DTOs.BillDto
 
         
 
+    }
+
+
+    public class BulkBillResultItemDto
+    {
+        public string? BillNoInput { get; set; }   // Voucher No jo excel/client se aaya tha
+        public bool Success { get; set; }
+        public int BillId { get; set; }
+        public string? BillNo { get; set; }        // final generated/used bill no
+        public string? Error { get; set; }
+    }
+
+    public class BulkBillImportResultDto
+    {
+        public int TotalCount { get; set; }
+        public int SuccessCount { get; set; }
+        public int FailCount { get; set; }
+        public List<BulkBillResultItemDto> Items { get; set; } = new();
     }
 }

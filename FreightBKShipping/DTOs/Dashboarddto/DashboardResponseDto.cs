@@ -29,11 +29,11 @@
         public int CompletedJobs { get; set; }
         public int CancelledJobs { get; set; }
         public int TotalBills { get; set; }
-        public float TotalRevenue { get; set; }
+        public double TotalRevenue { get; set; }
         public int ImportJobsThisMonth { get; set; }
         public int ExportJobsThisMonth { get; set; }
         public int BillsThisMonth { get; set; }
-        public float RevenueThisMonth { get; set; }
+        public double RevenueThisMonth { get; set; }
         public int CompletionRate { get; set; }
         public int CancellationRate { get; set; }
 

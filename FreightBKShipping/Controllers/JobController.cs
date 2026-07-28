@@ -87,7 +87,7 @@ namespace FreightBKShipping.Controllers
                             JobType = x.j.JobType,
                             JobHighSeas1 = x.j.JobHighSeas1,
                             JobHighseas1Address = x.j.JobHighseas1Address,
-                            JobAgent = x.j.JobType,
+                            JobAgent = x.j.JobAgent,
                             JobAgentAddress = x.j.JobAgentAddress,
                             JobHsnCode = x.j.JobHsnCode,
                             JobBrand = x.j.JobBrand,
@@ -350,6 +350,62 @@ namespace FreightBKShipping.Controllers
                 await tx.CommitAsync();
                 return Ok(job);
            
+        }
+
+
+        [HttpGet("exists")]
+        public async Task<ActionResult<bool>> JobExists(
+    [FromQuery] string jobNo,
+    [FromQuery] int? branchId = null,
+    [FromQuery] string? jobType = null,
+    [FromQuery] string? yearId = null)
+        {
+            if (string.IsNullOrWhiteSpace(jobNo))
+                return Ok(false);
+
+            jobNo = jobNo.Trim().ToUpper();
+
+            var query = _context.Jobs.Where(j =>
+                j.JobNo.ToUpper() == jobNo &&
+                j.JobActive ==true &&
+                j.JobCompanyId == GetCompanyId());
+
+            if (branchId.HasValue)
+                query = query.Where(j => j.JobBranchId == branchId.Value);
+
+            if (!string.IsNullOrWhiteSpace(jobType))
+                query = query.Where(j => j.JobType == jobType);
+
+            if (!string.IsNullOrWhiteSpace(yearId))
+                query = query.Where(j => j.JobYearId == yearId);
+
+            return Ok(await query.AnyAsync());
+        }
+
+        // bulk import job data
+        [HttpPost("bulkimport")]
+        public async Task<IActionResult> BulkImport(List<Job> jobs)
+        {
+            if (jobs == null || jobs.Count == 0)
+                return BadRequest();
+            var userId = GetUserId();
+            var companyid = GetCompanyId();
+            foreach (var job in jobs)
+            {
+                job.JobAddedByUserId = userId;
+                job.JobUpdatedByUserId = userId;
+                job.JobCompanyId = companyid;
+                job.JobCreated = DateTime.Now;
+                job.JobUpdated = DateTime.Now;
+
+               
+            }
+
+            _context.Jobs.AddRange(jobs);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(true);
         }
 
         // PUT: api/Job/5

@@ -547,7 +547,7 @@ string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnore
                 BillUpdatedByUserId = GetUserId(),
                 BillCreated = DateTime.UtcNow,
                 BillUpdated = DateTime.UtcNow,
-
+                
                 // Basic info
                 BillRoundOffId = billDto.BillRoundOffId,
                 BillPartyId = billDto.BillPartyId,
@@ -679,41 +679,43 @@ string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnore
                 BillDetails = billDto.BillDetails.Select(d => new BillDetail
                 {
                     BillDetailProductId = d.BillDetailProductId,
-                    BillDetailUnitId = d.BillDetailUnitId,
                     BillDetailHsnId = d.BillDetailHsnId,
                     BillDetailHsnCode = d.BillDetailHsnCode,
+                    BillDetailUnitId = d.BillDetailUnitId,
                     BillDetailUnit = d.BillDetailUnit,
-                    BillDetailExchUnit = d.BillDetailExchUnit,
-                    BillDetailExchRate = d.BillDetailExchRate,
-                    BillDetailExtraChrg = d.BillDetailExtraChrg,
-                    BillDetailCurrencyId = d.BillDetailCurrencyId,
+                    BillDetailBillQty = d.BillDetailQty,
+                    BillDetailQty = d.BillDetailQty,
+                    BillDetailRate = d.BillDetailRate,
+                    BillDetailActualRate = d.BillDetailActualRate,
+                    BillDetailAmount = d.BillDetailAmount,
                     BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                    BillDetailExchRate = d.BillDetailExchRate,
                     BillDetailExchAmount = d.BillDetailTaxableAmt,
-                    BillDetailSno = d.BillDetailSno,
-                    BillDetailAccountId = d.BillDetailAccountId,
-                    BillDetailIgstAcId = d.BillDetailIgstAcId,
+                  BillDetailIgstAcId = d.BillDetailIgstAcId,
                     BillDetailCgstAcId = d.BillDetailCgstAcId,
                     BillDetailSgstAcId = d.BillDetailSgstAcId,
-                    BillDetailSlabId = d.BillDetailSlabId,
-                    BillDetailGstPer = d.BillDetailGstPer,
                     BillDetailIgst = d.BillDetailIgst,
                     BillDetailCgst = d.BillDetailCgst,
                     BillDetailSgst = d.BillDetailSgst,
                     BillDetailIgstPer = d.BillDetailIgstPer,
                     BillDetailCgstPer = d.BillDetailCgstPer,
                     BillDetailSgstPer = d.BillDetailSgstPer,
-                    BillDetailBillQty = d.BillDetailQty,
-                    BillDetailQty = d.BillDetailQty,
-                    BillDetailRate = d.BillDetailRate,
-                    BillDetailActualRate = d.BillDetailActualRate,
-                    BillDetailAmount = d.BillDetailAmount,
-                    BillDetailRemarks = d.BillDetailRemarks,
                     BillDetailTotal = d.BillDetailTotal,
+                    BillDetailRemarks = d.BillDetailRemarks,
+                    BillDetailSno = d.BillDetailSno,
+                    BillDetailAccountId = d.BillDetailAccountId,
                     BillDetailStatus = d.BillDetailStatus,
+                    BillDetailExchUnit = d.BillDetailExchUnit,
+                     BillDetailExtraChrg = d.BillDetailExtraChrg,
+                    BillDetailCurrencyId = d.BillDetailCurrencyId,
+                  BillDetailSlabId = d.BillDetailSlabId,
+                    BillDetailGstPer = d.BillDetailGstPer,
+                    
                     BillDetailAddedByUserId = GetUserId(),
                     BillDetailUpdatedByUserId = GetUserId(),
                     BillDetailCreated = DateTime.UtcNow,
                     BillDetailUpdated = DateTime.UtcNow
+                        
                 }).ToList(),
 
                 //// Ref details
@@ -2409,7 +2411,7 @@ string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnore
                     r.BillRefVchShort
                 );
             // 🔹 Credit / Debit Notes
-            float totalAdjustments = 0;
+            double totalAdjustments = 0;
 
             //var totalCreditNotes = await _context.Bills
             //    .Where(b =>
@@ -3207,6 +3209,642 @@ string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnore
             }
         }
 
+
+
+        // GET: api/Bills/exists
+        // Simple check by BillNo (matches how the WebApp import page calls it).
+        // Optional branchId/voucherId/yearId query params for a stricter/scoped check.
+        [HttpGet("exists")]
+        public async Task<ActionResult<bool>> BillExists(
+            [FromQuery] string billNo,
+            [FromQuery] int? branchId = null,
+            [FromQuery] int? voucherId = null,
+            [FromQuery] int? yearId = null)
+        {
+            if (string.IsNullOrWhiteSpace(billNo))
+                return Ok(false);
+
+            billNo = billNo.Trim().ToUpper();
+
+            var query = _context.Bills.Where(b =>
+                  b.BillNo.ToUpper() == billNo &&
+                b.BillStatus == true &&
+                b.BillCompanyId == GetCompanyId());
+
+            if (branchId.HasValue) query = query.Where(b => b.BillBranchId == branchId.Value);
+            if (voucherId.HasValue) query = query.Where(b => b.BillVoucherId == voucherId.Value);
+            if (yearId.HasValue) query = query.Where(b => b.BillYearId == yearId.Value);
+
+            bool exists = await query.AnyAsync();
+            return Ok(exists);
+        }
+
+        // POST: api/Bills/bulk
+        // Bulk import — one Bill (with BillDetails) per array item.
+        // Each bill gets its OWN transaction so one bad bill doesn't roll back the rest.
+        [HttpPost("bulk")]
+        public async Task<ActionResult<BulkBillImportResultDto>> BulkCreateBills(List<BillDto> billDtos)
+        {
+            var result = new BulkBillImportResultDto { TotalCount = billDtos?.Count ?? 0 };
+
+            if (billDtos == null || !billDtos.Any())
+                return BadRequest(new { message = "No bills provided." });
+
+            foreach (var billDto in billDtos)
+            {
+                var itemResult = new BulkBillResultItemDto { BillNoInput = billDto.BillNo };
+
+                using var tx = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // 1️⃣ Voucher lookup (branch + company scoped, same as CreateBill)
+                    var voucher = await _context.Vouchers
+                        .FirstOrDefaultAsync(v =>
+                            v.VoucherId == billDto.BillVoucherId &&
+                            v.VoucherBranchId == billDto.BillBranchId &&
+                            v.VoucherCompanyId == GetCompanyId());
+
+                    if (voucher == null)
+                    {
+                        itemResult.Error = "Voucher not found! Please create Voucher for current branch.";
+                        result.Items.Add(itemResult);
+                        await tx.RollbackAsync();
+                        continue;
+                    }
+
+                    //bool isAutomatic = voucher.VoucherMethod == "Automatic";
+
+                    // 2️⃣ Voucher detail for the year
+                    //var voucherDetail = await _context.VoucherDetails
+                    //    .FirstOrDefaultAsync(vd =>
+                    //        vd.VoucherDetailVoucherId == voucher.VoucherId &&
+                    //        vd.VoucherDetailYearId == billDto.BillYearId &&
+                    //        vd.VoucherDetailStatus == true);
+
+                    //if (voucherDetail == null)
+                    //{
+                    //    itemResult.Error = "Voucher details not configured.";
+                    //    result.Items.Add(itemResult);
+                    //    await tx.RollbackAsync();
+                    //    continue;
+                    //}
+
+                    //int nextNo;
+                    //string billNo;
+
+                    //if (isAutomatic)
+                    //{
+                    //    // 3️⃣ Auto number
+                    //    nextNo = voucherDetail.VoucherDetailLastNo + 1;
+
+                    //    bool numExists = await _context.Bills.AnyAsync(b =>
+                    //        b.BillVchNo == nextNo &&
+                    //        b.BillCompanyId == GetCompanyId() &&
+                    //        b.BillBranchId == billDto.BillBranchId &&
+                    //        b.BillVoucherId == billDto.BillVoucherId &&
+                    //        b.BillYearId == billDto.BillYearId &&
+                    //        b.BillStatus == true);
+
+                    //    if (numExists)
+                    //    {
+                    //        nextNo = (await _context.Bills
+                    //            .Where(b => b.BillCompanyId == GetCompanyId() &&
+                    //                        b.BillBranchId == billDto.BillBranchId &&
+                    //                        b.BillVoucherId == billDto.BillVoucherId &&
+                    //                        b.BillStatus == true &&
+                    //                        b.BillYearId == billDto.BillYearId)
+                    //            .MaxAsync(b => (int?)b.BillVchNo) ?? nextNo) + 1;
+                    //    }
+
+                    //    string formattedNo = nextNo.ToString()
+                    //        .PadLeft(voucherDetail.VoucherDetailZeroFill + nextNo.ToString().Length, '0');
+
+                    //    billNo =
+                    //        (voucherDetail.VoucherDetailPrefix ?? "") +
+                    //        formattedNo +
+                    //        (voucherDetail.VoucherDetailSufix ?? "");
+
+                    //    voucherDetail.VoucherDetailLastNo = nextNo;
+                    //    voucherDetail.VoucherDetailUpdated = DateTime.UtcNow;
+                    //}
+                    //else
+                    //{
+                    //    // 4️⃣ Manual number
+                    //    bool manualExists = await _context.Bills.AnyAsync(b =>
+                    //        b.BillNo == billDto.BillNo &&
+                    //        b.BillStatus == true &&
+                    //        b.BillCompanyId == GetCompanyId() &&
+                    //        b.BillBranchId == billDto.BillBranchId &&
+                    //        b.BillVoucherId == billDto.BillVoucherId &&
+                    //        b.BillYearId == billDto.BillYearId);
+
+                    //    if (manualExists)
+                    //    {
+                    //        itemResult.Error = "Bill number already exists.";
+                    //        result.Items.Add(itemResult);
+                    //        await tx.RollbackAsync();
+                    //        continue;
+                    //    }
+
+                    //    nextNo = 0;
+                    //    billNo = billDto.BillNo;
+                    //}
+
+                    // 4️⃣ Manual number
+                    
+
+                    //bool manualBillExists = await _context.Bills.AnyAsync(b =>
+                    //    b.BillNo.ToUpper() == billDto.BillNo.ToUpper() &&
+                    //    b.BillStatus == true &&
+                    //    b.BillCompanyId == GetCompanyId() &&
+                    //    b.BillBranchId == billDto.BillBranchId &&
+                    //    b.BillVoucherId == billDto.BillVoucherId &&
+                    //    b.BillYearId == billDto.BillYearId);
+
+                    //if (manualBillExists)
+                    //{
+                    //    itemResult.Error = "Bill number already exists.";
+                    //    result.Items.Add(itemResult);
+                    //    await tx.RollbackAsync();
+                    //    continue;
+                    //}
+
+     //               int maxNo = await _context.Bills
+     //.Where(b =>
+     //    b.BillCompanyId == GetCompanyId() &&
+     //    b.BillBranchId == billDto.BillBranchId &&
+     //    b.BillVoucherId == billDto.BillVoucherId &&
+     //    b.BillYearId == billDto.BillYearId &&
+     //    b.BillStatus)
+     //.MaxAsync(b => (int?)b.BillVchNo) ?? 0;
+
+                    //billDto.BillNo =  
+                    //billDto.BillVchNo = 0;
+
+                    var shipparty = await _context.Accounts
+                        .FirstOrDefaultAsync(p => p.AccountId == billDto.BillShipPartyId);
+                    var party = await _context.Accounts
+                        .FirstOrDefaultAsync(p => p.AccountId == billDto.BillPartyId);
+                    var pos = await _context.States
+                        .FirstOrDefaultAsync(s => s.StateId == billDto.BillPlaceOfSupply);
+
+                    bool isCreditNote = string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+                    bool isdebitNote = string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+                    var bill = new Bill
+                    {
+                        BillCompanyId = GetCompanyId(),
+                        BillAddedByUserId = GetUserId(),
+                        BillUpdatedByUserId = GetUserId(),
+                        BillCreated = DateTime.UtcNow,
+                        BillUpdated = DateTime.UtcNow,
+
+
+                        BillVoucherId = billDto.BillVoucherId,
+                        BillNo = billDto.BillNo?.Trim(),
+                        BillVchNo = 0,
+                        BillDate = billDto.BillDate,
+                        BillDueDate = billDto.BillDueDate,
+                        BillTime = billDto.BillTime,
+                        BillJobNo = billDto.BillJobNo,
+                        BillJobType = billDto.BillJobType,
+                        BillPlaceOfSupply = billDto.BillPlaceOfSupply,
+                        BillBranchId = billDto.BillBranchId,
+                        BillSupplyType = billDto.BillSupplyType,
+                        BillPartyId = billDto.BillPartyId,
+                        BillIsRcm = billDto.BillIsRcm,
+                        BillRemarks = billDto.BillRemarks,
+                        BillRoundAmt = billDto.BillRoundAmt,
+                        BillIsRoundOff = billDto.BillIsRoundOff,
+                        BillShipPartyId = billDto.BillShipPartyId,
+                        BillStateId = billDto.BillStateId,
+                        BillGstNo = billDto.BillGstNo,
+                        BillAddress1 = billDto.BillAddress1,
+                        BillAddress2 = billDto.BillAddress2,
+                        BillAddress3 = billDto.BillAddress3,
+                        BillCity = billDto.BillCity,
+                        BillPincode = billDto.BillPincode,
+                        BillContactNo = billDto.BillContactNo,
+                        BillRemarksDefault = billDto.BillRemarksDefault,
+                        BillContainerNo = billDto.BillContainerNo,
+                        BillYearId = billDto.BillYearId,
+                        BillType = voucher.VoucherGroup,
+                        BillAmount = billDto.BillAmount,
+                        BillIgst = billDto.BillIgst,
+                        BillSgst = billDto.BillSgst,
+                        BillCgst = billDto.BillCgst,
+                        BillTaxableAmt = billDto.BillTaxableAmt,
+                        BillBy = billDto.BillBy,
+                        BillNonTaxable = billDto.BillNonTaxable,
+                        BillGstIdFreight = billDto.BillGstIdFreight,
+                        BillGstIdCharge = billDto.BillGstIdCharge,
+                        BillGstAmtFreight = billDto.BillGstAmtFreight,
+                        BillGstAmtCharge = billDto.BillGstAmtCharge,
+                        BillTotalUsd = billDto.BillTotalUsd,
+                        BillTotal = billDto.BillTotal,
+                        BillDrCr = billDto.BillDrCr,
+                        BillIsCancel = billDto.BillIsCancel,
+                        BillIsFreeze = billDto.BillIsFreeze,
+                        BillTaxIncluded = billDto.BillTaxIncluded,
+                        BillAmountInWord = billDto.BillAmountInWord,
+                        BillPodId = billDto.BillPodId,
+                        BillPolId = billDto.BillPolId,
+                        BillVesselId = billDto.BillVesselId,
+                        BillLineId = billDto.BillLineId,
+                        BillCargoId = billDto.BillCargoId,
+                        BillConsigneeId = billDto.BillConsigneeId,
+                        BillShipperId = billDto.BillShipperId,
+                        BillSbNo = billDto.BillSbNo,
+                        BillSbDate = billDto.BillSbDate,
+                        BillBlNo = billDto.BillBlNo,
+                        BillBlDate = billDto.BillBlDate,
+                        BillShipperInvNo = billDto.BillShipperInvNo,
+                        BillShipperInvDate = billDto.BillShipperInvDate,
+                        BillGrossWt = billDto.BillGrossWt,
+                        BillNetWt = billDto.BillNetWt,
+                        BillQty = billDto.BillQty,
+                        BillExchRate = billDto.BillExchRate,
+                        Bill20Ft = billDto.Bill20Ft,
+                        Bill40Ft = billDto.Bill40Ft,
+                        BillCust1 = billDto.BillCust1,
+                        BillCust2 = billDto.BillCust2,
+                        BillCust3 = billDto.BillCust3,
+                        BillCust4 = billDto.BillCust4,
+                        BillCust5 = billDto.BillCust5,
+                        BillCust6 = billDto.BillCust6,
+                        BillCust7 = billDto.BillCust7,
+                        BillCust8 = billDto.BillCust8,
+                        BillCust9 = billDto.BillCust9,
+                        BillCust10 = billDto.BillCust10,
+                        BillStatus = true,
+                        BillPrefix = billDto.BillPrefix,
+                        BillPostfix = billDto.BillPostfix,
+                        BillDefaultCurrencyId = billDto.BillDefaultCurrencyId,
+                        BillGroup = billDto.BillGroup,
+                        BillBankId = billDto.BillBankId,
+                        BillDateFrom = billDto.BillDateFrom,
+                        BillDateTo = billDto.BillDateTo,
+                        BillReportId = billDto.BillReportId,
+                        BillCbmQty = billDto.BillCbmQty,
+                        BillConsignor = billDto.BillConsignor,
+                        BillTaxableAmt2 = billDto.BillTaxableAmt2,
+                        BillGstType = billDto.BillGstType,
+                        BillJobId = billDto.BillJobId,
+                        BillCdnReason = billDto.BillCdnReason,
+                        BillLockedBy = billDto.BillLockedBy,
+                        BillApprovedBy = billDto.BillApprovedBy,
+                        BillDrcrAccId = billDto.BillDrCrAccId,
+                        BillAdvance = billDto.BillAdvance,
+                        BillNetAmount = billDto.BillNetAmount,
+                        BillTdsAmt = billDto.BillTdsAmt,
+                        BillTdsPer = billDto.BillTdsPer,
+                        BillHblNo = billDto.BillHblNo,
+                        BillTcsPer = billDto.BillTcsPer,
+                        BillTcsAmt = billDto.BillTcsAmt,
+                        Bill_due_amt = billDto.Bill_due_amt,
+                        BillQuatationId = billDto.BillQuatationId,
+                        BillQuatationNo = billDto.BillQuatationNo,
+                        BillRoundOffId = billDto.BillRoundOffId,
+                        BillIrnNo = billDto.BillIrnNo,
+                        BillAckNo = billDto.BillAckNo,
+                        BillAckDate = billDto.BillAckDate,
+                        BillDisPer1 = billDto.BillDisper1,
+                        BillDiscount1 = billDto.BillDiscount1,
+
+                         
+                        partyname = party?.AccountName,
+                        posname = pos?.StateName,
+                        BillSalesmanId = billDto.BillSalesmanId,
+                        BillShipParty = shipparty?.AccountName,
+                        BillQRCode = billDto.BillQrCode,
+                        BillUuid = Guid.NewGuid().ToString(),
+                        BillAgainstBillId = billDto.BillAgainstBillId,
+                        BillAgainstBillDate = billDto.BillAgainstBillDate,
+                        BillAgainstBillNo = billDto.BillAgainstBillNo,
+
+                        BillDetails = billDto.BillDetails.Select(d => new BillDetail
+                        {
+                            BillDetailProductId = d.BillDetailProductId,
+                            BillDetailUnitId = d.BillDetailUnitId,
+                            BillDetailHsnId = d.BillDetailHsnId,
+                            BillDetailHsnCode = d.BillDetailHsnCode,
+                            BillDetailUnit = d.BillDetailUnit,
+                            BillDetailExchUnit = d.BillDetailExchUnit,
+                            BillDetailExchRate = d.BillDetailExchRate,
+                            BillDetailExtraChrg = d.BillDetailExtraChrg,
+                            BillDetailCurrencyId = d.BillDetailCurrencyId,
+                            BillDetailTaxableAmt = d.BillDetailTaxableAmt,
+                            BillDetailExchAmount = d.BillDetailTaxableAmt,
+                            BillDetailSno = d.BillDetailSno,
+                            BillDetailAccountId = d.BillDetailAccountId,
+                            BillDetailIgstAcId = d.BillDetailIgstAcId,
+                            BillDetailCgstAcId = d.BillDetailCgstAcId,
+                            BillDetailSgstAcId = d.BillDetailSgstAcId,
+                            BillDetailSlabId = d.BillDetailSlabId,
+                            BillDetailGstPer = d.BillDetailGstPer,
+                            BillDetailIgst = d.BillDetailIgst,
+                            BillDetailCgst = d.BillDetailCgst,
+                            BillDetailSgst = d.BillDetailSgst,
+                            BillDetailIgstPer = d.BillDetailIgstPer,
+                            BillDetailCgstPer = d.BillDetailCgstPer,
+                            BillDetailSgstPer = d.BillDetailSgstPer,
+                            BillDetailBillQty = d.BillDetailQty,
+                            BillDetailQty = d.BillDetailQty,
+                            BillDetailRate = d.BillDetailRate,
+                            BillDetailActualRate = d.BillDetailActualRate,
+                            BillDetailAmount = d.BillDetailAmount,
+                            BillDetailRemarks = d.BillDetailRemarks,
+                            BillDetailTotal = d.BillDetailTotal,
+                            BillDetailStatus = true,
+                            BillDetailAddedByUserId = GetUserId(),
+                            BillDetailUpdatedByUserId = GetUserId(),
+                            BillDetailCreated = DateTime.UtcNow,
+                            BillDetailUpdated = DateTime.UtcNow
+                        }).ToList(),
+                    };
+
+                    // Against-bill due-amount validation (CN/DN only) — same as CreateBill
+                    if ((isCreditNote || isdebitNote) &&
+                        bill.BillAgainstBillId.HasValue &&
+                        bill.BillAgainstBillId > 0)
+                    {
+                        var refBill = await _context.Bills
+                            .FirstOrDefaultAsync(b =>
+                                b.BillId == bill.BillAgainstBillId &&
+                                b.BillCompanyId == GetCompanyId() &&
+                                b.BillStatus == true);
+
+                        if (refBill == null)
+                        {
+                            itemResult.Error = "Reference bill not found.";
+                            result.Items.Add(itemResult);
+                            await tx.RollbackAsync();
+                            continue;
+                        }
+
+                        if (bill.BillNetAmount > refBill.Bill_due_amt)
+                        {
+                            itemResult.Error = $"Amount cannot exceed bill due amount ({refBill.Bill_due_amt}).";
+                            result.Items.Add(itemResult);
+                            await tx.RollbackAsync();
+                            continue;
+                        }
+
+                        refBill.Bill_due_amt -= bill.BillNetAmount;
+                        refBill.BillUpdated = DateTime.UtcNow;
+                        refBill.BillUpdatedByUserId = GetUserId();
+                        _context.Bills.Update(refBill);
+                    }
+
+                    _context.Bills.Add(bill);
+                    await _context.SaveChangesAsync(); // need BillId before transaction posting
+
+                    await _auditLogService.AddAsync(new AuditLogCreateDto
+                    {
+                        TableName = "Bills",
+                        RecordId = bill.BillId,
+                        VoucherType = voucher.VoucherName,
+                        Amount = (int)bill.BillNetAmount,
+                        Operations = "INSERT",
+                        Remarks = voucher.VoucherName + " No: " + bill.BillNo,
+                        BranchId = bill.BillBranchId,
+                        YearId = bill.BillYearId
+                    }, GetCompanyId());
+
+                    // ---- Ledger transaction posting (Sales/Purchase/CN/DN) ----
+                    await PostBillTransactionAsync(bill, voucher);
+
+                    await tx.CommitAsync();
+
+                    itemResult.Success = true;
+                    itemResult.BillId = bill.BillId;
+                    itemResult.BillNo = bill.BillNo;
+                    result.Items.Add(itemResult);
+                }
+                catch (Exception ex)
+                {
+                    await tx.RollbackAsync();
+                    itemResult.Success = false;
+                    itemResult.Error = ex.Message;
+                    result.Items.Add(itemResult);
+                }
+            }
+
+            result.SuccessCount = result.Items.Count(x => x.Success);
+            result.FailCount = result.Items.Count(x => !x.Success);
+
+            return Ok(result);
+        }
+
+        // -----------------------------------------------------------------
+        // Shared transaction-posting logic (same DR/CR rules as CreateBill's
+        // inline blocks) — extracted so BulkCreateBills can reuse it without
+        // duplicating ~200 lines.
+        // -----------------------------------------------------------------
+        private async Task PostBillTransactionAsync(Bill bill, Voucher voucher)
+        {
+            var details = new List<TransactionDetailDto>();
+
+            bool isPurchase = string.Equals(bill.BillType, "PURCHASE", StringComparison.OrdinalIgnoreCase);
+            bool isSales = string.Equals(bill.BillType, "SALES", StringComparison.OrdinalIgnoreCase);
+            bool isCreditNote = string.Equals(voucher.VoucherGroup, "CREDIT NOTE", StringComparison.OrdinalIgnoreCase);
+            bool isdebitNote = string.Equals(voucher.VoucherGroup, "DEBIT NOTE", StringComparison.OrdinalIgnoreCase);
+
+            if (isPurchase)
+            {
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = 0,
+                    Credit = bill.BillTotal
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    if (item.BillDetailCgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailCgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailCgst, Credit = 0 });
+
+                    if (item.BillDetailSgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailSgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailSgst, Credit = 0 });
+
+                    if (item.BillDetailIgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailIgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailIgst, Credit = 0 });
+                }
+
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+                        Debit = bill.BillRoundAmt > 0 ? bill.BillRoundAmt : 0,
+                        Credit = bill.BillRoundAmt < 0 ? Math.Abs(bill.BillRoundAmt) : 0,
+                    });
+                }
+            }
+            else if (isSales)
+            {
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = bill.BillTotal,
+                    Credit = 0
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailTaxableAmt
+                    });
+
+                    if (item.BillDetailCgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailCgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailCgst });
+
+                    if (item.BillDetailSgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailSgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailSgst });
+
+                    if (item.BillDetailIgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailIgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailIgst });
+                }
+
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+                        Debit = bill.BillRoundAmt < 0 ? Math.Abs(bill.BillRoundAmt) : 0,
+                        Credit = bill.BillRoundAmt > 0 ? bill.BillRoundAmt : 0
+                    });
+                }
+            }
+            else if (isCreditNote)
+            {
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = 0,
+                    Credit = bill.BillTotal
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = item.BillDetailTaxableAmt,
+                        Credit = 0
+                    });
+
+                    if (item.BillDetailCgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailCgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailCgst, Credit = 0 });
+
+                    if (item.BillDetailSgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailSgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailSgst, Credit = 0 });
+
+                    if (item.BillDetailIgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailIgstAcId, AccountId = bill.BillPartyId, Debit = item.BillDetailIgst, Credit = 0 });
+                }
+
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+                        Debit = bill.BillRoundAmt > 0 ? bill.BillRoundAmt : 0,
+                        Credit = bill.BillRoundAmt < 0 ? Math.Abs(bill.BillRoundAmt) : 0
+                    });
+                }
+            }
+            else if (isdebitNote)
+            {
+                details.Add(new TransactionDetailDto
+                {
+                    PartyId = bill.BillPartyId,
+                    AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                    Debit = bill.BillTotal,
+                    Credit = 0
+                });
+
+                foreach (var item in bill.BillDetails)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = item.BillDetailAccountId,
+                        AccountId = bill.BillPartyId,
+                        Debit = 0,
+                        Credit = item.BillDetailTaxableAmt
+                    });
+
+                    if (item.BillDetailCgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailCgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailCgst });
+
+                    if (item.BillDetailSgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailSgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailSgst });
+
+                    if (item.BillDetailIgst > 0)
+                        details.Add(new TransactionDetailDto { PartyId = item.BillDetailIgstAcId, AccountId = bill.BillPartyId, Debit = 0, Credit = item.BillDetailIgst });
+                }
+
+                if (bill.BillRoundAmt != 0)
+                {
+                    details.Add(new TransactionDetailDto
+                    {
+                        PartyId = bill.BillRoundOffId,
+                        AccountId = bill.BillPartyId,
+                        Debit = bill.BillRoundAmt < 0 ? Math.Abs(bill.BillRoundAmt) : 0,
+                        Credit = bill.BillRoundAmt > 0 ? bill.BillRoundAmt : 0
+                    });
+                }
+            }
+            else
+            {
+                // e.g. Quotation voucher group — no ledger posting
+                return;
+            }
+
+            details = details
+                .GroupBy(x => new { x.PartyId, x.AccountId })
+                .Select(g => new TransactionDetailDto
+                {
+                    PartyId = g.Key.PartyId,
+                    AccountId = g.Key.AccountId,
+                    Debit = g.Sum(x => x.Debit),
+                    Credit = g.Sum(x => x.Credit)
+                })
+                .ToList();
+
+            await _transService.SaveTransaction(new TransactionDto
+            {
+                CompanyId = GetCompanyId(),
+                VoucherId = bill.BillId,
+                VoucherTypeId = bill.BillVoucherId,
+                VoucherNo = bill.BillNo,
+                VoucherType = bill.BillType,
+                Date = bill.BillDate,
+                Amount = bill.BillTotal,
+                Remarks = bill.BillRemarks,
+                AccountId = bill.BillDetails.FirstOrDefault()?.BillDetailAccountId ?? 0,
+                Details = details
+            });
+        }
 
     }
 }
