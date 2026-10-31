@@ -78,6 +78,6 @@ namespace FreightBKShipping.Models
         public DateTime NotifyUpdated { get; set; }
 
         [Column("notify_country")]
-        public string NotifyCountry { get; set; }
+        public string? NotifyCountry { get; set; } = "";
     }
 }
